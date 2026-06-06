@@ -43,22 +43,14 @@ export default async function HomePage() {
       <section className="bg-white border-b border-stone-200">
         <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32 flex flex-col items-start gap-6">
           <p className="text-sm font-medium uppercase tracking-widest text-stone-400">
-            Merch For The Future is living up to our name
+            Merch For The Future
           </p>
           <h1 className="max-w-2xl text-4xl sm:text-5xl font-semibold tracking-tight text-stone-900 leading-tight">
-            Apparel that says something about the world we want to live in.
+            We are living up to our name!
           </h1>
           <p className="max-w-xl text-lg text-stone-500 leading-relaxed">
-            Humor, exclusively human-made art, and design choices that minimize harm — all in service of building hopeful visions of our future.
+            Sustainable clothing and original designs coming soon.
           </p>
-          <div className="flex flex-wrap gap-3 pt-2">
-            <Link
-              href="/browse"
-              className="rounded-full bg-stone-900 px-6 py-3 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
-            >
-              Shop now
-            </Link>
-          </div>
         </div>
       </section>
 
