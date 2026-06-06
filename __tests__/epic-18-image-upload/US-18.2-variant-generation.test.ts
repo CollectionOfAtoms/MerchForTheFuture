@@ -150,7 +150,7 @@ describe("US-18.2 — Automatic Image Variant Generation", () => {
       expect(compositeArg[0]).toHaveProperty("input");
       // Watermark SVG should contain the brand name
       const svgInput = compositeArg[0].input as Buffer;
-      expect(svgInput.toString()).toContain("Art &amp; Sol");
+      expect(svgInput.toString()).toContain("Merch for the Future");
     });
 
     it("uses JPEG quality 85 for display variant", async () => {
