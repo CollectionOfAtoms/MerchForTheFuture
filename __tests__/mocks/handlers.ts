@@ -123,9 +123,9 @@ const currencyHandlers = [
   ),
 ];
 
-// ─── Resend (email) handlers ──────────────────────────────────────────────────
+// ─── MailerSend (email) handlers ─────────────────────────────────────────────
 const emailHandlers = [
-  http.post("https://api.resend.com/emails", () =>
+  http.post("https://api.mailersend.com/v1/email", () =>
     HttpResponse.json({ id: "email_test_mock" })
   ),
 ];
