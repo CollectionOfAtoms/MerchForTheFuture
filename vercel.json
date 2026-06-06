@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/close-auctions",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/payment-deadlines",
+      "schedule": "0 12 * * *"
+    }
+  ]
+}

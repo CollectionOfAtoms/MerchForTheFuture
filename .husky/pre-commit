@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# Only enforce tracker update when committing source or test code changes.
+# Pure infrastructure/config commits (package.json, .gitignore, etc.) are exempt.
+STAGED=$(git diff --cached --name-only)
+
+SOURCE_CHANGED=$(echo "$STAGED" | grep -E "^(src/|__tests__/|prisma/schema)" || true)
+
+if [ -n "$SOURCE_CHANGED" ]; then
+  if ! echo "$STAGED" | grep -q "spec/project-tracker.json"; then
+    echo ""
+    echo "ERROR: spec/project-tracker.json must be updated with every source/test commit."
+    echo "Stage your tracker changes and try again:"
+    echo "  git add spec/project-tracker.json"
+    echo ""
+    exit 1
+  fi
+fi
