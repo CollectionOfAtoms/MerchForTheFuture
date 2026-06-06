@@ -1289,7 +1289,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-06",
       "testPassedCommit": "pending",
-      "notes": "Replaced Art & Sol art-marketplace hero copy with MerchForTheFuture brand copy. Added mission statement section. Updated categories (Apparel/Prints/Originals) and how-it-works steps to match the apparel domain. Revised hero: big h1 is now \"We are living up to our name!\", subtitle is coming-soon copy, shop button removed. Removed How-it-works and Shop-by-type sections. Removed Nav from homepage via (main) route group. Excluded scripts/ from tsconfig."
+      "notes": "Replaced Art & Sol art-marketplace hero copy with MerchForTheFuture brand copy. Added mission statement section. Updated categories (Apparel/Prints/Originals) and how-it-works steps to match the apparel domain. Revised hero: big h1 is now \"We are living up to our name!\", subtitle is coming-soon copy, shop button removed. Removed How-it-works and Shop-by-type sections. Removed Nav from homepage via (main) route group. Excluded scripts/ from tsconfig. Hero section made full-viewport, text centered, all sizes doubled."
     }
   ],
   "commits": [
