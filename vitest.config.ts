@@ -15,6 +15,7 @@ export default defineConfig({
     include: ["__tests__/**/*.test.ts", "__tests__/**/*.test.tsx"],
     env: {
       DATABASE_URL: dbUrl,
+      CRON_SECRET: "test-secret",
     },
     // Per-file environment overrides:
     //   - Integration tests (DB) → node (no DOM, no MSW)

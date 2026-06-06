@@ -13,21 +13,9 @@ function createClient() {
 const prisma = createClient();
 
 export async function resetDatabase() {
-  await prisma.notification.deleteMany();
-  await prisma.transaction.deleteMany();
-  await prisma.order.deleteMany();
-  await prisma.bid.deleteMany();
-  await prisma.auction.deleteMany();
-  await prisma.originalListing.deleteMany();
-  await prisma.artworkImage.deleteMany();
-  await prisma.artwork.deleteMany();
-  await prisma.userAddress.deleteMany();
-  await prisma.session.deleteMany();
-  await prisma.account.deleteMany();
-  await prisma.verificationToken.deleteMany();
-  await prisma.passwordResetToken.deleteMany();
-  await prisma.emailVerificationToken.deleteMany();
-  await prisma.user.deleteMany();
+  await prisma.$executeRawUnsafe(
+    `TRUNCATE TABLE "Notification","Transaction","Order","Bid","Auction","OriginalListing","ArtworkImage","Artwork","UserAddress","Session","Account","VerificationToken","PasswordResetToken","EmailVerificationToken","User" RESTART IDENTITY CASCADE`
+  );
 }
 
 export { prisma };

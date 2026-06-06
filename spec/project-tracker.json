@@ -1257,6 +1257,17 @@
       "testPassedDate": "2026-06-02",
       "testPassedCommit": "ff05ccc",
       "notes": "5 tests passing. fulfillPaymentBySession verifies Stripe session payment_status before marking PAID; resolveSessionFulfillment called on fulfill page load when ?session_id present — eliminates webhook race condition. Both are idempotent."
+    },
+    {
+      "id": "MFTF-1.1",
+      "epic": "Epic MFTF-1: MerchForTheFuture Migration",
+      "title": "Migrate transactional email from Resend to MailerSend",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Resend free plan is already used by Art & Sol (artandsol.quest). MerchForTheFuture will use MailerSend instead. Replace RESEND_API_KEY / Resend SDK calls in src/lib/payments/email.ts (and any other email helpers) with MailerSend API. Update env vars: remove RESEND_API_KEY, add MAILERSEND_API_KEY and EMAIL_FROM."
     }
   ],
   "commits": [
