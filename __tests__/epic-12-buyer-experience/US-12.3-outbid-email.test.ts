@@ -61,11 +61,11 @@ describe("US-12.3 — Outbid Email Notification", () => {
 
     // One fetch for buyer1 being outbid by buyer2
     const resendCalls = fetchSpy.mock.calls.filter(([url]: [unknown]) =>
-      typeof url === "string" && url.includes("resend.com")
+      typeof url === "string" && url.includes("mailersend.com")
     );
     expect(resendCalls.length).toBeGreaterThanOrEqual(1);
     const body = JSON.parse(resendCalls[resendCalls.length - 1][1]?.body as string);
-    expect(body.to).toBe("buyer1@test.com");
+    expect(body.to[0].email).toBe("buyer1@test.com");
     expect(body.subject).toContain("outbid");
   });
 
@@ -74,7 +74,7 @@ describe("US-12.3 — Outbid Email Notification", () => {
     await placeBidAction(auctionId, 150);
 
     const resendCalls = fetchSpy.mock.calls.filter(([url]: [unknown]) =>
-      typeof url === "string" && url.includes("resend.com")
+      typeof url === "string" && url.includes("mailersend.com")
     );
     expect(resendCalls.length).toBe(0);
   });
@@ -85,7 +85,7 @@ describe("US-12.3 — Outbid Email Notification", () => {
     await placeBidAction(auctionId, 200);
 
     const resendCalls = fetchSpy.mock.calls.filter(([url]: [unknown]) =>
-      typeof url === "string" && url.includes("resend.com")
+      typeof url === "string" && url.includes("mailersend.com")
     );
     expect(resendCalls.length).toBe(0);
   });
@@ -104,7 +104,7 @@ describe("US-12.3 — Outbid Email Notification", () => {
     await placeBidAction(auctionId, 200);
 
     const resendCalls = fetchSpy.mock.calls.filter(([url]: [unknown]) =>
-      typeof url === "string" && url.includes("resend.com")
+      typeof url === "string" && url.includes("mailersend.com")
     );
     expect(resendCalls.length).toBe(0);
   });

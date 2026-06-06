@@ -82,14 +82,14 @@ describe("US-22.4 — contactSupportAction", () => {
     await prisma.$disconnect();
   });
 
-  it("returns success and calls Resend when valid message provided", async () => {
+  it("returns success and calls MailerSend when valid message provided", async () => {
     const { contactSupportAction } = await import("@/app/actions/order");
     const { buyer, order } = await seedOrderWithSeller();
     mockSession = { user: { id: buyer.id } };
 
     let emailCalled = false;
     server.use(
-      http.post("https://api.resend.com/emails", () => {
+      http.post("https://api.mailersend.com/v1/email", () => {
         emailCalled = true;
         return HttpResponse.json({ id: "email_test_mock" });
       })
@@ -108,7 +108,7 @@ describe("US-22.4 — contactSupportAction", () => {
 
     let capturedBody: Record<string, unknown> | null = null;
     server.use(
-      http.post("https://api.resend.com/emails", async ({ request }) => {
+      http.post("https://api.mailersend.com/v1/email", async ({ request }) => {
         capturedBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({ id: "email_test_mock" });
       })
@@ -116,7 +116,7 @@ describe("US-22.4 — contactSupportAction", () => {
 
     await contactSupportAction(order.id, "Where is my order?");
 
-    expect(capturedBody?.to).toBe("seller@test.com");
+    expect(capturedBody?.to[0].email).toBe("seller@test.com");
   });
 
   it("sends an email subject containing the order ID (last 8 chars uppercased)", async () => {
@@ -126,7 +126,7 @@ describe("US-22.4 — contactSupportAction", () => {
 
     let capturedBody: Record<string, unknown> | null = null;
     server.use(
-      http.post("https://api.resend.com/emails", async ({ request }) => {
+      http.post("https://api.mailersend.com/v1/email", async ({ request }) => {
         capturedBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({ id: "email_test_mock" });
       })
@@ -146,7 +146,7 @@ describe("US-22.4 — contactSupportAction", () => {
     const message = "My artwork arrived damaged — the corner is bent.";
     let capturedBody: Record<string, unknown> | null = null;
     server.use(
-      http.post("https://api.resend.com/emails", async ({ request }) => {
+      http.post("https://api.mailersend.com/v1/email", async ({ request }) => {
         capturedBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({ id: "email_test_mock" });
       })
@@ -197,13 +197,13 @@ describe("US-22.4 — contactSupportAction", () => {
     expect(result).toEqual({ error: "Unauthorized" });
   });
 
-  it("returns an error (does not throw) when Resend returns a non-2xx status", async () => {
+  it("returns an error (does not throw) when MailerSend returns a non-2xx status", async () => {
     const { contactSupportAction } = await import("@/app/actions/order");
     const { buyer, order } = await seedOrderWithSeller();
     mockSession = { user: { id: buyer.id } };
 
     server.use(
-      http.post("https://api.resend.com/emails", () =>
+      http.post("https://api.mailersend.com/v1/email", () =>
         HttpResponse.json({ message: "Internal error" }, { status: 500 })
       )
     );

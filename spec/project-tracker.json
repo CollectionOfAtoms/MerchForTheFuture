@@ -1262,12 +1262,12 @@
       "id": "MFTF-1.1",
       "epic": "Epic MFTF-1: MerchForTheFuture Migration",
       "title": "Migrate transactional email from Resend to MailerSend",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Resend free plan is already used by Art & Sol (artandsol.quest). MerchForTheFuture will use MailerSend instead. Replace RESEND_API_KEY / Resend SDK calls in src/lib/payments/email.ts (and any other email helpers) with MailerSend API. Update env vars: remove RESEND_API_KEY, add MAILERSEND_API_KEY and EMAIL_FROM."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-06",
+      "testWrittenCommit": "4c568c6",
+      "testPassedDate": "2026-06-06",
+      "testPassedCommit": "4c568c6",
+      "notes": "Replaced Resend fetch helper with MailerSend in src/lib/payments/email.ts. Updated MSW intercept URLs and to-field assertions in US-12.3 and US-22.4 tests to match MailerSend request shape ({ to: [{ email }] }). Fixed stale Art & Sol brand copy in verification and password reset emails. 800/800 tests passing."
     }
   ],
   "commits": [

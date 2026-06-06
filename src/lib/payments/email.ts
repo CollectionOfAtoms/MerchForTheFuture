@@ -2,21 +2,25 @@ import { prisma } from "@/lib/db";
 
 type Artwork = { id: string; title: string; imageUrl?: string };
 
-function resend(payload: Record<string, unknown>): Promise<Response> {
-  return fetch("https://api.resend.com/emails", {
+function mailersend(payload: { to: string; subject: string; html: string }): Promise<Response> {
+  const from = process.env.EMAIL_FROM ?? "MerchForTheFuture <noreply@MerchForTheFuture.com>";
+  const [fromName, fromEmail] = from.match(/^(.+?)\s*<(.+?)>$/)?.slice(1) ?? ["MerchForTheFuture", from];
+  return fetch("https://api.mailersend.com/v1/email", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY ?? "re_placeholder"}`,
+      Authorization: `Bearer ${process.env.MAILERSEND_API_KEY ?? ""}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL ?? "Art & Sol <noreply@artandsol.quest>",
-      ...payload,
+      from: { email: fromEmail, name: fromName },
+      to: [{ email: payload.to }],
+      subject: payload.subject,
+      html: payload.html,
     }),
   });
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://artandsol.quest";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://merchforthefuture.com";
 
 // ─── Outbid ───────────────────────────────────────────────────────────────────
 
@@ -38,7 +42,7 @@ export async function sendOutbidEmail(userId: string, auctionId: string, newHigh
   const endAt = auction.endAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
   const primaryImage = artwork.images.find((img) => img.isPrimary) ?? artwork.images[0];
 
-  await resend({
+  await mailersend({
     to: user.email,
     subject: `You've been outbid on "${artwork.title}"`,
     html: `
@@ -69,7 +73,7 @@ export async function sendAuctionWonEmail(
 
   const fulfillUrl = `${BASE_URL}/orders/${orderId}/fulfill`;
 
-  await resend({
+  await mailersend({
     to: user.email,
     subject: `Congratulations — you won "${artwork.title}"`,
     html: `
@@ -90,7 +94,7 @@ export async function sendAuctionLostEmail(userId: string, artwork: Artwork): Pr
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return;
 
-  await resend({
+  await mailersend({
     to: user.email,
     subject: `Auction ended — "${artwork.title}"`,
     html: `
@@ -121,7 +125,7 @@ export async function sendPurchaseConfirmation(orderId: string): Promise<void> {
   const primaryImage = artwork?.images.find((img) => img.isPrimary) ?? artwork?.images[0];
   const fulfillUrl = `${BASE_URL}/orders/${orderId}/fulfill`;
 
-  await resend({
+  await mailersend({
     to: order.buyer.email,
     subject: `Order confirmed — ${artworkTitle}`,
     html: `
@@ -158,7 +162,7 @@ export async function sendShippingNotificationEmail(orderId: string): Promise<vo
     ? `<p style="color:#78716c;font-size:14px">Carrier: ${order.carrier}<br/>Tracking: ${order.trackingNumber}</p>`
     : "";
 
-  await resend({
+  await mailersend({
     to: order.buyer.email,
     subject: `Your artwork has shipped — ${artworkTitle}`,
     html: `
@@ -187,7 +191,7 @@ export async function sendPaymentReminderEmail(orderId: string, hoursRemaining: 
   const primaryImage = artwork?.images.find((img) => img.isPrimary) ?? artwork?.images[0];
   const fulfillUrl = `${BASE_URL}/orders/${orderId}/fulfill`;
 
-  await resend({
+  await mailersend({
     to: order.buyer.email,
     subject: `Reminder: ${hoursRemaining} hours left to complete payment for "${artworkTitle}"`,
     html: `
@@ -216,7 +220,7 @@ export async function sendRunnerUpEmail(orderId: string): Promise<void> {
   const primaryImage = artwork?.images.find((img) => img.isPrimary) ?? artwork?.images[0];
   const fulfillUrl = `${BASE_URL}/orders/${orderId}/fulfill`;
 
-  await resend({
+  await mailersend({
     to: order.buyer.email,
     subject: `Good news — "${artworkTitle}" is available for you`,
     html: `
@@ -244,7 +248,7 @@ export async function sendOrderCancelledEmail(orderId: string): Promise<void> {
   const artworkTitle = artwork?.title ?? "Artwork";
   const primaryImage = artwork?.images.find((img) => img.isPrimary) ?? artwork?.images[0];
 
-  await resend({
+  await mailersend({
     to: order.buyer.email,
     subject: `Your order for "${artworkTitle}" has been cancelled`,
     html: `
@@ -273,7 +277,7 @@ export async function sendSupportRequestEmail(params: {
   const orderRef = `Order #${orderId.slice(-8).toUpperCase()}`;
   const formattedDate = orderDate.toLocaleDateString("en-US", { dateStyle: "medium" });
 
-  const res = await resend({
+  const res = await mailersend({
     to: sellerEmail,
     subject: `Support request — ${orderRef}`,
     html: `
@@ -292,7 +296,7 @@ export async function sendSupportRequestEmail(params: {
   });
 
   if (!res.ok) {
-    throw new Error(`Resend error: ${res.status}`);
+    throw new Error(`MailerSend error: ${res.status}`);
   }
 }
 
@@ -300,14 +304,14 @@ export async function sendSupportRequestEmail(params: {
 
 export async function sendVerificationEmail(email: string, token: string, name?: string | null): Promise<void> {
   const verifyUrl = `${BASE_URL}/auth/verify-email?token=${token}`;
-  await resend({
+  await mailersend({
     to: email,
     subject: "You're almost done",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1c1917">
         <p style="font-size:18px;font-weight:600;margin-bottom:4px">You're almost done</p>
         <p style="color:#78716c;margin-top:0">Hi${name ? ` ${name}` : ""},</p>
-        <p style="color:#78716c">Please verify your email address to complete your Art &amp; Sol account. Click the button below — this link expires in 24 hours.</p>
+        <p style="color:#78716c">Please verify your email address to complete your Merch For The Future account. Click the button below — this link expires in 24 hours.</p>
         <a href="${verifyUrl}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500;margin:16px 0">Verify my email →</a>
         <p style="color:#a8a29e;font-size:12px">If you didn't create an account, you can safely ignore this email.</p>
       </div>
@@ -319,14 +323,14 @@ export async function sendVerificationEmail(email: string, token: string, name?:
 
 export async function sendPasswordResetEmail(email: string, token: string, name?: string | null): Promise<void> {
   const resetUrl = `${BASE_URL}/auth/reset-password?token=${token}`;
-  await resend({
+  await mailersend({
     to: email,
-    subject: "Reset your Art & Sol password",
+    subject: "Reset your Merch For The Future password",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1c1917">
         <p style="font-size:18px;font-weight:600;margin-bottom:4px">Reset your password</p>
         <p style="color:#78716c;margin-top:0">Hi${name ? ` ${name}` : ""},</p>
-        <p style="color:#78716c">We received a request to reset the password for your Art &amp; Sol account. Click the button below to choose a new password. This link expires in 1 hour.</p>
+        <p style="color:#78716c">We received a request to reset the password for your Merch For The Future account. Click the button below to choose a new password. This link expires in 1 hour.</p>
         <a href="${resetUrl}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500;margin:16px 0">Reset password →</a>
         <p style="color:#a8a29e;font-size:12px">If you didn't request a password reset, you can safely ignore this email. Your password won't change.</p>
       </div>
