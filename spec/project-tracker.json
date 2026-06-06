@@ -1279,6 +1279,17 @@
       "testPassedDate": "2026-06-06",
       "testPassedCommit": "pending",
       "notes": "Updated Nav.tsx logo, Footer.tsx copyright, variants.ts watermark SVG text, and US-18.2 watermark assertion. 800/800 tests passing."
+    },
+    {
+      "id": "MFTF-1.3",
+      "epic": "Epic MFTF-1: MerchForTheFuture Migration",
+      "title": "Update homepage with mission statement and brand copy",
+      "status": "Passed",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": "2026-06-06",
+      "testPassedCommit": "pending",
+      "notes": "Replaced Art & Sol art-marketplace hero copy with MerchForTheFuture brand copy. Added mission statement section. Updated categories (Apparel/Prints/Originals) and how-it-works steps to match the apparel domain."
     }
   ],
   "commits": [

@@ -5,28 +5,28 @@ import { redirect } from "next/navigation";
 const categories = [
   {
     href: "/browse",
-    label: "Original Art",
-    description: "One-of-a-kind works available for direct purchase.",
-    accent: "bg-amber-100",
-  },
-  {
-    href: "/browse?type=auction",
-    label: "Auctions",
-    description: "Bid on exclusive pieces with time-limited listings.",
-    accent: "bg-sky-100",
+    label: "Apparel",
+    description: "T-shirts, hoodies, and more — designed with purpose.",
+    accent: "bg-emerald-100",
   },
   {
     href: "/browse?type=print",
     label: "Prints",
-    description: "Museum-quality prints shipped directly to your door.",
-    accent: "bg-emerald-100",
+    description: "High-quality art prints from our human-made collection.",
+    accent: "bg-amber-100",
+  },
+  {
+    href: "/browse?type=auction",
+    label: "Originals",
+    description: "One-of-a-kind original artworks available by auction.",
+    accent: "bg-sky-100",
   },
 ];
 
 const steps = [
-  { number: "01", title: "Discover", body: "Browse original works, open auctions, and print collections from independent artists." },
-  { number: "02", title: "Bid", body: "Place a bid on time-limited auctions and compete for one-of-a-kind pieces." },
-  { number: "03", title: "Collect", body: "Buy directly or order a museum-quality print — shipped straight to your door." },
+  { number: "01", title: "Browse", body: "Explore apparel and prints made with human-made art and planet-conscious design." },
+  { number: "02", title: "Choose", body: "Pick the pieces that speak to you — every item carries a message worth wearing." },
+  { number: "03", title: "Wear it forward", body: "Your purchase supports independent artists and a more hopeful vision of the future." },
 ];
 
 export default async function HomePage() {
@@ -43,22 +43,32 @@ export default async function HomePage() {
       <section className="bg-white border-b border-stone-200">
         <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32 flex flex-col items-start gap-6">
           <p className="text-sm font-medium uppercase tracking-widest text-stone-400">
-            Art powered by light
+            Merch For The Future is living up to our name
           </p>
           <h1 className="max-w-2xl text-4xl sm:text-5xl font-semibold tracking-tight text-stone-900 leading-tight">
-            Collect original art from independent artists around the world.
+            Apparel that says something about the world we want to live in.
           </h1>
           <p className="max-w-xl text-lg text-stone-500 leading-relaxed">
-            Original paintings, live auctions, and museum-quality prints — all in one place.
+            Humor, exclusively human-made art, and design choices that minimize harm — all in service of building hopeful visions of our future.
           </p>
           <div className="flex flex-wrap gap-3 pt-2">
             <Link
               href="/browse"
               className="rounded-full bg-stone-900 px-6 py-3 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
             >
-              Browse artwork
+              Shop now
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Mission */}
+      <section className="bg-stone-50 border-b border-stone-200">
+        <div className="mx-auto max-w-3xl px-6 py-16 text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-6">Our mission</p>
+          <p className="text-xl sm:text-2xl text-stone-700 leading-relaxed font-light">
+            To create apparel that communicate our values toward our planet and its inhabitants with humor, exclusively human-made art, helpful information, and design choices that minimize harm for the planet in the creation of our products, with the express intent of building hopeful visions of our future.
+          </p>
         </div>
       </section>
 
@@ -88,6 +98,7 @@ export default async function HomePage() {
           <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-10">
             How it works
           </h2>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
             {steps.map((step) => (
               <div key={step.number}>
