@@ -17,7 +17,7 @@ export default async function HomePage() {
           <p className="text-2xl font-medium uppercase tracking-widest text-stone-400">
             Merch For The Future
           </p>
-          <h1 className="text-8xl sm:text-9xl font-semibold tracking-tight text-stone-900 leading-tight">
+          <h1 className="text-7xl sm:text-8xl font-semibold tracking-tight text-stone-900 leading-tight">
             We are living up to our name!
           </h1>
           <p className="max-w-3xl text-4xl text-stone-500 leading-relaxed">
