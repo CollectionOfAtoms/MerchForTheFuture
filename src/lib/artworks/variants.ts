@@ -113,7 +113,7 @@ function buildWatermarkSvg(width: number, height: number): Buffer {
       font-weight="600"
       fill="rgba(150,150,150,0.30)"
       transform="rotate(-30, ${cx}, ${cy})"
-    >Art &amp; Sol</text>
+    >Merch for the Future</text>
   </svg>`;
   return Buffer.from(svg);
 }

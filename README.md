@@ -1,6 +1,6 @@
-# Art & Sol
+# Merch For The Future
 
-A renewable energy-themed art marketplace for buying and selling original artwork, auction pieces, and museum-quality prints.
+A storefront for Merch For The Future, a webstore selling our all human designed droppshipped apparel with a focus on sustainability and building positive visions of the future.
 
 ## Tech Stack
 
@@ -32,8 +32,8 @@ A renewable energy-themed art marketplace for buying and selling original artwor
 ### 1. Clone and install
 
 ```bash
-git clone git@github.com:CollectionOfAtoms/art-and-sol.git
-cd art-and-sol
+git clone git@github.com:CollectionOfAtoms/MerchForTheFuture.git
+cd MerchForTheFuture
 npm install
 ```
 

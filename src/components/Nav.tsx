@@ -17,7 +17,7 @@ export default async function Nav() {
     <header className="border-b border-stone-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="text-xl font-semibold tracking-tight text-stone-900">
-          Art &amp; Sol
+          Merch for the Future
         </Link>
 
         {/* Desktop nav — Browse / Auctions / Prints always visible */}

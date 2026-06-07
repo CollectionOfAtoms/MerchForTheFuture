@@ -23,7 +23,7 @@ const ORDER_STATUS_COLOUR: Record<string, string> = {
   REFUNDED: "bg-stone-100 text-stone-500",
 };
 
-export const metadata = { title: "My Orders — Art & Sol" };
+export const metadata = { title: "My Orders — Merch For The Future" };
 
 export default async function BuyerOrdersPage() {
   const session = await auth();

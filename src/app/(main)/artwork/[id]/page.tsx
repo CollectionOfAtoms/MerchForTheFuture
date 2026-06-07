@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const artwork = await getArtworkDetail(id);
   if (!artwork) return { title: "Artwork not found" };
   return {
-    title: `${artwork.title} — Art & Sol`,
+    title: `${artwork.title} — Merch For The Future`,
     description: artwork.description.slice(0, 160),
     openGraph: artwork.images[0]
       ? { images: [{ url: artwork.images[0].url }] }
