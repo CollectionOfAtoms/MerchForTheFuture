@@ -22,7 +22,7 @@ export default function SellPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">
       <div className="max-w-xl mb-12">
-        <h1 className="text-2xl font-semibold text-stone-900 mb-2">Sell on Art & Sol</h1>
+        <h1 className="text-2xl font-semibold text-stone-900 mb-2">Sell on Merch For The Future</h1>
         <p className="text-stone-500">
           List originals, run auctions, or offer prints. You control how your work reaches collectors.
         </p>

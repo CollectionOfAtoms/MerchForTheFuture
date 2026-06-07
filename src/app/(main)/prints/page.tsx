@@ -16,7 +16,7 @@ interface PrintsPageProps {
 }
 
 export const metadata = {
-  title: "Fine Art Prints — Art & Sol",
+  title: "Fine Art Prints — Merch For The Future",
   description: "Order high-quality fine art prints from independent artists. Museum-quality printing on demand.",
 };
 

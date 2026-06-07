@@ -17,7 +17,7 @@ interface BrowsePageProps {
 }
 
 export const metadata = {
-  title: "Browse Artwork — Art & Sol",
+  title: "Browse — Merch For The Future",
   description: "Discover original artwork and fine art prints from independent artists.",
 };
 
