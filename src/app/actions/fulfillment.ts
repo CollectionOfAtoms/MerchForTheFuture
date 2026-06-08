@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { sendShippingNotificationEmail, sendPurchaseConfirmation } from "@/lib/payments/email";
+import { getFulfillmentProvider } from "@/lib/fulfillment";
 
 type ActionResult = { error: string } | { success: true };
 
@@ -70,45 +71,35 @@ export async function confirmShippingAction(orderId: string, formData: FormData)
   }
 
   // For print orders that are already PAID, shipping was collected after payment —
-  // create the Prodigi fulfillment order now that we have a valid address.
+  // create the fulfillment order now that we have a valid address.
   if (order.status === "PAID" && order.listingType === "PRINT" && order.originalListingId && order.prodigiSku) {
     const listing = await prisma.originalListing.findUnique({ where: { id: order.originalListingId } });
     if (listing?.printSourceImageUrl) {
-      const apiKey = process.env.PRODIGI_API_KEY ?? "test_key";
-      const base = process.env.PRODIGI_API_BASE_URL ?? "https://api.prodigi.com/v4.0";
+      const provider = getFulfillmentProvider("PRINT");
       try {
-        const resp = await fetch(`${base}/orders`, {
-          method: "POST",
-          headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            shippingMethod: "Standard",
-            recipient: {
-              name,
-              address: {
-                line1,
-                townOrCity: city,
-                stateOrCounty: (formData.get("state") as string)?.trim() || "",
-                postalOrZipCode: postal,
-                countryCode: country,
-              },
-            },
-            items: [{
-              sku: order.prodigiSku,
-              copies: order.quantity,
-              sizing: "fillPrintArea",
-              assets: [{ printArea: "default", url: listing.printSourceImageUrl }],
-            }],
-          }),
+        const result = await provider.createOrder({
+          listingRef: order.originalListingId,
+          colorVariantId: order.prodigiSku,
+          size: order.printSize ?? "",
+          quantity: order.quantity,
+          buyerName: name,
+          sourceImageUrl: listing.printSourceImageUrl,
+          shippingAddress: {
+            name,
+            line1,
+            line2: (formData.get("line2") as string)?.trim() || undefined,
+            city,
+            state: (formData.get("state") as string)?.trim() || undefined,
+            postal,
+            country,
+          },
         });
-        const data = (await resp.json()) as { order?: { id: string } };
-        if (data.order?.id) {
-          await prisma.order.update({
-            where: { id: orderId },
-            data: { status: "PROCESSING", prodigiOrderId: data.order.id },
-          });
-        }
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { status: "PROCESSING", prodigiOrderId: result.externalOrderId },
+        });
       } catch (err) {
-        console.error("[confirmShipping] Prodigi order creation failed:", err);
+        console.error("[confirmShipping] fulfillment order creation failed:", err);
       }
     }
 
