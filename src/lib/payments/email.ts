@@ -2,10 +2,10 @@ import { prisma } from "@/lib/db";
 
 type Artwork = { id: string; title: string; imageUrl?: string };
 
-function mailersend(payload: { to: string; subject: string; html: string }): Promise<Response> {
+async function mailersend(payload: { to: string; subject: string; html: string }): Promise<void> {
   const from = process.env.EMAIL_FROM ?? "MerchForTheFuture <noreply@MerchForTheFuture.com>";
   const [fromName, fromEmail] = from.match(/^(.+?)\s*<(.+?)>$/)?.slice(1) ?? ["MerchForTheFuture", from];
-  return fetch("https://api.mailersend.com/v1/email", {
+  const res = await fetch("https://api.mailersend.com/v1/email", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.MAILERSEND_API_KEY ?? ""}`,
@@ -18,6 +18,10 @@ function mailersend(payload: { to: string; subject: string; html: string }): Pro
       html: payload.html,
     }),
   });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "(unreadable)");
+    throw new Error(`MailerSend ${res.status}: ${body}`);
+  }
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://merchforthefuture.com";
@@ -277,7 +281,7 @@ export async function sendSupportRequestEmail(params: {
   const orderRef = `Order #${orderId.slice(-8).toUpperCase()}`;
   const formattedDate = orderDate.toLocaleDateString("en-US", { dateStyle: "medium" });
 
-  const res = await mailersend({
+  await mailersend({
     to: sellerEmail,
     subject: `Support request — ${orderRef}`,
     html: `
@@ -294,10 +298,6 @@ export async function sendSupportRequestEmail(params: {
       </div>
     `,
   });
-
-  if (!res.ok) {
-    throw new Error(`MailerSend error: ${res.status}`);
-  }
 }
 
 // ─── Email Verification ───────────────────────────────────────────────────────

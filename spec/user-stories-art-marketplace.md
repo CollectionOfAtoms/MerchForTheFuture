@@ -1478,3 +1478,431 @@ This ensures no commit can land without a corresponding tracker update.
 - **Accessibility:** WCAG 2.1 AA compliance.
 - **Internationalization:** Support for multiple currencies, locales, and tax jurisdictions from day one.
 - **Test Coverage:** >90% coverage on business logic. All user stories have corresponding tests written before implementation. CI pipeline runs the full test suite on every push.
+
+---
+
+## Epic MFTF-2: T-Mill API Discovery Spike
+
+_Tracked as a chore, not TDD user stories. Output is a decision document, not shipped code._
+
+_**Scope:** Resolve T-Mill account access (2FA), make exploratory API calls against their sandbox or live account, and document the findings in `/docs/teemill-api-notes.md` in the repo. This document unblocks MFTF-3 (abstraction layer) and MFTF-4 (platform product catalog)._
+
+_**Investigate and document:**_
+- _Product creation endpoint: what inputs are required, what does the response shape look like, when do color and size options come back_
+- _Color and size catalog: how are available colors and sizes retrieved for a given product type, what fields identify a color (name, hex, SKU code)_
+- _Order submission: required fields, how color and size are specified, what confirmation comes back_
+- _Webhooks: what events are available, what does the payload look like for fulfillment status updates_
+- _Mockups endpoint: what inputs are required, what formats are returned, latency characteristics_
+- _Authentication: API key format, rate limits, sandbox vs. live environment behavior_
+
+---
+
+## Epic MFTF-3: Fulfillment Abstraction Layer
+
+_This epic refactors the existing Prodigi fulfillment integration behind a shared interface, and stubs the T-Mill slot. No buyer-facing changes. Required before any second dropshipper can be added._
+
+_**Context:** Currently, Prodigi-specific logic is called directly from `confirmShippingAction` and the print order flow. When T-Mill is integrated, duplicating that pattern would create two divergent fulfillment paths that are hard to maintain. This epic builds the abstraction layer first so MFTF-7 (apparel checkout) slots cleanly behind it._
+
+### US-MFTF-3.1 — Define Fulfillment Provider Interface
+
+**As a** platform,
+**I want** all dropshipper integrations to implement a shared TypeScript interface,
+**so that** adding a new dropshipper never requires changes to order processing logic.
+
+**Acceptance Criteria:**
+- [ ] A `FulfillmentProvider` interface is defined in `src/lib/fulfillment/types.ts` with at minimum: `createOrder(params: FulfillmentOrderParams): Promise<FulfillmentOrderResult>`, `getOrderStatus(externalOrderId: string): Promise<FulfillmentStatus>`, and `name: string`
+- [ ] `FulfillmentOrderParams` includes: listing reference, color variant identifier, size, quantity, shipping address, buyer name, source image URL
+- [ ] `FulfillmentOrderResult` includes: external order ID, estimated dispatch date, and any provider-specific metadata stored as opaque JSON
+- [ ] `FulfillmentStatus` maps to a canonical set: `PROCESSING | PRINTING | SHIPPED | DELIVERED | CANCELLED | ERROR`
+- [ ] The interface is exported from `src/lib/fulfillment/index.ts`
+
+**TDD Notes:**
+- Test file: `__tests__/fulfillment/interface.test.ts`
+- Unit tests: TypeScript compilation alone validates the interface contract; write runtime tests that instantiate a mock provider implementing the interface and confirm it satisfies all required methods
+- No external calls in this story
+
+---
+
+### US-MFTF-3.2 — Refactor Prodigi Behind the Interface
+
+**As a** platform,
+**I want** the existing Prodigi integration wrapped behind the `FulfillmentProvider` interface,
+**so that** all Prodigi-specific logic is isolated and the order flow is provider-agnostic.
+
+**Acceptance Criteria:**
+- [ ] A `ProdigiFulfillmentProvider` class in `src/lib/fulfillment/providers/prodigi.ts` implements `FulfillmentProvider`
+- [ ] All existing Prodigi API calls (order creation, status polling) are moved into this class; no Prodigi-specific imports remain outside `src/lib/fulfillment/providers/`
+- [ ] `confirmShippingAction` and any other call sites are updated to call the provider via the interface, not Prodigi directly
+- [ ] A `getFulfillmentProvider(listingType: string): FulfillmentProvider` factory function in `src/lib/fulfillment/index.ts` returns the correct provider; currently always returns `ProdigiFulfillmentProvider` for print orders
+- [ ] All existing Epic 8 and Epic 15 tests continue to pass without modification to the tests themselves
+- [ ] MSW intercepts remain unchanged — the abstraction layer does not change the outbound HTTP calls, only how they are invoked internally
+
+**TDD Notes:**
+- Test file: `__tests__/fulfillment/prodigi-provider.test.ts`
+- Integration tests: confirm `ProdigiFulfillmentProvider.createOrder()` produces the same Prodigi API request shape as the previous direct calls
+- Regression: run full test suite; Epic 8 and 15 tests must remain green
+
+---
+
+### US-MFTF-3.3 — Stub T-Mill Provider
+
+**As a** platform,
+**I want** a stubbed `TeemillFulfillmentProvider` that satisfies the interface but throws a `NotImplemented` error,
+**so that** the provider slot exists and can be wired up in MFTF-7 without touching the abstraction layer again.
+
+**Acceptance Criteria:**
+- [ ] `TeemillFulfillmentProvider` in `src/lib/fulfillment/providers/teemill.ts` implements `FulfillmentProvider`
+- [ ] All methods throw `new Error('TeemillFulfillmentProvider: not yet implemented')` with a descriptive message
+- [ ] The factory function recognises `'APPAREL'` as a listing type and returns `TeemillFulfillmentProvider`
+- [ ] A test confirms the stub throws the expected error rather than silently failing
+
+**TDD Notes:**
+- Test file: `__tests__/fulfillment/teemill-stub.test.ts`
+- Unit test: instantiate provider, call `createOrder`, assert it throws with the expected message
+
+---
+
+## Epic MFTF-4: Platform Product Catalog
+
+_Admin-only tooling. Founders define the approved product types (e.g. "Unisex Tee", "Tote Bag") that sellers see when creating listings. Each product type is backed by a specific dropshipper and SKU. Sellers never see dropshipper names or raw SKUs — they see only the curated product name._
+
+_**Why this exists:** The catalog is tiny (3–5 items initially) but needs to be database-backed rather than config-file-based, because color availability changes over time and should not require a deploy to update._
+
+### US-MFTF-4.1 — Product Type Schema
+
+**As a** platform,
+**I want** a `ProductType` model in the database,
+**so that** the founder-curated catalog of printable products is persisted and queryable.
+
+**Acceptance Criteria:**
+- [ ] `ProductType` model added to Prisma schema with fields: `id`, `name` (e.g. "Unisex Tee"), `description`, `fulfillmentProvider` (enum: `TEEMILL | PRODIGI`), `providerSkuBase` (the base SKU or product ID on the dropshipper's side), `isActive` (boolean, defaults true), `createdAt`, `updatedAt`
+- [ ] `ProductTypeColor` join model: `id`, `productTypeId`, `colorName`, `colorHex`, `providerColorCode` (dropshipper's internal color identifier), `isActive`
+- [ ] `ProductTypeSizeOption` model: `id`, `productTypeId`, `sizeLabel` (e.g. "S", "M", "L", "XL"), `providerSizeCode`, `sortOrder`, `isActive`
+- [ ] Schema applied via `prisma db push` (consistent with existing project convention)
+- [ ] Seed file `prisma/seed-product-catalog.ts` creates at least one `ProductType` with associated colors and sizes for development and test use
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-4-product-catalog/US-MFTF-4.1-product-type-schema.test.ts`
+- Integration tests: seed a `ProductType` with colors and sizes, query it back, assert all fields round-trip correctly
+- Test the seed file runs without error in the test database
+
+---
+
+### US-MFTF-4.2 — Admin Product Catalog Page
+
+**As an** admin,
+**I want** to view all product types in the platform catalog,
+**so that** I can see what products are available for sellers to list.
+
+**Acceptance Criteria:**
+- [ ] A page at `/admin/products` is accessible only to admins; non-admins are redirected
+- [ ] Lists all `ProductType` records with: name, fulfillment provider, number of active colors, number of active sizes, active/inactive status badge
+- [ ] Each row links to a detail/edit page at `/admin/products/[productTypeId]`
+- [ ] An "Add product type" button links to `/admin/products/new`
+- [ ] Inactive product types are shown with a visual distinction (greyed out) but not hidden
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-4-product-catalog/US-MFTF-4.2-admin-catalog-page.test.ts`
+- Auth guard: non-admin receives redirect
+- Data: seed two product types (one active, one inactive), assert both appear with correct status badge
+
+---
+
+### US-MFTF-4.3 — Create and Edit Product Type
+
+**As an** admin,
+**I want** to create and edit product types including their color and size options,
+**so that** I can add new products to the catalog and update existing ones without a database migration.
+
+**Acceptance Criteria:**
+- [ ] Form at `/admin/products/new` and `/admin/products/[id]/edit` collects: name, description, fulfillment provider (dropdown: T-Mill / Prodigi), provider SKU base, active status
+- [ ] Color management section: list of existing colors with name, hex preview swatch, provider color code, active toggle, and a delete button; an "Add color" inline form (name, hex, provider code)
+- [ ] Size management section: list of sizes with label, provider size code, sort order, active toggle; an "Add size" inline form
+- [ ] `createProductTypeAction` and `updateProductTypeAction` server actions validate required fields and persist changes
+- [ ] `addProductTypeColorAction`, `toggleProductTypeColorAction`, `addProductTypeSizeAction`, `toggleProductTypeSizeAction` server actions handle the join model mutations
+- [ ] Validation: name is required and unique; provider SKU base is required; at least one active color and one active size required before a product type can be set active
+- [ ] On save, redirects to `/admin/products/[id]` with a success toast
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-4-product-catalog/US-MFTF-4.3-create-edit-product-type.test.ts`
+- Server action unit tests: validation rejections (missing name, duplicate name, activating with zero colors)
+- Integration tests: create a product type, add a color, add a size, assert they persist
+- Auth guard on all actions: non-admin returns `{ error: 'Unauthorized' }`
+
+---
+
+## Epic MFTF-5: Apparel Listing Creation
+
+_Seller-facing listing creation for apparel products. The seller picks from the founder-curated product catalog, uploads a design file and lifestyle photos, curates which colors to offer, sets a retail price, and publishes. The dropshipper routing is invisible — the seller sees "Unisex Tee", not "T-Mill SKU TSHRT-001"._
+
+_**Watermark distinction:** Lifestyle photos use a small corner watermark (brand identification only). Design files sent to the dropshipper are clean — no watermark. This extends the US-18.2 variant generation pipeline with a `watermarkStyle` parameter._
+
+### US-MFTF-5.1 — Apparel Listing Schema
+
+**As a** platform,
+**I want** an `ApparelListing` model that captures the apparel-specific fields a listing needs,
+**so that** the data model cleanly separates apparel listings from original artwork and print listings.
+
+**Acceptance Criteria:**
+- [ ] `ApparelListing` model in Prisma schema with fields: `id`, `title`, `description`, `productTypeId` (FK to `ProductType`), `retailPrice` (Decimal), `status` (enum reusing existing `ListingStatus`: `ACTIVE | ARCHIVED | SOLD`), `sellerId` (FK to User), `designImageUrl` (the clean design file stored in Blob, used for dropshipper submission), `createdAt`, `updatedAt`
+- [ ] `ApparelListingColor` join model: `id`, `apparelListingId`, `productTypeColorId` (FK to `ProductTypeColor`), `isOffered` (boolean) — represents the seller's color curation for this listing
+- [ ] `ApparelListingImage` model: `id`, `apparelListingId`, `displayUrl`, `gridUrl`, `thumbnailUrl`, `originalUrl`, `isPrimary`, `sortOrder` — lifestyle photos, same variant structure as `ArtworkImage`
+- [ ] `Order` model gains a nullable `apparelListingId` FK alongside the existing `originalListingId`; exactly one must be non-null per order (enforced at application layer, not DB constraint)
+- [ ] Schema applied via `prisma db push`
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-5-apparel-listing/US-MFTF-5.1-apparel-listing-schema.test.ts`
+- Integration tests: create an `ApparelListing` with associated colors and images, query back with relations, assert field round-trip
+- Test that an `ApparelListingColor` correctly references a `ProductTypeColor` from the parent `ProductType`
+
+---
+
+### US-MFTF-5.2 — Lifestyle Photo Upload with Corner Watermark
+
+**As a** platform,
+**I want** lifestyle photos for apparel listings to go through the existing variant pipeline but with a corner watermark instead of the aggressive diagonal watermark,
+**so that** brand identification is present without degrading the marketing value of the photo.
+
+**Acceptance Criteria:**
+- [ ] `generateVariants()` in `src/lib/artworks/variants.ts` accepts an optional `watermarkStyle: 'diagonal' | 'corner'` parameter; defaults to `'diagonal'` to preserve existing behavior
+- [ ] `'corner'` mode: places a small brand name or logo in the bottom-right corner of the display variant at approximately 8% of image width, with 70% opacity; grid and thumbnail variants are not watermarked in corner mode
+- [ ] Design files (the clean file sent to the dropshipper) bypass variant generation entirely — they are stored as-is in Blob at their original resolution with no watermark applied
+- [ ] All existing US-18.2 tests continue to pass (diagonal watermark behavior unchanged)
+- [ ] New tests cover corner watermark placement and the no-watermark design file path
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-5-apparel-listing/US-MFTF-5.2-lifestyle-watermark.test.ts`
+- Unit tests: pass a test image through `generateVariants()` with `watermarkStyle: 'corner'`, assert display variant has watermark, assert grid/thumbnail do not
+- Assert that the watermark pixel region in the bottom-right corner differs from the no-watermark baseline
+- Regression: run existing US-18.2 test suite to confirm diagonal behavior unchanged
+
+---
+
+### US-MFTF-5.3 — Create Apparel Listing Form
+
+**As a** seller,
+**I want** to create a new apparel listing by selecting a product type, uploading my design and lifestyle photos, curating colors, and setting a price,
+**so that** I can put a new product up for sale.
+
+**Acceptance Criteria:**
+- [ ] A "New apparel listing" option is accessible from the seller dashboard (alongside existing "New artwork listing")
+- [ ] Form step 1 — Product & Design: dropdown of active `ProductType` records (shows name only, no dropshipper details); design file upload (accepted formats: PNG, SVG, TIFF; up to 70 MB; stored clean, no watermark); title field; description field
+- [ ] Form step 2 — Colors: displays all active colors for the selected `ProductType` as a grid of swatches (color name, hex swatch); seller toggles which colors to offer; at least one color must be selected to proceed; size options for the product type are shown as read-only information ("Sizes offered: S, M, L, XL, 2XL")
+- [ ] Form step 3 — Photos & Price: lifestyle photo upload (up to 10 photos; processed through corner-watermark variant pipeline); retail price field (USD, required, minimum $1); a note "Sizes are offered based on product availability — no size-specific pricing"
+- [ ] Form step 4 — Review & Publish: summary of all entered data with an edit link back to each step; "Save as Draft" and "Publish" buttons
+- [ ] `createApparelListingAction` server action validates all required fields, persists the listing in `ARCHIVED` status when saved as draft and `ACTIVE` when published
+- [ ] On publish, seller is redirected to the listing's public page
+- [ ] Unauthenticated or non-seller users calling the action receive `{ error: 'Unauthorized' }`
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-5-apparel-listing/US-MFTF-5.3-create-apparel-listing.test.ts`
+- Server action unit tests: missing title, no colors selected, price below minimum, missing design file
+- Integration test: full happy path — create listing with two colors, two lifestyle photos, assert `ApparelListing`, `ApparelListingColor`, and `ApparelListingImage` records all created correctly
+- Auth guard: non-seller returns error
+
+---
+
+### US-MFTF-5.4 — Edit Apparel Listing
+
+**As a** seller,
+**I want** to edit an existing apparel listing,
+**so that** I can update photos, adjust the price, or change which colors are offered.
+
+**Acceptance Criteria:**
+- [ ] Edit page at `/seller/apparel/[listingId]/edit` is pre-populated with all current listing data
+- [ ] Seller can update: title, description, price, offered colors (add or remove, subject to: at least one must remain), lifestyle photos (add new, remove existing, reorder)
+- [ ] Product type cannot be changed after creation (removing that product type would invalidate the existing color selections and design file)
+- [ ] Design file can be replaced; replacing it does not affect lifestyle photos
+- [ ] `updateApparelListingAction` validates and persists changes
+- [ ] Active listings can be edited; sold listings show a read-only view
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-5-apparel-listing/US-MFTF-5.4-edit-apparel-listing.test.ts`
+- Unit tests: attempt to remove last color returns validation error; attempt to change product type returns error
+- Integration test: update price and toggle a color off, assert DB reflects changes
+- Auth guard: non-owner returns error
+
+---
+
+## Epic MFTF-6: Apparel Product Page & Browse
+
+_Buyer-facing storefront for apparel. Lifestyle photography is the primary visual. Color picker and size selector are the core interaction. Fine-art prints and apparel live in separate browse experiences; a catch-all browse page is deferred._
+
+_**Dependency:** Requires MFTF-5 (apparel listing schema and data) and MFTF-2 spike results to finalize size/color UX details. Stories below are specifiable now; acceptance criteria for mockup fallback behavior (US-MFTF-6.3) will be refined after MFTF-8 is scoped._
+
+### US-MFTF-6.1 — Apparel Browse Page
+
+**As a** buyer,
+**I want** to browse available apparel products,
+**so that** I can discover what the store is selling.
+
+**Acceptance Criteria:**
+- [ ] A page at `/shop` (or `/apparel`) displays all active `ApparelListing` records in a grid layout
+- [ ] Each tile shows: primary lifestyle photo (grid variant), product title, price, available color count ("Available in 3 colors")
+- [ ] Sold-out or archived listings do not appear
+- [ ] Tiles link to the apparel product detail page at `/shop/[listingId]`
+- [ ] Page is server-rendered for SEO
+- [ ] Pagination: maximum 24 listings per page
+- [ ] Navigation includes a link to `/shop` visible to all users
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-6-apparel-storefront/US-MFTF-6.1-apparel-browse.test.ts`
+- Data query tests: `getApparelListings()` returns only ACTIVE listings, sorted by `createdAt` descending
+- Component tests: tile renders primary photo, title, price, color count
+- Auth guard: none — public page
+
+---
+
+### US-MFTF-6.2 — Apparel Product Detail Page
+
+**As a** buyer,
+**I want** to view a single apparel product with its lifestyle photos, color options, and size selector,
+**so that** I can make a purchase decision.
+
+**Acceptance Criteria:**
+- [ ] Page at `/shop/[listingId]` displays: lifestyle photo carousel (all images for listing), product title, description, retail price, color picker (swatches for each offered color; selected color is highlighted), size selector (all active sizes for the product type shown as buttons; no size is pre-selected)
+- [ ] Selecting a color does not change the photos (photos are not color-specific)
+- [ ] A note beneath the color picker: "Colors shown are representative — exact shade may vary slightly by batch"
+- [ ] Size selector shows all sizes for the product type; no size-specific stock management at this stage
+- [ ] "Add to cart" or "Buy now" button is disabled until both a color and size are selected
+- [ ] Page is server-rendered; color and size selection is client-side state
+- [ ] If listing is not found or not active, returns 404
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-6-apparel-storefront/US-MFTF-6.2-apparel-detail-page.test.ts`
+- Server render tests: `getApparelListingDetail()` returns listing with colors, sizes, and images
+- Component tests: color swatch selection updates highlight state; buy button disabled until both color and size chosen; 404 on inactive listing
+- Note: "Add to cart" wiring deferred to MFTF-7; this story covers the page and selection UI only
+
+---
+
+### US-MFTF-6.3 — Apparel Listing in Seller Dashboard
+
+**As a** seller,
+**I want** to see my apparel listings alongside my artwork listings in the seller dashboard,
+**so that** I have a unified view of everything I'm selling.
+
+**Acceptance Criteria:**
+- [ ] The seller listings index (`/seller/listings`) includes apparel listings with a type badge ("Apparel") distinct from artwork listing badges
+- [ ] Each apparel listing row shows: primary lifestyle photo thumbnail, title, product type name, price, status badge, and action buttons (edit, archive/activate)
+- [ ] Apparel listings link to `/seller/apparel/[listingId]/edit` for editing
+- [ ] Archive/activate toggle works for apparel listings (sets `status` to `ARCHIVED` or `ACTIVE`)
+- [ ] Count summary at top of dashboard reflects apparel listings in totals
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-6-apparel-storefront/US-MFTF-6.3-apparel-in-seller-dashboard.test.ts`
+- Integration test: seed one artwork listing and one apparel listing, assert both appear in seller index with correct type badges
+- Action tests: `toggleApparelListingStatusAction` validates ownership and status transition
+
+---
+
+## Epic MFTF-7: Apparel Checkout & Order Fulfillment
+
+_Buyer selects color and size, checks out via Stripe, order is submitted to T-Mill via the fulfillment abstraction layer. Reuses the existing Stripe Checkout Sessions flow (Epic 21). T-Mill order creation slots in where Prodigi currently handles print orders._
+
+_**Dependency:** Requires MFTF-3 (abstraction layer), MFTF-5 (apparel listing schema), and MFTF-2 spike (T-Mill order submission shape). Stories are specifiable now at the interface level; T-Mill-specific implementation details will be filled in after the spike._
+
+### US-MFTF-7.1 — Apparel Order Creation
+
+**As a** buyer,
+**I want** to purchase an apparel item in my chosen color and size,
+**so that** I can complete a transaction and have the item shipped to me.
+
+**Acceptance Criteria:**
+- [ ] `createApparelOrderAction` server action accepts: `apparelListingId`, `colorId` (FK to `ApparelListingColor`), `sizeLabel` (string matching a `ProductTypeSizeOption`), `quantity` (default 1)
+- [ ] Validates: listing is ACTIVE, color is offered on this listing, size is active for the product type, buyer is authenticated
+- [ ] Creates an `Order` record with `apparelListingId` set, `status: PENDING`, and stores selected color and size as order metadata
+- [ ] Creates a Stripe Checkout Session for the order amount (reusing `createCheckoutSession` from Epic 21)
+- [ ] Returns the Stripe session client secret for the embedded checkout component
+- [ ] On Stripe webhook `checkout.session.completed`, `fulfillPaymentBySession` marks the order PAID and triggers `submitApparelOrderToFulfillment()` which calls `TeemillFulfillmentProvider.createOrder()` via the abstraction layer
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-7-apparel-checkout/US-MFTF-7.1-apparel-order-creation.test.ts`
+- Unit tests: invalid color (not offered on listing), inactive size, unauthenticated buyer
+- Integration test: full happy path — create order, assert `Order` record created with correct metadata
+- MSW: intercept Stripe checkout session creation endpoint
+- T-Mill fulfillment call: MSW intercept to T-Mill order endpoint (URL TBD from spike; stub for now)
+
+---
+
+### US-MFTF-7.2 — Apparel Order Confirmation & Shipping
+
+**As a** buyer who has paid for an apparel order,
+**I want** to see a confirmation and receive shipping updates,
+**so that** I know my order is being processed.
+
+**Acceptance Criteria:**
+- [ ] After payment, buyer is redirected to `/orders/[orderId]/confirm` showing: product title, color selected, size selected, lifestyle photo thumbnail, amount paid, estimated dispatch ("Usually ships in 3–5 business days")
+- [ ] Order appears in buyer's order history (`/buyer/orders`) with type badge "Apparel" and status "Processing"
+- [ ] When T-Mill webhook fires with shipment tracking info, `Order` status updates to `SHIPPED` and tracking number is stored
+- [ ] Buyer receives a shipping confirmation email (via MailerSend) with tracking number and carrier when status transitions to SHIPPED
+- [ ] Shipping confirmation email reuses the existing `sendPurchaseConfirmation` pattern with apparel-specific copy
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-7-apparel-checkout/US-MFTF-7.2-apparel-order-confirmation.test.ts`
+- Component test: confirmation page renders color, size, thumbnail, estimated dispatch
+- Integration test: simulate T-Mill webhook payload, assert Order status → SHIPPED and tracking stored
+- Email test: MSW intercepts MailerSend, assert shipping email sent with tracking number
+- T-Mill webhook shape: stub based on spike findings; update test when real shape is known
+
+---
+
+## Epic MFTF-8: T-Mill Mockup Generation
+
+_Uses T-Mill's mockups endpoint to generate supplementary product images during listing setup. Real lifestyle photography from QA samples is always preferred; mockups serve as placeholders or supplementary angles before physical samples arrive._
+
+_**Dependency:** Requires MFTF-2 spike results (mockup endpoint inputs, response format, latency). This epic is intentionally thin until that data is available. Stories below are stubs to be fleshed out post-spike._
+
+### US-MFTF-8.1 — Generate Mockup Images During Listing Setup _(stub)_
+
+**As a** seller setting up a new apparel listing,
+**I want** to generate a T-Mill photorealistic mockup of my design on the product,
+**so that** I have something to show buyers before physical QA samples are available.
+
+_Acceptance criteria and TDD notes to be written after MFTF-2 spike. Key questions: does the mockup API accept a design image URL or a T-Mill product ID? What response format (URL, base64)? What is typical latency — synchronous or async?_
+
+**Status:** Not Started — blocked on MFTF-2
+
+---
+
+### US-MFTF-8.2 — Seller Accepts or Discards Mockups _(stub)_
+
+**As a** seller,
+**I want** to review generated mockups and choose which ones to include in my listing,
+**so that** I have control over what buyers see.
+
+_Acceptance criteria and TDD notes to be written after MFTF-2 spike._
+
+**Status:** Not Started — blocked on MFTF-2
+
+---
+
+## Epic MFTF-9: Seller Apparel Product Management
+
+_Post-launch management tooling: adjusting color offerings, updating pricing, retiring listings, viewing per-product sales data._
+
+_**Dependency:** Requires MFTF-5 and MFTF-7. Lower priority than getting the purchase flow working; scope this after first apparel sales._
+
+### US-MFTF-9.1 — Toggle Offered Colors on Live Listing _(stub)_
+
+**As a** seller,
+**I want** to add or remove offered colors on a published listing,
+**so that** I can respond to stock changes or demand without unpublishing the listing.
+
+_Full acceptance criteria to be written when scoped. Key constraint: removing a color that has pending or paid orders must be handled gracefully — likely prevent removal or warn seller._
+
+**Status:** Not Started — deferred until post-first-launch
+
+---
+
+### US-MFTF-9.2 — Per-Listing Sales Breakdown _(stub)_
+
+**As a** seller,
+**I want** to see sales broken down by color and size for each apparel listing,
+**so that** I know which variants are most popular.
+
+_Full acceptance criteria to be written when scoped._
+
+**Status:** Not Started — deferred until post-first-launch
+
+---

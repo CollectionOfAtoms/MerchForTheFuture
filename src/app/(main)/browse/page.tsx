@@ -66,8 +66,8 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
       {/* Header & search */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-stone-900">Browse Artwork</h1>
-          <p className="mt-1 text-sm text-stone-500">
+          <h1 className="text-2xl font-semibold text-cerulean">Browse Artwork</h1>
+          <p className="mt-1 text-sm text-dark-cyan">
             {total > 0 ? `${total} piece${total === 1 ? "" : "s"} available` : "No artwork found"}
           </p>
         </div>
@@ -79,11 +79,11 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
             name="q"
             defaultValue={q}
             placeholder="Search artwork, artist…"
-            className="h-9 min-w-0 flex-1 rounded-full border border-stone-200 bg-white px-4 text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-400 sm:w-56 sm:flex-none"
+            className="h-9 min-w-0 flex-1 rounded-full border border-tuscan-sun/40 bg-white px-4 text-sm text-blue-slate placeholder-blue-slate/40 focus:outline-none focus:ring-2 focus:ring-cerulean sm:w-56 sm:flex-none"
           />
           <button
             type="submit"
-            className="h-9 shrink-0 rounded-full bg-stone-900 px-4 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
+            className="h-9 shrink-0 rounded-full bg-cerulean px-4 text-sm font-medium text-white hover:bg-dark-cyan transition-colors"
           >
             Search
           </button>
@@ -105,8 +105,8 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
               href={buildUrl({ type: value, page: undefined })}
               className={`whitespace-nowrap rounded-full border px-3 py-1 text-center text-xs font-medium transition-colors ${
                 saleTypeParam === value
-                  ? "border-stone-900 bg-stone-900 text-white"
-                  : "border-stone-200 bg-white text-stone-600 hover:border-stone-400"
+                  ? "border-cerulean bg-cerulean text-white"
+                  : "border-tuscan-sun/30 bg-white text-blue-slate hover:border-dark-cyan"
               }`}
             >
               {label}
@@ -120,7 +120,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
             name="sort"
             defaultValue={sort}
             onChange={undefined}
-            className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs text-stone-600 focus:outline-none"
+            className="rounded-full border border-tuscan-sun/30 bg-white px-3 py-1 text-xs text-blue-slate focus:outline-none"
             aria-label="Sort order"
           >
             {SORT_OPTIONS.map((opt) => (
@@ -134,12 +134,12 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
 
       {/* Gallery grid */}
       {artworks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-200 py-32 text-center">
-          <p className="text-stone-500 font-medium">No artwork found</p>
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-tuscan-sun/30 py-32 text-center">
+          <p className="text-dark-cyan font-medium">No artwork found</p>
           {q && (
             <Link
               href="/browse"
-              className="mt-3 text-sm text-stone-400 underline hover:text-stone-600"
+              className="mt-3 text-sm text-blue-slate/50 underline hover:text-blue-slate"
             >
               Clear search
             </Link>
@@ -159,18 +159,18 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
           {page > 1 && (
             <Link
               href={buildUrl({ page: page === 2 ? undefined : String(page - 1) })}
-              className="rounded-full border border-stone-200 bg-white px-5 py-2 text-sm font-medium text-stone-700 hover:border-stone-400 transition-colors"
+              className="rounded-full border border-tuscan-sun/30 bg-white px-5 py-2 text-sm font-medium text-blue-slate hover:border-dark-cyan transition-colors"
             >
               ← Previous
             </Link>
           )}
-          <span className="text-sm text-stone-500">
+          <span className="text-sm text-dark-cyan">
             Page {page} of {totalPages}
           </span>
           {page < totalPages && (
             <Link
               href={buildUrl({ page: String(page + 1) })}
-              className="rounded-full border border-stone-200 bg-white px-5 py-2 text-sm font-medium text-stone-700 hover:border-stone-400 transition-colors"
+              className="rounded-full border border-tuscan-sun/30 bg-white px-5 py-2 text-sm font-medium text-blue-slate hover:border-dark-cyan transition-colors"
             >
               Next →
             </Link>

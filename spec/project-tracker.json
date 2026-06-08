@@ -192,78 +192,66 @@
       "epic": "Epic 3: Auction Sales",
       "title": "Configure Auction",
       "status": "Passed",
-      "testWrittenDate": null,
+      "testWrittenDate": "2026-05-09",
       "testWrittenCommit": null,
-      "testPassedDate": null,
+      "testPassedDate": "2026-05-09",
       "testPassedCommit": null,
-      "notes": null,
-      "testDate": "2026-05-09",
-      "passDate": "2026-05-09"
+      "notes": null
     },
     {
       "id": "US-3.2",
       "epic": "Epic 3: Auction Sales",
       "title": "Place Bid",
       "status": "Passed",
-      "testWrittenDate": null,
+      "testWrittenDate": "2026-05-09",
       "testWrittenCommit": null,
-      "testPassedDate": null,
+      "testPassedDate": "2026-05-09",
       "testPassedCommit": null,
-      "notes": null,
-      "testDate": "2026-05-09",
-      "passDate": "2026-05-09"
+      "notes": null
     },
     {
       "id": "US-3.3",
       "epic": "Epic 3: Auction Sales",
       "title": "View Auction Status",
       "status": "Passed",
-      "testWrittenDate": null,
+      "testWrittenDate": "2026-05-09",
       "testWrittenCommit": null,
-      "testPassedDate": null,
+      "testPassedDate": "2026-05-09",
       "testPassedCommit": null,
-      "notes": null,
-      "testDate": "2026-05-09",
-      "passDate": "2026-05-09"
+      "notes": null
     },
     {
       "id": "US-3.4",
       "epic": "Epic 3: Auction Sales",
       "title": "Outbid Notification",
       "status": "Passed",
-      "testWrittenDate": null,
+      "testWrittenDate": "2026-05-09",
       "testWrittenCommit": null,
-      "testPassedDate": null,
+      "testPassedDate": "2026-05-09",
       "testPassedCommit": null,
-      "notes": null,
-      "testDate": "2026-05-09",
-      "passDate": "2026-05-09"
+      "notes": null
     },
     {
       "id": "US-3.5",
       "epic": "Epic 3: Auction Sales",
       "title": "Auction Close",
       "status": "Passed",
-      "testWrittenDate": null,
+      "testWrittenDate": "2026-05-09",
       "testWrittenCommit": null,
-      "testPassedDate": null,
+      "testPassedDate": "2026-05-09",
       "testPassedCommit": null,
-      "notes": null,
-      "testDate": "2026-05-09",
-      "passDate": "2026-05-09"
+      "notes": null
     },
     {
       "id": "US-3.6",
       "epic": "Epic 3: Auction Sales",
       "title": "Reserve Price Protection",
       "status": "Passed",
-      "testWrittenDate": null,
+      "testWrittenDate": "2026-05-09",
       "testWrittenCommit": null,
-      "testPassedDate": null,
+      "testPassedDate": "2026-05-09",
       "testPassedCommit": null,
-      "notes": null,
-      "testDate": "2026-05-09",
-      "passDate": "2026-05-09"
+      "notes": null
     },
     {
       "id": "US-4.1",
@@ -457,78 +445,66 @@
       "epic": "Epic 8: Print Shop",
       "title": "Create Print Listing",
       "status": "Passed",
-      "testWrittenDate": null,
+      "testWrittenDate": "2026-05-09",
       "testWrittenCommit": null,
-      "testPassedDate": null,
+      "testPassedDate": "2026-05-09",
       "testPassedCommit": null,
-      "notes": null,
-      "testDate": "2026-05-09",
-      "passDate": "2026-05-09"
+      "notes": null
     },
     {
       "id": "US-8.2",
       "epic": "Epic 8: Print Shop",
       "title": "Browse Print Options",
       "status": "Passed",
-      "testWrittenDate": null,
+      "testWrittenDate": "2026-05-09",
       "testWrittenCommit": null,
-      "testPassedDate": null,
+      "testPassedDate": "2026-05-09",
       "testPassedCommit": null,
-      "notes": null,
-      "testDate": "2026-05-09",
-      "passDate": "2026-05-09"
+      "notes": null
     },
     {
       "id": "US-8.3",
       "epic": "Epic 8: Print Shop",
       "title": "Purchase a Print",
       "status": "Passed",
-      "testWrittenDate": null,
+      "testWrittenDate": "2026-05-09",
       "testWrittenCommit": null,
-      "testPassedDate": null,
+      "testPassedDate": "2026-05-09",
       "testPassedCommit": null,
-      "notes": null,
-      "testDate": "2026-05-09",
-      "passDate": "2026-05-09"
+      "notes": null
     },
     {
       "id": "US-8.4",
       "epic": "Epic 8: Print Shop",
       "title": "Print Order Tracking",
       "status": "Passed",
-      "testWrittenDate": null,
+      "testWrittenDate": "2026-05-09",
       "testWrittenCommit": null,
-      "testPassedDate": null,
+      "testPassedDate": "2026-05-09",
       "testPassedCommit": null,
-      "notes": null,
-      "testDate": "2026-05-09",
-      "passDate": "2026-05-09"
+      "notes": null
     },
     {
       "id": "US-8.5",
       "epic": "Epic 8: Print Shop",
       "title": "Seller Print Revenue",
       "status": "Passed",
-      "testWrittenDate": null,
+      "testWrittenDate": "2026-05-09",
       "testWrittenCommit": null,
-      "testPassedDate": null,
+      "testPassedDate": "2026-05-09",
       "testPassedCommit": null,
-      "notes": null,
-      "testDate": "2026-05-09",
-      "passDate": "2026-05-09"
+      "notes": null
     },
     {
       "id": "US-8.6",
       "epic": "Epic 8: Print Shop",
       "title": "Print Quality Assurance",
       "status": "Passed",
-      "testWrittenDate": null,
+      "testWrittenDate": "2026-05-09",
       "testWrittenCommit": null,
-      "testPassedDate": null,
+      "testPassedDate": "2026-05-09",
       "testPassedCommit": null,
-      "notes": null,
-      "testDate": "2026-05-09",
-      "passDate": "2026-05-09"
+      "notes": null
     },
     {
       "id": "US-9.1",
@@ -1237,28 +1213,6 @@
       "notes": "74 tests (48 new US-23.2 + 26 migrated US-20.1). MobileMenu drops flat `links` prop; now takes `roles: string[]`. Nav.tsx no longer pre-builds mobileLinks. Layout: Browse/Auctions/Prints always at top; signed-in users get name then HR (75vw wide) as section divider, then Dashboard (role href) + role links (BUYER: My Bids+Orders, SELLER: Listings, ADMIN: Admin+Users+Fulfillment) + Settings (role href) + Sign Out; signed-out gets Sign In + Sign Up. Active page highlight, overlay animation, Escape/tab-trap, scroll lock all preserved."
     },
     {
-      "id": "US-21.1",
-      "epic": "Epic 21: Stripe Checkout Sessions Migration & Payment UX",
-      "title": "Migrate Payment Collection to Stripe Checkout Sessions",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-02",
-      "testWrittenCommit": "6f38052",
-      "testPassedDate": "2026-06-02",
-      "testPassedCommit": "ff05ccc",
-      "notes": "14 tests passing. createCheckoutSession added to stripe.ts (ui_mode: embedded); stripeSessionId field added to Order schema + migrated; /api/checkout-session route (401/400/200); webhook handles checkout.session.completed via fulfillPaymentBySession; MSW handlers for POST+GET /v1/checkout/sessions."
-    },
-    {
-      "id": "US-21.2",
-      "epic": "Epic 21: Stripe Checkout Sessions Migration & Payment UX",
-      "title": "Show Order Confirmation Immediately After Payment",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-02",
-      "testWrittenCommit": "6f38052",
-      "testPassedDate": "2026-06-02",
-      "testPassedCommit": "ff05ccc",
-      "notes": "5 tests passing. fulfillPaymentBySession verifies Stripe session payment_status before marking PAID; resolveSessionFulfillment called on fulfill page load when ?session_id present \u2014 eliminates webhook race condition. Both are idempotent."
-    },
-    {
       "id": "MFTF-1.1",
       "epic": "Epic MFTF-1: MerchForTheFuture Migration",
       "title": "Migrate transactional email from Resend to MailerSend",
@@ -1290,6 +1244,259 @@
       "testPassedDate": "2026-06-06",
       "testPassedCommit": "pending",
       "notes": "Replaced Art & Sol art-marketplace hero copy with MerchForTheFuture brand copy. Added mission statement section. Updated categories (Apparel/Prints/Originals) and how-it-works steps to match the apparel domain. Revised hero: big h1 is now \"We are living up to our name!\", subtitle is coming-soon copy, shop button removed. Removed How-it-works and Shop-by-type sections. Removed Nav from homepage via (main) route group. Excluded scripts/ from tsconfig. Hero section made full-viewport, text centered, all sizes doubled. H1 reduced from 8xl/9xl to 7xl/8xl. Moved api/ back out of (main) route group \u2014 tests import routes by @/app/api path which broke when nested. Staged (main) route group file renames (were committed as mv but not git-added)."
+    },
+    {
+      "id": "CHORE-14",
+      "epic": "Infrastructure",
+      "title": "Make MailerSend errors visible in server logs",
+      "status": "Passed",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": "2026-06-07",
+      "testPassedCommit": "pending",
+      "notes": "mailersend() helper was fire-and-forget \u2014 returned raw fetch Response so .catch() in callers never fired on 4xx/5xx. Fixed: mailersend() now awaits fetch, throws Error('MailerSend {status}: {body}') on non-ok responses. sendSupportRequestEmail() updated to remove now-redundant manual res.ok check. Root cause of delivery failure identified as MailerSend trial account unique-recipient limit (#MS42225) \u2014 not a code issue."
+    },
+    {
+      "id": "CHORE-15",
+      "epic": "Infrastructure",
+      "title": "Separate under-construction page from homepage routing",
+      "status": "Passed",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": "2026-06-07",
+      "testPassedCommit": "pending",
+      "notes": "Created /coming-soon page (src/app/coming-soon/page.tsx) outside (main) route group \u2014 no nav, no footer. Homepage (/) is now a pure redirect dispatcher: authenticated users go to their role dashboard, unauthenticated users go to /coming-soon. Footer moved from root layout.tsx into (main)/layout.tsx so it only renders on main-site pages, not on /coming-soon."
+    },
+    {
+      "id": "CHORE-16",
+      "epic": "Infrastructure",
+      "title": "Backfill pending commit hashes from git log",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "The following stories have testWrittenCommit or testPassedCommit set to \"pending\" and need real hashes backfilled from git log. Run: git log --oneline --all and match commits to story IDs by message. Stories: CHORE-13, CHORE-12, CHORE-11, CHORE-10, CHORE-9, CHORE-8, US-14.1, US-14.2, US-14.3, US-14.5, US-14.6, US-15.5, US-15.6, US-15.7, US-16.3, US-16.1, US-16.2, CHORE-7, CHORE-6, CHORE-5, CHORE-3, MFTF-1.2, MFTF-1.3, CHORE-14, CHORE-15"
+    },
+    {
+      "id": "CHORE-17",
+      "epic": "Infrastructure",
+      "title": "T-Mill API discovery spike",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Resolve T-Mill 2FA/account access. Make exploratory API calls and document findings in /docs/teemill-api-notes.md. Investigate: product creation endpoint and response shape; color/size catalog retrieval; order submission fields; webhook payload for fulfillment status; mockups endpoint inputs and latency; auth/rate limits. Output is a decision doc, not shipped code. Unblocks MFTF-3.3, MFTF-7, and MFTF-8."
+    },
+    {
+      "id": "US-MFTF-3.1",
+      "epic": "Epic MFTF-3: Fulfillment Abstraction Layer",
+      "title": "Define Fulfillment Provider Interface",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-3.2",
+      "epic": "Epic MFTF-3: Fulfillment Abstraction Layer",
+      "title": "Refactor Prodigi Behind the Interface",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-3.3",
+      "epic": "Epic MFTF-3: Fulfillment Abstraction Layer",
+      "title": "Stub T-Mill Provider",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-4.1",
+      "epic": "Epic MFTF-4: Platform Product Catalog",
+      "title": "Product Type Schema",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-4.2",
+      "epic": "Epic MFTF-4: Platform Product Catalog",
+      "title": "Admin Product Catalog Page",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-4.3",
+      "epic": "Epic MFTF-4: Platform Product Catalog",
+      "title": "Create and Edit Product Type",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-5.1",
+      "epic": "Epic MFTF-5: Apparel Listing Creation",
+      "title": "Apparel Listing Schema",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-5.2",
+      "epic": "Epic MFTF-5: Apparel Listing Creation",
+      "title": "Lifestyle Photo Upload with Corner Watermark",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-5.3",
+      "epic": "Epic MFTF-5: Apparel Listing Creation",
+      "title": "Create Apparel Listing Form",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-5.4",
+      "epic": "Epic MFTF-5: Apparel Listing Creation",
+      "title": "Edit Apparel Listing",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-6.1",
+      "epic": "Epic MFTF-6: Apparel Product Page & Browse",
+      "title": "Apparel Browse Page",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-6.2",
+      "epic": "Epic MFTF-6: Apparel Product Page & Browse",
+      "title": "Apparel Product Detail Page",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-6.3",
+      "epic": "Epic MFTF-6: Apparel Product Page & Browse",
+      "title": "Apparel Listing in Seller Dashboard",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": null
+    },
+    {
+      "id": "US-MFTF-7.1",
+      "epic": "Epic MFTF-7: Apparel Checkout & Order Fulfillment",
+      "title": "Apparel Order Creation",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Blocked on MFTF-3 (abstraction layer) and CHORE-17 (T-Mill spike) for T-Mill-specific order submission details."
+    },
+    {
+      "id": "US-MFTF-7.2",
+      "epic": "Epic MFTF-7: Apparel Checkout & Order Fulfillment",
+      "title": "Apparel Order Confirmation & Shipping",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "T-Mill webhook shape TBD from CHORE-17 spike; stub in tests until known."
+    },
+    {
+      "id": "US-MFTF-8.1",
+      "epic": "Epic MFTF-8: T-Mill Mockup Generation",
+      "title": "Generate Mockup Images During Listing Setup",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Stub \u2014 acceptance criteria to be written after CHORE-17 spike."
+    },
+    {
+      "id": "US-MFTF-8.2",
+      "epic": "Epic MFTF-8: T-Mill Mockup Generation",
+      "title": "Seller Accepts or Discards Mockups",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Stub \u2014 acceptance criteria to be written after CHORE-17 spike."
+    },
+    {
+      "id": "US-MFTF-9.1",
+      "epic": "Epic MFTF-9: Seller Apparel Product Management",
+      "title": "Toggle Offered Colors on Live Listing",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Deferred until post-first-launch. Key constraint: handle gracefully if removed color has pending/paid orders."
+    },
+    {
+      "id": "US-MFTF-9.2",
+      "epic": "Epic MFTF-9: Seller Apparel Product Management",
+      "title": "Per-Listing Sales Breakdown",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Deferred until post-first-launch."
     }
   ],
   "commits": [
@@ -1773,5 +1980,5 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-06-04T10:38:07.495Z"
+  "lastUpdated": "2026-06-07T00:00:00.000Z"
 }

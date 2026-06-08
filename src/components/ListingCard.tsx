@@ -17,7 +17,7 @@ export default function ListingCard({ card }: { card: ArtworkCard }) {
   const isSold = card.originalStatus === "SOLD";
   const badge =
     isSold
-      ? { label: "Sold", className: "bg-stone-200 text-stone-800" }
+      ? { label: "Sold", className: "bg-blue-slate/20 text-blue-slate" }
       : card.saleType === "AUCTION"
       ? { label: "Auction", className: "bg-amber-200 text-amber-900" }
       : card.saleType === "FIXED_PRICE"
@@ -27,7 +27,7 @@ export default function ListingCard({ card }: { card: ArtworkCard }) {
   return (
     <Link
       href={`/artwork/${card.id}`}
-      className="group relative mb-4 block break-inside-avoid overflow-hidden rounded-2xl bg-stone-100"
+      className="group relative mb-4 block break-inside-avoid overflow-hidden rounded-2xl bg-tuscan-sun/10"
     >
       {card.primaryImageUrl ? (
         <Image
@@ -40,15 +40,15 @@ export default function ListingCard({ card }: { card: ArtworkCard }) {
         />
       ) : (
         <div className="flex h-48 w-full items-center justify-center">
-          <span className="text-sm text-stone-500">No image</span>
+          <span className="text-sm text-dark-cyan">No image</span>
         </div>
       )}
 
       {/* Hover overlay */}
-      <div className="absolute inset-x-0 bottom-0 translate-y-full rounded-b-2xl bg-stone-800/90 p-4 transition-transform duration-300 group-hover:translate-y-0">
+      <div className="absolute inset-x-0 bottom-0 translate-y-full rounded-b-2xl bg-cerulean/90 p-4 transition-transform duration-300 group-hover:translate-y-0">
         <p className="truncate text-sm font-semibold text-white">{card.title}</p>
         {card.artist && (
-          <p className="mt-0.5 truncate text-xs text-stone-300">{card.artist}</p>
+          <p className="mt-0.5 truncate text-xs text-tuscan-sun/80">{card.artist}</p>
         )}
         <div className="mt-2 flex items-center justify-between gap-2">
           {price && !isSold && <span className="text-sm font-bold text-white">{price}</span>}
@@ -59,7 +59,7 @@ export default function ListingCard({ card }: { card: ArtworkCard }) {
           )}
         </div>
         {(card.hasOriginal && card.hasPrint) && (
-          <p className="mt-1 text-[10px] text-stone-400">Original + Prints available</p>
+          <p className="mt-1 text-[10px] text-tuscan-sun/60">Original + Prints available</p>
         )}
       </div>
     </Link>
