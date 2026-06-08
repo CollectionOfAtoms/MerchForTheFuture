@@ -3,4 +3,16 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-zen-dots);
+
+  --color-strawberry-red: #f94144;
+  --color-atomic-tangerine: #f3722c;
+  --color-carrot-orange: #f8961e;
+  --color-coral-glow: #f9844a;
+  --color-tuscan-sun: #f9c74f;
+  --color-willow-green: #90be6d;
+  --color-seagrass: #43aa8b;
+  --color-dark-cyan: #4d908e;
+  --color-blue-slate: #577590;
+  --color-cerulean: #277da1;
 }

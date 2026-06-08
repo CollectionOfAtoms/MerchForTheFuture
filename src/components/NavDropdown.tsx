@@ -83,7 +83,7 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 text-sm text-stone-600 hover:text-stone-900 transition-colors max-w-[160px]"
+        className="flex items-center gap-1 text-sm text-blue-slate hover:text-cerulean transition-colors max-w-[160px]"
       >
         <span className="truncate">{label}</span>
         {/* Chevron-down */}
@@ -112,7 +112,7 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
         <div
           ref={menuRef}
           role="menu"
-          className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-stone-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-tuscan-sun/30 bg-white py-1 shadow-lg"
         >
           <MenuItem href={dashboardHref} active={isActive(dashboardHref)}>
             Dashboard
@@ -158,13 +158,13 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
             Settings
           </MenuItem>
 
-          <div className="my-1 border-t border-stone-100" role="separator" />
+          <div className="my-1 border-t border-tuscan-sun/20" role="separator" />
 
           <form action={signOutAction}>
             <button
               type="submit"
               role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition-colors"
+              className="w-full px-4 py-2 text-left text-sm text-blue-slate hover:bg-tuscan-sun/5 hover:text-cerulean transition-colors"
             >
               Sign out
             </button>
@@ -189,7 +189,7 @@ function MenuItem({
       href={href}
       role="menuitem"
       data-active={active ? "true" : undefined}
-      className="block px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors font-medium data-[active=true]:text-stone-900 data-[active=true]:underline data-[active=true]:underline-offset-2"
+      className="block px-4 py-2 text-sm text-blue-slate hover:bg-tuscan-sun/5 hover:text-cerulean transition-colors font-medium data-[active=true]:text-cerulean data-[active=true]:underline data-[active=true]:underline-offset-2"
     >
       {children}
     </Link>

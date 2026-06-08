@@ -24,13 +24,13 @@ export default async function BuyerDashboardPage() {
   ]);
 
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-10">
+    <main className="min-h-screen bg-white px-4 py-10">
       <div className="mx-auto max-w-5xl space-y-8">
 
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-semibold text-stone-900">My Dashboard</h1>
-          <p className="mt-1 text-sm text-stone-500">Your bids and purchases at a glance.</p>
+          <h1 className="text-2xl font-semibold text-cerulean">My Dashboard</h1>
+          <p className="mt-1 text-sm text-dark-cyan">Your bids and purchases at a glance.</p>
         </div>
 
         {/* Winning bids highlight */}
@@ -69,36 +69,36 @@ export default async function BuyerDashboardPage() {
         )}
 
         {/* All active bids */}
-        <section className="rounded-2xl border border-stone-200 bg-white shadow-sm">
-          <div className="border-b border-stone-100 px-6 py-4">
-            <h2 className="text-sm font-semibold text-stone-700">My Active Bids</h2>
+        <section className="rounded-2xl border border-tuscan-sun/30 bg-white shadow-sm">
+          <div className="border-b border-tuscan-sun/20 px-6 py-4">
+            <h2 className="text-sm font-semibold text-blue-slate">My Active Bids</h2>
           </div>
 
           {activeBids.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <p className="text-sm text-stone-400 mb-3">You have no active bids.</p>
+              <p className="text-sm text-blue-slate/50 mb-3">You have no active bids.</p>
               <Link
                 href="/browse?type=auction"
-                className="inline-block rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
+                className="inline-block rounded-full bg-cerulean px-5 py-2 text-sm font-medium text-white hover:bg-dark-cyan transition-colors"
               >
                 Browse auctions
               </Link>
             </div>
           ) : (
-            <ul className="divide-y divide-stone-50">
+            <ul className="divide-y divide-tuscan-sun/10">
               {activeBids.map((bid) => (
                 <li key={bid.auctionId} className="flex items-center gap-4 px-6 py-4">
-                  <div className="h-12 w-12 shrink-0 rounded-xl overflow-hidden bg-stone-100">
+                  <div className="h-12 w-12 shrink-0 rounded-xl overflow-hidden bg-tuscan-sun/10">
                     {bid.artwork.images[0] ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={bid.artwork.images[0].url} alt={bid.artwork.title} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="h-full w-full flex items-center justify-center text-stone-300 text-xs">—</div>
+                      <div className="h-full w-full flex items-center justify-center text-tuscan-sun/50 text-xs">—</div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-stone-900 truncate">{bid.artwork.title}</p>
-                    <p className="text-xs text-stone-400 mt-0.5">
+                    <p className="text-sm font-medium text-blue-slate truncate">{bid.artwork.title}</p>
+                    <p className="text-xs text-blue-slate/50 mt-0.5">
                       My bid: ${Number(bid.myHighestBid).toLocaleString()}
                       {bid.currentBid && (
                         <> · Current: ${Number(bid.currentBid).toLocaleString()}</>
@@ -115,7 +115,7 @@ export default async function BuyerDashboardPage() {
                   </span>
                   <Link
                     href={`/listings/${bid.listingId}`}
-                    className="shrink-0 text-xs text-stone-500 hover:text-stone-700 transition-colors"
+                    className="shrink-0 text-xs text-dark-cyan hover:text-blue-slate transition-colors"
                   >
                     View →
                   </Link>
@@ -126,52 +126,52 @@ export default async function BuyerDashboardPage() {
         </section>
 
         {/* Order history */}
-        <section className="rounded-2xl border border-stone-200 bg-white shadow-sm">
-          <div className="border-b border-stone-100 px-6 py-4">
-            <h2 className="text-sm font-semibold text-stone-700">Order History</h2>
+        <section className="rounded-2xl border border-tuscan-sun/30 bg-white shadow-sm">
+          <div className="border-b border-tuscan-sun/20 px-6 py-4">
+            <h2 className="text-sm font-semibold text-blue-slate">Order History</h2>
           </div>
 
           {orderHistory.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <p className="text-sm text-stone-400 mb-3">No purchases yet.</p>
+              <p className="text-sm text-blue-slate/50 mb-3">No purchases yet.</p>
               <Link
                 href="/browse"
-                className="inline-block rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
+                className="inline-block rounded-full bg-cerulean px-5 py-2 text-sm font-medium text-white hover:bg-dark-cyan transition-colors"
               >
                 Browse artwork
               </Link>
             </div>
           ) : (
             <>
-              <ul className="divide-y divide-stone-50">
+              <ul className="divide-y divide-tuscan-sun/10">
                 {orderHistory.map((order) => (
                   <li key={order.id}>
-                    <Link href={`/buyer/orders/${order.id}`} className="flex items-center gap-4 px-6 py-4 hover:bg-stone-50 transition-colors">
-                      <div className="h-12 w-12 shrink-0 rounded-xl overflow-hidden bg-stone-100">
+                    <Link href={`/buyer/orders/${order.id}`} className="flex items-center gap-4 px-6 py-4 hover:bg-tuscan-sun/5 transition-colors">
+                      <div className="h-12 w-12 shrink-0 rounded-xl overflow-hidden bg-tuscan-sun/10">
                         {order.artwork?.images[0] ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={order.artwork.images[0].url} alt={order.artwork.title} className="h-full w-full object-cover" />
                         ) : (
-                          <div className="h-full w-full flex items-center justify-center text-stone-300 text-xs">—</div>
+                          <div className="h-full w-full flex items-center justify-center text-tuscan-sun/50 text-xs">—</div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-stone-900 truncate">
+                        <p className="text-sm font-medium text-blue-slate truncate">
                           {order.artwork?.title ?? "Print order"}
                         </p>
-                        <p className="text-xs text-stone-400 mt-0.5">
+                        <p className="text-xs text-blue-slate/50 mt-0.5">
                           {new Date(order.createdAt).toLocaleDateString()} · ${Number(order.totalAmount).toLocaleString()}
                         </p>
                       </div>
-                      <span className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium bg-stone-100 text-stone-600">
+                      <span className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium bg-blue-slate/10 text-blue-slate">
                         {ORDER_STATUS_LABEL[order.status] ?? order.status}
                       </span>
                     </Link>
                   </li>
                 ))}
               </ul>
-              <div className="border-t border-stone-100 px-6 py-3 text-right">
-                <Link href="/buyer/orders" className="text-xs text-stone-500 hover:text-stone-800 transition-colors">
+              <div className="border-t border-tuscan-sun/20 px-6 py-3 text-right">
+                <Link href="/buyer/orders" className="text-xs text-dark-cyan hover:text-cerulean transition-colors">
                   View all orders →
                 </Link>
               </div>

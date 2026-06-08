@@ -119,7 +119,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
           href={href}
           onClick={close}
           data-active={isActivePath(href) ? "true" : undefined}
-          className="block px-6 py-3 text-lg font-medium uppercase tracking-widest text-white hover:text-stone-300 focus-visible:text-stone-300 focus-visible:outline-none transition-colors"
+          className="block px-6 py-3 text-lg font-medium uppercase tracking-widest text-white hover:text-tuscan-sun focus-visible:text-tuscan-sun focus-visible:outline-none transition-colors"
         >
           {label}
         </Link>
@@ -140,10 +140,10 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
           key: "__separator__",
           node: (
             <div className="flex flex-col items-center gap-2 py-2" style={{ width: "75vw" }}>
-              <p className="text-sm text-stone-400 truncate max-w-full">
+              <p className="text-sm text-tuscan-sun/70 truncate max-w-full">
                 {user.name ?? user.email}
               </p>
-              <hr className="w-full border-stone-700" />
+              <hr className="w-full border-cerulean/40" />
             </div>
           ),
         },
@@ -162,7 +162,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
             <form action={signOutAction}>
               <button
                 type="submit"
-                className="px-6 py-3 text-lg font-medium uppercase tracking-widest text-stone-400 hover:text-white focus-visible:text-white focus-visible:outline-none transition-colors"
+                className="px-6 py-3 text-lg font-medium uppercase tracking-widest text-tuscan-sun/70 hover:text-white focus-visible:text-white focus-visible:outline-none transition-colors"
               >
                 Sign Out
               </button>
@@ -178,7 +178,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
               href="/sign-in"
               onClick={close}
               data-active={isActivePath("/sign-in") ? "true" : undefined}
-              className="block px-6 py-3 text-lg font-medium uppercase tracking-widest text-white hover:text-stone-300 focus-visible:text-stone-300 focus-visible:outline-none transition-colors"
+              className="block px-6 py-3 text-lg font-medium uppercase tracking-widest text-white hover:text-tuscan-sun focus-visible:text-tuscan-sun focus-visible:outline-none transition-colors"
             >
               Sign In
             </Link>
@@ -191,7 +191,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
               href="/sign-up"
               onClick={close}
               data-active={isActivePath("/sign-up") ? "true" : undefined}
-              className="block px-6 py-3 text-lg font-medium uppercase tracking-widest text-stone-400 hover:text-white focus-visible:text-white focus-visible:outline-none transition-colors"
+              className="block px-6 py-3 text-lg font-medium uppercase tracking-widest text-tuscan-sun/70 hover:text-white focus-visible:text-white focus-visible:outline-none transition-colors"
             >
               Sign Up
             </Link>
@@ -238,7 +238,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
           style={{
             position: "absolute",
             borderRadius: "50%",
-            backgroundColor: "#1c1917", // stone-900
+            backgroundColor: "#277da1", // cerulean
             width: "284vmax",
             height: "284vmax",
             top: "-142vmax",
@@ -297,7 +297,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
         aria-controls="mobile-menu"
         aria-label="Toggle menu"
         onClick={handleToggle}
-        className="relative z-50 rounded-full p-2 transition-colors hover:bg-stone-100"
+        className="relative z-50 rounded-full p-2 transition-colors hover:bg-tuscan-sun/20"
         style={{ backgroundColor: isOpen ? "white" : undefined }}
       >
         {/*
