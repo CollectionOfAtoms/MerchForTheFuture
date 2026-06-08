@@ -1282,45 +1282,45 @@
       "id": "CHORE-17",
       "epic": "Infrastructure",
       "title": "T-Mill API discovery spike",
-      "status": "Not Started",
+      "status": "Blocked",
       "testWrittenDate": null,
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Resolve T-Mill 2FA/account access. Make exploratory API calls and document findings in /docs/teemill-api-notes.md. Investigate: product creation endpoint and response shape; color/size catalog retrieval; order submission fields; webhook payload for fulfillment status; mockups endpoint inputs and latency; auth/rate limits. Output is a decision doc, not shipped code. Unblocks MFTF-3.3, MFTF-7, and MFTF-8."
+      "notes": "BLOCKED: Teemill 2FA is broken — support ticket open. Cannot generate API key until resolved. Partial findings documented in /docs/teemill-api-notes.md from public sources (GitHub demos, live /product/options endpoint, Node-RED package docs). Key findings: (1) Two APIs exist — Custom Product API (omnis/v3, creates Teemill-hosted storefront listing, NOT what we want) and Orders API (api.teemill.com/v1, programmatic order submission, correct target for MFTF-7). (2) Orders API is a two-step flow: POST /orders returns fulfillments with shipping options, then POST /orders/{id}/confirm selects shipping method. (3) No sandbox environment found — likely none, unlike Prodigi. (4) Product catalog confirmed: 18 product types, all GOTS-certified organic cotton. Colors identified by plain name strings (\"White\", \"Navy Blue\" etc). (5) Webhook payload unknown — not publicly documented. (6) Mockup API endpoint unconfirmed — browser UI tool exists but no programmatic endpoint found. Open questions requiring live access documented in /docs/teemill-api-notes.md."
     },
     {
       "id": "US-MFTF-3.1",
       "epic": "Epic MFTF-3: Fulfillment Abstraction Layer",
       "title": "Define Fulfillment Provider Interface",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
+      "status": "Test Written",
+      "testWrittenDate": "2026-06-07",
+      "testWrittenCommit": "pending",
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": null
+      "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.1-interface.test.ts. Validates: FULFILLMENT_STATUSES constant (6 values), mock provider satisfies interface shape (name, createOrder, getOrderStatus), getFulfillmentProvider factory exists and returns providers with correct shape for PRINT and APPAREL listing types."
     },
     {
       "id": "US-MFTF-3.2",
       "epic": "Epic MFTF-3: Fulfillment Abstraction Layer",
       "title": "Refactor Prodigi Behind the Interface",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
+      "status": "Test Written",
+      "testWrittenDate": "2026-06-07",
+      "testWrittenCommit": "pending",
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": null
+      "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.2-prodigi-provider.test.ts. Validates: provider name, factory routing, correct Prodigi request shape (shippingMethod, recipient, items), FulfillmentOrderResult fields, canonical status mapping (InProgress→PROCESSING, Complete+shipments→SHIPPED, Cancelled→CANCELLED, unknown→ERROR), error on non-ok response. Includes regression test: createPrintOrder still POSTs to Prodigi and sets prodigiOrderId."
     },
     {
       "id": "US-MFTF-3.3",
       "epic": "Epic MFTF-3: Fulfillment Abstraction Layer",
       "title": "Stub T-Mill Provider",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
+      "status": "Test Written",
+      "testWrittenDate": "2026-06-07",
+      "testWrittenCommit": "pending",
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": null
+      "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.3-teemill-stub.test.ts. Validates: createOrder and getOrderStatus both throw with 'TeemillFulfillmentProvider' and 'not yet implemented' in message, no HTTP calls made before throwing, getFulfillmentProvider('APPAREL') returns TeemillFulfillmentProvider instance."
     },
     {
       "id": "US-MFTF-4.1",
