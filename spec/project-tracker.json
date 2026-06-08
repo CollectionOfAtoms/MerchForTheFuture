@@ -1,6 +1,17 @@
 {
   "stories": [
     {
+      "id": "BUG-2",
+      "epic": "Infrastructure",
+      "title": "Auth redirects can send user to http:// instead of https://",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Reported 2026-06-08. Sign-in and sign-out flows can redirect to the http:// version of the site instead of https://. Likely cause: NEXTAUTH_URL or NEXT_PUBLIC_BASE_URL env var set without https://, or NextAuth.js callback URL construction falling back to an insecure origin. Check: (1) NEXTAUTH_URL in Vercel env vars — must be https://; (2) any hardcoded redirect strings in auth actions or NextAuth config; (3) the redirect() calls in auth.ts / actions/auth.ts. Dev server runs with --experimental-https so this may only reproduce in production or when env vars are misconfigured."
+    },
+    {
       "id": "BUG-1",
       "epic": "Infrastructure",
       "title": "Fix image variant generation: tall/portrait images rotated sideways and cropped",

@@ -1,9 +1,9 @@
 export default function ComingSoonPage() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col">
 
       {/* Hero */}
-      <section className="bg-coral-glow border-b border-tuscan-sun/30 flex-1 flex items-center justify-center">
+      <section className="bg-coral-glow border-b border-tuscan-sun/30 min-h-screen flex items-center justify-center">
         <div className="px-6 flex flex-col items-center gap-6 text-center">
           <p className="text-2xl font-medium uppercase tracking-widest text-blue-slate">
             Merch For The Future
