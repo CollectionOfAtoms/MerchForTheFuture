@@ -112,11 +112,9 @@ export async function resetPasswordAction(
 ): Promise<ActionState> {
   const token = (formData.get("token") as string | null)?.trim() ?? "";
   const password = (formData.get("password") as string | null) ?? "";
-  const confirm = (formData.get("confirm") as string | null) ?? "";
 
   if (!token) return { error: "Reset link is missing or invalid." };
   if (password.length < 8) return { error: "Password must be at least 8 characters." };
-  if (password !== confirm) return { error: "Passwords do not match." };
 
   const record = await prisma.passwordResetToken.findUnique({ where: { token } });
 

@@ -51,7 +51,7 @@ describe("US-17.2 — Set New Password via Reset Link", () => {
 
   it("updates the user's password hash on valid token", async () => {
     const { token } = await createToken();
-    const fd = makeFormData({ token, password: "newpassword123", confirm: "newpassword123" });
+    const fd = makeFormData({ token, password: "newpassword123" });
     // Action redirects on success — catch the throw so we can inspect DB state
     await resetPasswordAction(undefined, fd).catch((e) => {
       if (!(e instanceof Error) || !e.message.startsWith("NEXT_REDIRECT")) throw e;
@@ -64,7 +64,7 @@ describe("US-17.2 — Set New Password via Reset Link", () => {
 
   it("marks the token as used after a successful reset", async () => {
     const { token } = await createToken();
-    const fd = makeFormData({ token, password: "newpassword123", confirm: "newpassword123" });
+    const fd = makeFormData({ token, password: "newpassword123" });
     await resetPasswordAction(undefined, fd).catch((e) => {
       if (!(e instanceof Error) || !e.message.startsWith("NEXT_REDIRECT")) throw e;
     });
@@ -75,40 +75,40 @@ describe("US-17.2 — Set New Password via Reset Link", () => {
 
   it("redirects to /sign-in after a successful reset", async () => {
     const { token } = await createToken();
-    const fd = makeFormData({ token, password: "newpassword123", confirm: "newpassword123" });
+    const fd = makeFormData({ token, password: "newpassword123" });
     await expect(resetPasswordAction(undefined, fd)).rejects.toThrow("NEXT_REDIRECT:/sign-in");
   });
 
   // ── Token validation ──────────────────────────────────────────────────────────
 
   it("returns error for a missing token", async () => {
-    const fd = makeFormData({ token: "", password: "newpassword123", confirm: "newpassword123" });
+    const fd = makeFormData({ token: "", password: "newpassword123" });
     const result = await resetPasswordAction(undefined, fd);
     expect((result as { error: string }).error).toBeTruthy();
   });
 
   it("returns error for an unknown token", async () => {
-    const fd = makeFormData({ token: "does-not-exist", password: "newpassword123", confirm: "newpassword123" });
+    const fd = makeFormData({ token: "does-not-exist", password: "newpassword123" });
     const result = await resetPasswordAction(undefined, fd);
     expect((result as { error: string }).error).toBeTruthy();
   });
 
   it("returns error for an expired token", async () => {
     const { token } = await createToken({ expiresOffset: -1000 }); // 1 second in the past
-    const fd = makeFormData({ token, password: "newpassword123", confirm: "newpassword123" });
+    const fd = makeFormData({ token, password: "newpassword123" });
     const result = await resetPasswordAction(undefined, fd);
     expect((result as { error: string }).error).toBeTruthy();
   });
 
   it("returns error for an already-used token", async () => {
     const { token } = await createToken({ used: true });
-    const fd = makeFormData({ token, password: "newpassword123", confirm: "newpassword123" });
+    const fd = makeFormData({ token, password: "newpassword123" });
     const result = await resetPasswordAction(undefined, fd);
     expect((result as { error: string }).error).toBeTruthy();
   });
 
   it("does not update password when token is invalid", async () => {
-    const fd = makeFormData({ token: "bad-token", password: "newpassword123", confirm: "newpassword123" });
+    const fd = makeFormData({ token: "bad-token", password: "newpassword123" });
     await resetPasswordAction(undefined, fd);
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -117,23 +117,16 @@ describe("US-17.2 — Set New Password via Reset Link", () => {
 
   // ── Password validation ───────────────────────────────────────────────────────
 
-  it("returns error when passwords do not match", async () => {
-    const { token } = await createToken();
-    const fd = makeFormData({ token, password: "newpassword123", confirm: "differentpassword" });
-    const result = await resetPasswordAction(undefined, fd);
-    expect((result as { error: string }).error).toBeTruthy();
-  });
-
   it("returns error when password is shorter than 8 characters", async () => {
     const { token } = await createToken();
-    const fd = makeFormData({ token, password: "short", confirm: "short" });
+    const fd = makeFormData({ token, password: "short" });
     const result = await resetPasswordAction(undefined, fd);
     expect((result as { error: string }).error).toBeTruthy();
   });
 
   it("accepts exactly 8 character passwords", async () => {
     const { token } = await createToken();
-    const fd = makeFormData({ token, password: "exactly8", confirm: "exactly8" });
+    const fd = makeFormData({ token, password: "exactly8" });
     await expect(resetPasswordAction(undefined, fd)).rejects.toThrow("NEXT_REDIRECT:/sign-in");
   });
 
@@ -141,11 +134,11 @@ describe("US-17.2 — Set New Password via Reset Link", () => {
 
   it("cannot reuse the same token twice", async () => {
     const { token } = await createToken();
-    const fd = makeFormData({ token, password: "newpassword123", confirm: "newpassword123" });
+    const fd = makeFormData({ token, password: "newpassword123" });
 
     await expect(resetPasswordAction(undefined, fd)).rejects.toThrow("NEXT_REDIRECT:/sign-in");
 
-    const fd2 = makeFormData({ token, password: "anotherpassword", confirm: "anotherpassword" });
+    const fd2 = makeFormData({ token, password: "anotherpassword" });
     const result = await resetPasswordAction(undefined, fd2);
     expect((result as { error: string }).error).toBeTruthy();
   });
