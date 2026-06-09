@@ -1,6 +1,17 @@
 {
   "stories": [
     {
+      "id": "BUG-3",
+      "epic": "Infrastructure",
+      "title": "Password reset form conflicts with LastPass autofill on iOS",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Reported 2026-06-08. The reset-password form has two password inputs (new password + confirm password). On iOS, LastPass intercepts both fields and behaves unexpectedly — likely autofilling or overlaying UI on both inputs simultaneously. Possible fixes to evaluate: (1) add autocomplete='new-password' on the first input and autocomplete='off' on the confirm input to hint to password managers which field to fill; (2) add id='new-password' / id='confirm-password' attributes so LastPass can distinguish them; (3) investigate whether the confirm field is necessary at all — many modern UX patterns drop the confirm field in favour of a show/hide password toggle, which eliminates the conflict entirely. Find the form in src/app/(main)/reset-password/ or similar."
+    },
+    {
       "id": "BUG-2",
       "epic": "Infrastructure",
       "title": "Auth redirects can send user to http:// instead of https://",
