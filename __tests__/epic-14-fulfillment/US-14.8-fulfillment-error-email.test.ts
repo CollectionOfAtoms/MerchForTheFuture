@@ -12,6 +12,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
 const { confirmShippingAction } = await import("@/app/actions/fulfillment");
+const { createFulfillmentOrder } = await import("@/lib/fulfillment");
 const { auth } = await import("@/auth");
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -238,6 +239,166 @@ describe("US-14.8 — Fulfillment Error Email Notification", () => {
     );
 
     await confirmShippingAction(order2.id, makeShippingForm());
+
+    const errorEmails = emailSubjects.filter((s) => /action required|fulfillment error/i.test(s));
+    expect(errorEmails).toHaveLength(0);
+  });
+});
+
+// ─── createFulfillmentOrder wrapper — provider-agnostic tests ─────────────────
+//
+// These tests exercise the wrapper directly with a hand-rolled mock provider
+// to prove the notification behaviour is not Prodigi-specific. Any provider
+// that throws will trigger the seller email.
+
+describe("createFulfillmentOrder wrapper — provider-agnostic", () => {
+  let orderId: string;
+
+  const baseParams = {
+    listingRef: "listing-123",
+    colorVariantId: "SKU-XL",
+    size: "XL",
+    quantity: 1,
+    buyerName: "Test Buyer",
+    sourceImageUrl: "https://example.com/img.png",
+    shippingAddress: {
+      name: "Test Buyer",
+      line1: "1 Test St",
+      city: "Portland",
+      postal: "97201",
+      country: "US",
+    },
+  };
+
+  beforeEach(async () => {
+    await resetDatabase();
+
+    const seller = await prisma.user.create({
+      data: { email: "seller-wrapper@test.com", name: "Wrapper Seller", passwordHash: "x", roles: ["SELLER"] },
+    });
+    const buyer = await prisma.user.create({
+      data: { email: "buyer-wrapper@test.com", name: "Wrapper Buyer", passwordHash: "x", roles: ["BUYER"] },
+    });
+    const artwork = await prisma.artwork.create({
+      data: { title: "Wrapper Art", description: "D", sellerId: seller.id, status: "PUBLISHED" },
+    });
+    const listing = await prisma.originalListing.create({
+      data: { artworkId: artwork.id, saleType: "FIXED_PRICE", currency: "USD", status: "ACTIVE" },
+    });
+    const order = await prisma.order.create({
+      data: {
+        buyerId: buyer.id,
+        listingType: "PRINT",
+        originalListingId: listing.id,
+        subtotal: 40,
+        totalAmount: 40,
+        status: "PAID",
+      },
+    });
+    orderId = order.id;
+  });
+
+  afterEach(async () => {
+    await resetDatabase();
+    vi.restoreAllMocks();
+  });
+
+  it("re-throws the provider error so callers can handle it", async () => {
+    const mockProvider = {
+      name: "mock-provider",
+      createOrder: vi.fn().mockRejectedValue(new Error("Mock provider failure")),
+      getOrderStatus: vi.fn(),
+    };
+
+    await expect(
+      createFulfillmentOrder(orderId, mockProvider, baseParams)
+    ).rejects.toThrow("Mock provider failure");
+  });
+
+  it("sends the seller email when any provider throws, not just Prodigi", async () => {
+    const mockProvider = {
+      name: "future-provider",
+      createOrder: vi.fn().mockRejectedValue(new Error("future-provider error: timeout")),
+      getOrderStatus: vi.fn(),
+    };
+
+    const emailsSent: { to: string; subject: string }[] = [];
+    server.use(
+      http.post("https://api.mailersend.com/v1/email", async ({ request }) => {
+        const body = await request.json() as { to: { email: string }[]; subject: string };
+        emailsSent.push({ to: body.to[0].email, subject: body.subject });
+        return HttpResponse.json({}, { status: 202 });
+      })
+    );
+
+    await createFulfillmentOrder(orderId, mockProvider, baseParams).catch(() => {});
+
+    const errorEmail = emailsSent.find((e) => /action required|fulfillment error/i.test(e.subject));
+    expect(errorEmail).toBeDefined();
+    expect(errorEmail!.to).toBe("seller-wrapper@test.com");
+  });
+
+  it("includes the failing provider's error message in the email body", async () => {
+    const mockProvider = {
+      name: "teemill",
+      createOrder: vi.fn().mockRejectedValue(new Error("Teemill order creation failed with status 422")),
+      getOrderStatus: vi.fn(),
+    };
+
+    let capturedBodies: string[] = [];
+    server.use(
+      http.post("https://api.mailersend.com/v1/email", async ({ request }) => {
+        const body = await request.json() as { html: string };
+        capturedBodies.push(body.html);
+        return HttpResponse.json({}, { status: 202 });
+      })
+    );
+
+    await createFulfillmentOrder(orderId, mockProvider, baseParams).catch(() => {});
+
+    const errorEmail = capturedBodies.find((html) => /action required|fulfillment/i.test(html));
+    expect(errorEmail).toBeDefined();
+    expect(errorEmail).toContain("422");
+  });
+
+  it("returns the result normally when the provider succeeds", async () => {
+    const mockResult = {
+      externalOrderId: "ext-999",
+      estimatedDispatchDate: null,
+      providerMetadata: {},
+    };
+    const mockProvider = {
+      name: "mock-provider",
+      createOrder: vi.fn().mockResolvedValue(mockResult),
+      getOrderStatus: vi.fn(),
+    };
+
+    const result = await createFulfillmentOrder(orderId, mockProvider, baseParams);
+
+    expect(result).toEqual(mockResult);
+  });
+
+  it("does not send an error email when the provider succeeds", async () => {
+    const mockProvider = {
+      name: "mock-provider",
+      createOrder: vi.fn().mockResolvedValue({
+        externalOrderId: "ext-ok",
+        estimatedDispatchDate: null,
+        providerMetadata: {},
+      }),
+      getOrderStatus: vi.fn(),
+    };
+
+    const emailSubjects: string[] = [];
+    server.use(
+      http.post("https://api.mailersend.com/v1/email", async ({ request }) => {
+        const body = await request.json() as { subject: string };
+        emailSubjects.push(body.subject);
+        return HttpResponse.json({}, { status: 202 });
+      })
+    );
+
+    await createFulfillmentOrder(orderId, mockProvider, baseParams);
 
     const errorEmails = emailSubjects.filter((s) => /action required|fulfillment error/i.test(s));
     expect(errorEmails).toHaveLength(0);

@@ -8,6 +8,7 @@ export type {
 export { FULFILLMENT_STATUSES } from './types';
 export { ProdigiFulfillmentProvider } from './providers/prodigi';
 export { TeemillFulfillmentProvider } from './providers/teemill';
+export { createFulfillmentOrder } from './createOrder';
 
 import { ProdigiFulfillmentProvider } from './providers/prodigi';
 import { TeemillFulfillmentProvider } from './providers/teemill';

@@ -4,8 +4,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { sendShippingNotificationEmail, sendPurchaseConfirmation, sendFulfillmentErrorEmail } from "@/lib/payments/email";
-import { getFulfillmentProvider } from "@/lib/fulfillment";
+import { sendShippingNotificationEmail, sendPurchaseConfirmation } from "@/lib/payments/email";
+import { getFulfillmentProvider, createFulfillmentOrder } from "@/lib/fulfillment";
 
 type ActionResult = { error: string } | { success: true };
 
@@ -77,7 +77,7 @@ export async function confirmShippingAction(orderId: string, formData: FormData)
     if (listing?.printSourceImageUrl) {
       const provider = getFulfillmentProvider("PRINT");
       try {
-        const result = await provider.createOrder({
+        const result = await createFulfillmentOrder(orderId, provider, {
           listingRef: order.originalListingId,
           colorVariantId: order.prodigiSku,
           size: order.printSize ?? "",
@@ -98,12 +98,9 @@ export async function confirmShippingAction(orderId: string, formData: FormData)
           where: { id: orderId },
           data: { status: "PROCESSING", prodigiOrderId: result.externalOrderId },
         });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        console.error("[confirmShipping] fulfillment order creation failed:", err);
-        await sendFulfillmentErrorEmail(orderId, message).catch(
-          (e) => console.error("[confirmShipping] fulfillment error email failed:", e)
-        );
+      } catch {
+        // createFulfillmentOrder already logged and emailed the seller.
+        // Swallow here so the buyer receives a successful response.
       }
     }
 

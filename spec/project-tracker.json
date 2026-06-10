@@ -967,8 +967,8 @@
       "testWrittenDate": "2026-06-10",
       "testWrittenCommit": "649e6ce",
       "testPassedDate": "2026-06-10",
-      "testPassedCommit": "pending",
-      "notes": "7 tests. When the Prodigi API throws during confirmShippingAction (e.g. 401, 500, 503), sendFulfillmentErrorEmail fires and emails the seller (via order → originalListing → artwork → seller chain). Email subject matches /action required/fulfillment error/i, contains the order ref and HTTP status code. Buyer still receives success response. No error email sent on Prodigi success or for non-PRINT orders."
+      "testPassedCommit": "f269950",
+      "notes": "12 tests. Error notification logic extracted into createFulfillmentOrder() wrapper in src/lib/fulfillment/createOrder.ts — any provider (Prodigi, Teemill, future) that throws automatically alerts the seller. 7 integration tests via confirmShippingAction; 5 provider-agnostic unit tests use a hand-rolled mock provider. sendFulfillmentErrorEmail walks order → originalListing → artwork → seller. Buyer always receives success response."
     },
     {
       "id": "CHORE-7",
