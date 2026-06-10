@@ -960,6 +960,17 @@
       "notes": "7 tests passing. Runner-up gets new PENDING order + email + notification when winner payment expires. Listing archived if no other bidders."
     },
     {
+      "id": "US-14.8",
+      "epic": "Epic 14: Post-Sale Fulfillment",
+      "title": "Fulfillment Error Email Notification to Seller",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-10",
+      "testWrittenCommit": "649e6ce",
+      "testPassedDate": "2026-06-10",
+      "testPassedCommit": "pending",
+      "notes": "7 tests. When the Prodigi API throws during confirmShippingAction (e.g. 401, 500, 503), sendFulfillmentErrorEmail fires and emails the seller (via order → originalListing → artwork → seller chain). Email subject matches /action required/fulfillment error/i, contains the order ref and HTTP status code. Buyer still receives success response. No error email sent on Prodigi success or for non-PRINT orders."
+    },
+    {
       "id": "CHORE-7",
       "epic": "Infrastructure",
       "title": "Remove seller sign-up language from homepage",
@@ -2002,5 +2013,5 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-06-07T00:00:00.000Z"
+  "lastUpdated": "2026-06-10"
 }

@@ -300,6 +300,53 @@ export async function sendSupportRequestEmail(params: {
   });
 }
 
+// ─── Fulfillment Error ────────────────────────────────────────────────────────
+
+export async function sendFulfillmentErrorEmail(orderId: string, errorMessage: string): Promise<void> {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      buyer: true,
+      originalListing: {
+        include: { artwork: { include: { seller: true, images: true } } },
+      },
+    },
+  });
+  if (!order) return;
+
+  const seller = order.originalListing?.artwork?.seller;
+  if (!seller?.email) return;
+
+  const artwork = order.originalListing?.artwork;
+  const artworkTitle = artwork?.title ?? "Artwork";
+  const primaryImage = artwork?.images.find((img) => img.isPrimary) ?? artwork?.images[0];
+  const orderRef = `Order #${orderId.slice(-8).toUpperCase()}`;
+  const adminOrderUrl = `${BASE_URL}/admin/fulfillment`;
+
+  await mailersend({
+    to: seller.email,
+    subject: `Action required — fulfillment error on ${orderRef}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1c1917">
+        <p style="font-size:18px;font-weight:600;margin-bottom:4px">Fulfillment follow-up needed</p>
+        <p style="color:#78716c;margin-top:0">
+          Hi${seller.name ? ` ${seller.name}` : ""},<br/>
+          An error occurred while submitting a print order for <strong>${artworkTitle}</strong> to our fulfillment provider.
+          The order has been recorded and no action is needed from your buyer, but please follow up to ensure it is dispatched.
+        </p>
+        ${primaryImage ? `<img src="${primaryImage.url}" alt="${artworkTitle}" style="width:100%;border-radius:8px;margin:16px 0" />` : ""}
+        <table style="width:100%;border-collapse:collapse;margin:16px 0">
+          <tr><td style="padding:8px 0;color:#78716c;font-size:14px">Order</td><td style="padding:8px 0;font-weight:600;text-align:right">${orderRef}</td></tr>
+          <tr><td style="padding:8px 0;color:#78716c;font-size:14px">Buyer</td><td style="padding:8px 0;text-align:right;font-size:14px">${order.buyer.email}</td></tr>
+          <tr><td style="padding:8px 0;color:#78716c;font-size:14px">Error</td><td style="padding:8px 0;text-align:right;font-size:12px;color:#dc2626">${errorMessage}</td></tr>
+        </table>
+        <a href="${adminOrderUrl}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View fulfillment dashboard →</a>
+        <p style="color:#a8a29e;font-size:12px;margin-top:16px">If you need support resolving this, please contact us and reference the order number above.</p>
+      </div>
+    `,
+  });
+}
+
 // ─── Email Verification ───────────────────────────────────────────────────────
 
 export async function sendVerificationEmail(email: string, token: string, name?: string | null): Promise<void> {
