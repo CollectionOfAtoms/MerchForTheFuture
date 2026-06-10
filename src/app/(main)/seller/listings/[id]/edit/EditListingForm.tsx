@@ -213,7 +213,12 @@ export default function EditListingForm({ listing }: { listing: Listing }) {
               )}
               <div className="flex justify-between mt-1">
                 <span>End date</span>
-                <span className="font-medium">{new Date(auction.endAt).toLocaleString()}</span>
+                <span className="font-medium">{(() => {
+                  const d = new Date(auction.endAt);
+                  const date = d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" });
+                  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+                  return `${date} @ ${time}`;
+                })()}</span>
               </div>
               {auction.bidCount > 0 && (
                 <p className="mt-2 text-xs text-stone-400">Start bid and end date cannot be changed once bidding begins.</p>

@@ -71,7 +71,7 @@ export async function signInAction(
 }
 
 export async function signOutAction() {
-  await signOut({ redirectTo: "/" });
+  await signOut({ redirectTo: "/sign-in" });
 }
 
 export async function requestPasswordResetAction(

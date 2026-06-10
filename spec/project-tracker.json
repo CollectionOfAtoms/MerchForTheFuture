@@ -2011,6 +2011,24 @@
       ],
       "message": "fix(epic-22): show print mockup image on order detail; fix Decimal import; natural image sizing",
       "trackerUpdated": true
+    },
+    {
+      "filesChanged": [
+        "src/app/(main)/settings/ProfileForm.tsx",
+        "src/app/actions/account.ts",
+        "src/app/(main)/admin/settings/page.tsx",
+        "src/app/(main)/buyer/settings/page.tsx",
+        "src/app/(main)/seller/settings/page.tsx",
+        "src/app/actions/auth.ts",
+        "next.config.ts",
+        "src/components/PrintConfigForm.tsx",
+        "src/app/(main)/seller/listings/[id]/edit/EditListingForm.tsx",
+        "src/app/(main)/seller/listings/new/page.tsx",
+        "__tests__/epic-12-buyer-experience/US-12.4-buyer-account-settings.test.ts",
+        "__tests__/epic-23-nav-dropdown/US-23.1-settings-pages.test.ts"
+      ],
+      "message": "fix: profile save, sign-out routing, iOS hamburger, price input zero, auction timestamp format",
+      "trackerUpdated": true
     }
   ],
   "lastUpdated": "2026-06-10"

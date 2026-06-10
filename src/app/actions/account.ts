@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, refresh } from "next/cache";
 
 type ActionResult = { error: string } | { success: true };
 
@@ -14,7 +14,10 @@ async function requireAuthUser() {
   return { id: user.id, roles: user.roles ?? [] };
 }
 
-export async function updateProfileAction(formData: FormData): Promise<ActionResult> {
+export async function updateProfileAction(
+  _prev: ActionResult | undefined,
+  formData: FormData
+): Promise<ActionResult> {
   const { id: userId, roles } = await requireAuthUser();
   const name = (formData.get("name") as string)?.trim();
   if (!name) return { error: "Name is required." };
@@ -26,6 +29,7 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
   } else {
     revalidatePath("/buyer/settings");
   }
+  refresh();
   return { success: true };
 }
 

@@ -19,7 +19,7 @@ interface SavedProduct {
 }
 
 interface SkuState {
-  price: number;
+  price: number | null;
   mockupUrl: string | null;
 }
 
@@ -80,16 +80,16 @@ export default function PrintConfigForm({
         next.delete(sku);
       } else {
         const saved = savedMap.get(sku);
-        next.set(sku, { price: saved?.price ?? 0, mockupUrl: saved?.mockupUrl ?? null });
+        next.set(sku, { price: saved?.price ?? null, mockupUrl: saved?.mockupUrl ?? null });
       }
       return next;
     });
   }
 
-  function setPrice(sku: string, price: number) {
+  function setPrice(sku: string, price: number | null) {
     setSelected((prev) => {
       const next = new Map(prev);
-      const current = next.get(sku) ?? { price: 0, mockupUrl: null };
+      const current = next.get(sku) ?? { price: null, mockupUrl: null };
       next.set(sku, { ...current, price });
       return next;
     });
@@ -98,7 +98,7 @@ export default function PrintConfigForm({
   function setMockupUrl(sku: string, url: string | null) {
     setSelected((prev) => {
       const next = new Map(prev);
-      const current = next.get(sku) ?? { price: 0, mockupUrl: null };
+      const current = next.get(sku) ?? { price: null, mockupUrl: null };
       next.set(sku, { ...current, mockupUrl: url });
       return next;
     });
@@ -137,7 +137,7 @@ export default function PrintConfigForm({
       for (const item of catalog) {
         if (selected.has(item.sku)) {
           const { price, mockupUrl } = selected.get(item.sku)!;
-          products.push({ sku: item.sku, size: formatSize(item), price, mockupUrl: mockupUrl ?? null });
+          products.push({ sku: item.sku, size: formatSize(item), price: price ?? 0, mockupUrl: mockupUrl ?? null });
         }
       }
       fd.set("printProducts", JSON.stringify(products));
@@ -255,7 +255,7 @@ export default function PrintConfigForm({
                               min="1"
                               step="1"
                               value={skuState?.price ?? ""}
-                              onChange={(e) => setPrice(item.sku, parseFloat(e.target.value) || 0)}
+                              onChange={(e) => setPrice(item.sku, e.target.value === "" ? null : parseFloat(e.target.value))}
                               placeholder="0"
                               className="w-20 rounded-lg border border-stone-200 pl-6 pr-2 py-1 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-400"
                             />
