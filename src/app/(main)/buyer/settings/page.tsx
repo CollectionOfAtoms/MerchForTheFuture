@@ -2,12 +2,12 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import {
-  updateProfileAction,
   addAddressAction,
   deleteAddressAction,
   setDefaultAddressAction,
   updateNotificationPrefsAction,
 } from "@/app/actions/account";
+import ProfileForm from "@/app/(main)/settings/ProfileForm";
 
 export default async function BuyerSettingsPage() {
   const session = await auth();
@@ -33,31 +33,7 @@ export default async function BuyerSettingsPage() {
       {/* Profile */}
       <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm space-y-4">
         <h2 className="text-sm font-semibold text-stone-700">Profile</h2>
-        <form action={async (fd) => { "use server"; await updateProfileAction(fd); }} className="space-y-3">
-          <div>
-            <label className={labelClass}>Name</label>
-            <input
-              name="name"
-              defaultValue={dbUser?.name ?? ""}
-              required
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Email</label>
-            <input
-              value={dbUser?.email ?? ""}
-              readOnly
-              className="w-full rounded-xl border border-stone-200 bg-stone-100 px-4 py-2.5 text-sm text-stone-500 cursor-not-allowed"
-            />
-          </div>
-          <button
-            type="submit"
-            className="rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
-          >
-            Save Profile
-          </button>
-        </form>
+        <ProfileForm defaultName={dbUser?.name ?? ""} email={dbUser?.email ?? ""} />
       </section>
 
       {/* Billing */}

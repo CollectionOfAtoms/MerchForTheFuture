@@ -125,7 +125,7 @@ these without an explicit decision to revise them here first.
 | Cart feature scope and UX | Deferred | Flagged as a likely early epic. Not yet designed. |
 | Apparel retail pricing model | Open | Two options: (1) seller sets fixed dollar price, margins vary by product; (2) seller sets markup over dropshipper base cost, price floats automatically. Needs research before implementation. Defer until after MFTF-7 ships. |
 | Unified browse page (apparel + prints side by side) | Deferred | Conceivable as a catch-all browse page but not the intended primary buyer experience. Revisit after apparel browse (/shop) and fine-art browse (/browse) are both live. |
-| T-Mill API integration details | Open | Pending MFTF-2 spike: product creation flow, color/size catalog response shape, order submission, webhook payload, mockup endpoint latency. |
+| T-Mill API integration details | Partially resolved | MFTF-2 spike partially complete from public sources (blocked on 2FA for live access). Key findings: Orders API at api.teemill.com/v1 is the correct integration target (not the Custom Product API). Two-step order flow (create then confirm with shipping method). No sandbox found. Colors are plain name strings. Webhook payload and size catalog require live access. See /docs/teemill-api-notes.md. |
 | Per-color lifestyle photography | Deferred | Currently one set of lifestyle photos per listing covers all colorways. Per-color photos possible in future if QA sampling process scales. |
 | Buyer reviews with photos | Deferred | Mentioned as a future direction. No scope yet. |
 
@@ -137,6 +137,7 @@ these without an explicit decision to revise them here first.
 |---|---|---|
 | 2026-06-07 | Initial document created | — |
 | 2026-06-07 | Added Apparel Product Model, Watermark Modes, Dropshipper Strategy sections; updated Open Questions with pricing model, unified browse, T-Mill API, per-color photos, buyer reviews | MFTF-3 through MFTF-9 |
+| 2026-06-07 | Updated Dropshipper Strategy with T-Mill Orders API findings (MFTF-2 partial spike); updated T-Mill API open question status | MFTF-2 |
 ---
 
 ## Apparel Product Model
@@ -176,7 +177,9 @@ Design files sent to dropshippers bypass watermarking entirely.
 
 _Added 2026-06-07._
 
-**T-Mill is the primary apparel dropshipper.** Their entire catalog is 100% organic cotton, satisfying the brand's non-negotiable fabric standard without case-by-case verification.
+**T-Mill is the primary apparel dropshipper.** Their entire catalog is GOTS-certified 100% organic cotton, satisfying the brand's non-negotiable fabric standard without case-by-case verification.
+
+**T-Mill Orders API** (`https://api.teemill.com/v1`) is the correct integration target — not their Custom Product API (`omnis/v3`), which creates Teemill-hosted storefront listings. The Orders API is a two-step flow: `POST /orders` returns available shipping methods, then `POST /orders/{id}/confirm` finalizes. Authentication is via `Authorization` header + `project` query param. No sandbox environment exists; MSW stubs are required for automated testing. See `/docs/teemill-api-notes.md` for full findings.
 
 **Prodigi is retained for fine-art prints and evaluated for apparel.** Prodigi has some 100% cotton apparel options that have not been ruled out. The integration remains in place; apparel suitability pending real-world evaluation.
 

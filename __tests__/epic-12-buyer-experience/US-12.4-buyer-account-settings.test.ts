@@ -4,7 +4,7 @@ import { prisma, resetDatabase } from "../helpers/db";
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => { throw new Error(`NEXT_REDIRECT:${url}`); }),
 }));
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
 const {
@@ -38,7 +38,7 @@ describe("US-12.4 — Buyer Account Settings", () => {
   it("updateProfileAction saves new name", async () => {
     const form = new FormData();
     form.set("name", "New Name");
-    const result = await updateProfileAction(form);
+    const result = await updateProfileAction(undefined, form);
     expect(result).toEqual({ success: true });
     const user = await prisma.user.findUnique({ where: { id: buyerId } });
     expect(user!.name).toBe("New Name");
@@ -47,7 +47,7 @@ describe("US-12.4 — Buyer Account Settings", () => {
   it("updateProfileAction rejects empty name", async () => {
     const form = new FormData();
     form.set("name", "  ");
-    const result = await updateProfileAction(form);
+    const result = await updateProfileAction(undefined, form);
     expect(result).toHaveProperty("error");
   });
 
@@ -138,6 +138,6 @@ describe("US-12.4 — Buyer Account Settings", () => {
     vi.mocked(auth).mockResolvedValue(null as never);
     const form = new FormData();
     form.set("name", "X");
-    await expect(updateProfileAction(form)).rejects.toThrow("NEXT_REDIRECT:/sign-in");
+    await expect(updateProfileAction(undefined, form)).rejects.toThrow("NEXT_REDIRECT:/sign-in");
   });
 });

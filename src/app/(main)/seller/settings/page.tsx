@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { updateProfileAction, updateSellerNotificationPrefsAction } from "@/app/actions/account";
+import { updateSellerNotificationPrefsAction } from "@/app/actions/account";
+import ProfileForm from "@/app/(main)/settings/ProfileForm";
 
 export default async function SellerSettingsPage() {
   const session = await auth();
@@ -14,9 +15,6 @@ export default async function SellerSettingsPage() {
   const bidReceivedEmailsEnabled = notifPrefs?.bidReceivedEmails !== false;
   const saleCompletedEmailsEnabled = notifPrefs?.saleCompletedEmails !== false;
 
-  const inputClass = "w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900";
-  const labelClass = "block text-xs font-medium text-stone-600 mb-1";
-
   return (
     <div className="mx-auto max-w-2xl px-6 py-12 space-y-6">
       <h1 className="text-2xl font-semibold text-stone-900">Seller Settings</h1>
@@ -24,31 +22,7 @@ export default async function SellerSettingsPage() {
       {/* Profile */}
       <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm space-y-4">
         <h2 className="text-sm font-semibold text-stone-700">Profile</h2>
-        <form action={async (fd) => { "use server"; await updateProfileAction(fd); }} className="space-y-3">
-          <div>
-            <label className={labelClass}>Name</label>
-            <input
-              name="name"
-              defaultValue={dbUser?.name ?? ""}
-              required
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Email</label>
-            <input
-              value={dbUser?.email ?? ""}
-              readOnly
-              className="w-full rounded-xl border border-stone-200 bg-stone-100 px-4 py-2.5 text-sm text-stone-500 cursor-not-allowed"
-            />
-          </div>
-          <button
-            type="submit"
-            className="rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
-          >
-            Save Profile
-          </button>
-        </form>
+        <ProfileForm defaultName={dbUser?.name ?? ""} email={dbUser?.email ?? ""} />
       </section>
 
       {/* Notifications */}

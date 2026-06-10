@@ -21,7 +21,7 @@ const tracker = JSON.parse(readFileSync(trackerPath, "utf-8")) as {
   }>;
 };
 
-const VALID_STATUSES = new Set(["Not Started", "Test Written", "In Progress", "Passed", "Complete", "Deferred", "Dropped"]);
+const VALID_STATUSES = new Set(["Not Started", "Test Written", "In Progress", "Passed", "Complete", "Deferred", "Dropped", "Blocked"]);
 
 describe("US-9.6 — Admin Project Tracker", () => {
   it("tracker JSON has a stories array", () => {

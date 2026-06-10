@@ -25,6 +25,12 @@ export default function NewListingPage() {
   const [minAuctionEnd] = useState(() =>
     new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
   );
+  const [minAuctionEndFriendly] = useState(() => {
+    const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const date = d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" });
+    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    return `${date} @ ${time}`;
+  });
 
   const maxMB = Math.round(UPLOAD_MAX_BYTES / (1024 * 1024));
 
@@ -353,6 +359,17 @@ export default function NewListingPage() {
                   required
                   min={minAuctionEnd}
                   className={FIELD}
+                  onInvalid={(e) => {
+                    const el = e.currentTarget;
+                    if (el.validity.rangeUnderflow) {
+                      el.setCustomValidity(`Must end after ${minAuctionEndFriendly}`);
+                    } else if (el.validity.valueMissing) {
+                      el.setCustomValidity("Auction end date is required.");
+                    } else {
+                      el.setCustomValidity("");
+                    }
+                  }}
+                  onChange={(e) => e.currentTarget.setCustomValidity("")}
                 />
               </div>
             </>

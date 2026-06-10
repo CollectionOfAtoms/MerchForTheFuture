@@ -4,7 +4,7 @@ import { prisma, resetDatabase } from "../helpers/db";
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => { throw new Error(`NEXT_REDIRECT:${url}`); }),
 }));
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
 const { updateProfileAction, updateSellerNotificationPrefsAction } = await import("@/app/actions/account");
@@ -41,7 +41,7 @@ describe("US-23.1 — Seller & Admin Settings", () => {
 
       const form = new FormData();
       form.set("name", "New Seller Name");
-      await updateProfileAction(form);
+      await updateProfileAction(undefined, form);
 
       expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/seller/settings");
     });
@@ -52,7 +52,7 @@ describe("US-23.1 — Seller & Admin Settings", () => {
 
       const form = new FormData();
       form.set("name", "New Admin Name");
-      await updateProfileAction(form);
+      await updateProfileAction(undefined, form);
 
       expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith("/admin/settings");
     });
@@ -63,7 +63,7 @@ describe("US-23.1 — Seller & Admin Settings", () => {
 
       const form = new FormData();
       form.set("name", "Updated Seller");
-      await updateProfileAction(form);
+      await updateProfileAction(undefined, form);
 
       const dbUser = await prisma.user.findUnique({ where: { id: seller.id } });
       expect(dbUser!.name).toBe("Updated Seller");
@@ -75,7 +75,7 @@ describe("US-23.1 — Seller & Admin Settings", () => {
 
       const form = new FormData();
       form.set("name", "Updated Admin");
-      await updateProfileAction(form);
+      await updateProfileAction(undefined, form);
 
       const dbUser = await prisma.user.findUnique({ where: { id: admin.id } });
       expect(dbUser!.name).toBe("Updated Admin");

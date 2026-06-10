@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { Order } from "@/generated/prisma/client";
+import { ProdigiFulfillmentProvider } from "@/lib/fulfillment/providers/prodigi";
 
 interface ShippingAddress {
   name: string;
@@ -25,10 +26,6 @@ interface PrintProduct {
   price: number;
 }
 
-interface ProdigiOrderResponse {
-  outcome: string;
-  order: { id: string };
-}
 
 export async function createPrintOrder(input: CreatePrintOrderInput): Promise<Order> {
   const { buyerId, originalListingId, sku, size, quantity, shipping } = input;
@@ -48,36 +45,21 @@ export async function createPrintOrder(input: CreatePrintOrderInput): Promise<Or
 
   let prodigiOrderId: string | null = null;
   if (shipping && listing.printSourceImageUrl) {
-    const apiKey = process.env.PRODIGI_API_KEY ?? "test_key";
-    const base = process.env.PRODIGI_API_BASE_URL ?? "https://api.prodigi.com/v4.0";
-    const prodigiResponse = await fetch(`${base}/orders`, {
-      method: "POST",
-      headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        shippingMethod: "Standard",
-        recipient: {
-          name: shipping.name,
-          address: {
-            line1: shipping.line1,
-            townOrCity: shipping.city,
-            stateOrCounty: shipping.state,
-            postalOrZipCode: shipping.postal,
-            countryCode: shipping.country,
-          },
-        },
-        items: [
-          {
-            sku,
-            copies: quantity,
-            sizing: "fillPrintArea",
-            assets: [{ printArea: "default", url: listing.printSourceImageUrl }],
-          },
-        ],
-      }),
-    });
-
-    const prodigiData = (await prodigiResponse.json()) as ProdigiOrderResponse;
-    prodigiOrderId = prodigiData.order?.id ?? null;
+    const provider = new ProdigiFulfillmentProvider();
+    try {
+      const result = await provider.createOrder({
+        listingRef: originalListingId,
+        colorVariantId: sku,
+        size,
+        quantity,
+        buyerName: shipping.name,
+        sourceImageUrl: listing.printSourceImageUrl,
+        shippingAddress: shipping,
+      });
+      prodigiOrderId = result.externalOrderId;
+    } catch (err) {
+      console.error("[createPrintOrder] Prodigi order creation failed:", err);
+    }
   }
 
   return prisma.order.create({
