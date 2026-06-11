@@ -319,6 +319,55 @@ model Transaction {
   order Order @relation(fields: [orderId], references: [id])
 }
 
+// ─── Product Catalog ──────────────────────────────────────────────────────────
+
+enum FulfillmentProviderType {
+  TEEMILL
+  PRODIGI
+}
+
+model ProductType {
+  id                  String                 @id @default(cuid())
+  name                String                 @unique
+  description         String?
+  fulfillmentProvider FulfillmentProviderType
+  providerSkuBase     String
+  isActive            Boolean                @default(true)
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  colors ProductTypeColor[]
+  sizes  ProductTypeSizeOption[]
+
+  @@index([isActive])
+}
+
+model ProductTypeColor {
+  id                String      @id @default(cuid())
+  productTypeId     String
+  colorName         String
+  colorHex          String
+  providerColorCode String
+  isActive          Boolean     @default(true)
+
+  productType ProductType @relation(fields: [productTypeId], references: [id], onDelete: Cascade)
+
+  @@index([productTypeId])
+}
+
+model ProductTypeSizeOption {
+  id               String      @id @default(cuid())
+  productTypeId    String
+  sizeLabel        String
+  providerSizeCode String
+  sortOrder        Int
+  isActive         Boolean     @default(true)
+
+  productType ProductType @relation(fields: [productTypeId], references: [id], onDelete: Cascade)
+
+  @@index([productTypeId])
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 model Notification {
