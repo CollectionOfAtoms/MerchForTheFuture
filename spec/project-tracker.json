@@ -1381,12 +1381,12 @@
       "id": "US-MFTF-4.3",
       "epic": "Epic MFTF-4: Platform Product Catalog",
       "title": "Create and Edit Product Type",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-11",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-11",
+      "testPassedCommit": "pending",
+      "notes": "28 tests. 6 server actions in src/app/actions/admin/product-catalog.ts: createProductTypeAction, updateProductTypeAction, addProductTypeColorAction, toggleProductTypeColorAction, addProductTypeSizeAction, toggleProductTypeSizeAction. All auth-guarded (ADMIN only). Validation: required name/SKU, unique name, activation requires >=1 active color + size. Pages at /admin/products/new and /admin/products/[id]."
     },
     {
       "id": "US-MFTF-5.1",
