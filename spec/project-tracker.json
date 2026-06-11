@@ -1370,12 +1370,12 @@
       "id": "US-MFTF-4.2",
       "epic": "Epic MFTF-4: Platform Product Catalog",
       "title": "Admin Product Catalog Page",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-11",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-11",
+      "testPassedCommit": "pending",
+      "notes": "8 tests. getAdminProductCatalog() in src/lib/admin/product-catalog.ts returns all types (active+inactive) with activeColorCount/activeSizeCount, ordered by name. Page at /admin/products guards non-admin with redirect. Named export AdminProductsPage for testability."
     },
     {
       "id": "US-MFTF-4.3",
