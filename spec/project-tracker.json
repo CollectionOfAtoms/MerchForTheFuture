@@ -14,13 +14,13 @@
     {
       "id": "BUG-6",
       "epic": "Infrastructure",
-      "title": "Sign-in hangs on loading screen after successful auth under --experimental-https",
+      "title": "Sign-in hangs on loading screen after successful auth under --experimental-https on network IP",
       "status": "Passed",
       "testWrittenDate": null,
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. Symptom: sign-in form shows 'Signing in…' indefinitely; refreshing lands on the correct dashboard (session was created). Root cause: signInAction used redirectTo:'/' which causes a server-side / → dashboard double-hop. Under --experimental-https in dev, the RSC payload fetch for the intermediate '/' route stalls (self-signed cert / HMR socket interference), leaving useActionState pending forever. Fix: look up the user's roles in Prisma before calling signIn and redirect directly to the correct dashboard, eliminating the intermediate hop."
+      "notes": "Reported 2026-06-11. Symptom: sign-in form shows 'Signing in…' indefinitely; refreshing lands on the correct dashboard (session was created server-side). Root cause: the mkcert certificate in certificates/localhost.pem covered only localhost/127.0.0.1/::1/0.0.0.0 — not 192.168.68.54. When accessing the dev server from the network at https://192.168.68.54:3000, browsers allow the initial HTML page load (user clicks through the cert warning) but silently block all subsequent JS-driven subresource requests including RSC payload fetches. After signInAction throws NEXT_REDIRECT, the client router tries to fetch the RSC payload for the destination route — that fetch is blocked, leaving useActionState pending:true forever. Fix: (1) regenerated the mkcert cert with mkcert -cert-file certificates/localhost.pem -key-file certificates/localhost-key.pem localhost 127.0.0.1 ::1 192.168.68.54; (2) updated the dev script in package.json to explicitly pass --experimental-https-key and --experimental-https-cert so Next.js uses the custom cert. Previous partial fix (direct-role redirect in signInAction to avoid the double-hop) is kept as a latency improvement."
     },
     {
       "id": "BUG-5",
@@ -36,13 +36,13 @@
     {
       "id": "BUG-4",
       "epic": "Infrastructure",
-      "title": "MobileMenu fixed-position overlay blocks clicks on desktop in Firefox/Waterfox",
+      "title": "NavDropdown unclickable and sign-in hangs on network dev — mkcert cert missing 192.168.68.54 SAN",
       "status": "Passed",
       "testWrittenDate": null,
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. On Waterfox (Firefox ESR-based), position:fixed descendants can escape a parent's display:none context and remain interactive. The 284vmax splash circle and full-viewport menu ul were sitting over the page on desktop, swallowing clicks and preventing the NavDropdown trigger from firing. Fix 1 (partial): explicit pointer-events:none on both the splash div and menu ul when closed; removed willChange:transform from the circle. Fix 2 (partial): unmount the menu ul when isOpen is false. Fix 3 (partial): also conditionally mount the splash overlay divs. Fix 4 (complete): NavDropdown trigger SVG had a CSS transform transition which could create a GPU compositor layer. Added pointer-events:none to the SVG. Reverted onMouseDown experiment (broke Chrome; mouse clicks have e.detail=1 not handled by the e.detail===0 onClick guard). Back to plain onClick; MobileMenu element unmounting (Fix 3) eliminates the external overlay issue."
+      "notes": "Reported 2026-06-11. NavDropdown button showed hover styles (CSS worked) but clicking gave no feedback in any browser (Chrome, Waterfox) when accessed via https://192.168.68.54:3000. Root cause: same as BUG-6 — mkcert cert did not list 192.168.68.54 as a Subject Alternative Name. Browsers load the initial HTML (user accepts the cert warning for the page) but block JS subresource fetches to an untrusted HTTPS origin. Without JS loading, React never hydrates, event handlers are never attached, and the dropdown cannot open. The 'sometimes works' behavior occurred on fresh page loads where the browser's cert exception was still active in memory. Fixed by the same cert regeneration as BUG-6. Earlier code-level fixes (conditional MobileMenu mounting, pointer-events:none on SVG, direct-role redirect in signInAction) remain as defensive improvements but were not the root cause."
     },
     {
       "id": "BUG-2",
