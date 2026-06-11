@@ -77,22 +77,10 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
     return () => document.removeEventListener("keydown", handler);
   }, [isOpen, close]);
 
-  // Scroll lock — uses position:fixed technique so iOS Safari doesn't
-  // hide the URL bar and shift page content when the menu opens.
+  // Scroll lock
   useEffect(() => {
-    if (!isOpen) return;
-    const scrollY = window.scrollY;
-    document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = "100%";
-    return () => {
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-      window.scrollTo(0, scrollY);
-    };
+    document.body.style.overflow = isOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
   // currentPath prop overrides the hook — used only in tests where Next.js router context is absent.
@@ -236,12 +224,17 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
       {/* Splash overlay — always in the DOM (inside sm:hidden so it can't
           interfere with desktop layouts). isOpen drives the CSS transition
           directly; no conditional mounting needed. */}
+      {/*
+        Splash origin is pinned to the button's center:
+          top  = header py-4 (1rem) + half button height (22px)
+          right = header px-6 (1.5rem) + half button width (22px)
+      */}
       <div
         aria-hidden="true"
         style={{
           position: "fixed",
-          top: "1.25rem",
-          right: "1.25rem",
+          top: "calc(1rem + 22px)",
+          right: "calc(1.5rem + 22px)",
           width: 1,
           height: 1,
           zIndex: 40,
@@ -304,7 +297,14 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
         </ul>
       )}
 
-      {/* Hamburger toggle button */}
+      {/*
+        The toggle button is position:fixed so it never shifts when the
+        scroll lock or any viewport change alters the page layout.
+        top/right mirror the header's py-4 (1rem) / px-6 (1.5rem) so
+        the button sits in the same visual spot it would occupy in flow.
+        A 44×44 px spacer div remains in-flow to preserve the header height.
+      */}
+      <div aria-hidden="true" style={{ width: 44, height: 44, flexShrink: 0 }} />
       <button
         ref={toggleRef}
         type="button"
@@ -312,8 +312,14 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
         aria-controls="mobile-menu"
         aria-label="Toggle menu"
         onClick={handleToggle}
-        className="relative z-50 rounded-full p-2 transition-colors hover:bg-tuscan-sun/20"
-        style={{ backgroundColor: isOpen ? "white" : undefined }}
+        className="rounded-full p-2 transition-colors hover:bg-tuscan-sun/20"
+        style={{
+          position: "fixed",
+          top: "1rem",
+          right: "1.5rem",
+          zIndex: 50,
+          backgroundColor: isOpen ? "white" : undefined,
+        }}
       >
         {/*
           SVG viewBox is 0 0 50 50, center at (25, 25).

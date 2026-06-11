@@ -12,6 +12,17 @@
       "notes": "The NavDropdown wrapper div (position:relative, no z-index) created no stacking context. Listing cards on the browse page create their own stacking contexts (via CSS transform or explicit z-index) and were painting above the dropdown menu. Fixed by adding z-50 to the wrapper div, which creates a stacking context that keeps the dropdown above all page content."
     },
     {
+      "id": "BUG-10",
+      "epic": "Infrastructure",
+      "title": "Mobile menu toggle button shifts right on open; splash circle origin misaligned",
+      "status": "Passed",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": "2026-06-11",
+      "testPassedCommit": "pending",
+      "notes": "Two related issues. (1) Button shifts right when menu opens because overflow:hidden or position:fixed scroll-lock on body caused layout reflow (scrollbar disappearance or iOS viewport resize) that moved the static-positioned button. Fixed by making the toggle button position:fixed at top:1rem / right:1.5rem (matching the header's py-4 / px-6 spacing) with a 44x44px in-flow spacer div to preserve header height. Reverted body scroll lock to simple overflow:hidden. (2) Splash circle emanated from top:1.25rem / right:1.25rem (viewport corner) instead of the button center. Fixed by updating the splash container origin to calc(1rem + 22px) / calc(1.5rem + 22px), which places it at the center of the 44px button (header padding + half button dimension)."
+    },
+    {
       "id": "BUG-9",
       "epic": "Infrastructure",
       "title": "Mobile menu X button jumps position on open; circle expand animation missing",
