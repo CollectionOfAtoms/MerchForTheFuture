@@ -12,6 +12,17 @@
       "notes": "Reported 2026-06-08. Fixed by replacing the two-input (password + confirm) pattern with a single password input and a show/hide visibility toggle. Confirm field removed from ResetPasswordForm.tsx and the confirm validation removed from resetPasswordAction in actions/auth.ts. US-17.2 tests updated to drop confirm from all makeFormData calls; 'passwords do not match' test case removed as the code path no longer exists."
     },
     {
+      "id": "BUG-6",
+      "epic": "Infrastructure",
+      "title": "Sign-in hangs on loading screen after successful auth under --experimental-https",
+      "status": "Passed",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": "2026-06-11",
+      "testPassedCommit": "pending",
+      "notes": "Reported 2026-06-11. Symptom: sign-in form shows 'Signing in…' indefinitely; refreshing lands on the correct dashboard (session was created). Root cause: signInAction used redirectTo:'/' which causes a server-side / → dashboard double-hop. Under --experimental-https in dev, the RSC payload fetch for the intermediate '/' route stalls (self-signed cert / HMR socket interference), leaving useActionState pending forever. Fix: look up the user's roles in Prisma before calling signIn and redirect directly to the correct dashboard, eliminating the intermediate hop."
+    },
+    {
       "id": "BUG-5",
       "epic": "Infrastructure",
       "title": "Buyer dashboard 'View →' link 404s — wrong route /listings instead of /artwork",
@@ -31,7 +42,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. On Waterfox (Firefox ESR-based), position:fixed descendants can escape a parent's display:none context and remain interactive. The 284vmax splash circle and full-viewport menu ul were sitting over the page on desktop, swallowing clicks and preventing the NavDropdown trigger from firing. Fix 1 (partial): explicit pointer-events:none on both the splash div and menu ul when closed; removed willChange:transform from the circle. Fix 2 (partial): unmount the menu ul when isOpen is false. Fix 3 (partial): also conditionally mount the splash overlay divs. Fix 4 (complete): NavDropdown trigger SVG had a CSS transform transition, creating a GPU compositor layer in Firefox that absorbed click events before they could bubble to the React handler. Fixed by (a) adding pointer-events:none to the SVG, (b) moving the toggle to onMouseDown (fires before compositor intercepts), (c) onClick only fires for keyboard-triggered clicks (e.detail===0)."
+      "notes": "Reported 2026-06-11. On Waterfox (Firefox ESR-based), position:fixed descendants can escape a parent's display:none context and remain interactive. The 284vmax splash circle and full-viewport menu ul were sitting over the page on desktop, swallowing clicks and preventing the NavDropdown trigger from firing. Fix 1 (partial): explicit pointer-events:none on both the splash div and menu ul when closed; removed willChange:transform from the circle. Fix 2 (partial): unmount the menu ul when isOpen is false. Fix 3 (partial): also conditionally mount the splash overlay divs. Fix 4 (complete): NavDropdown trigger SVG had a CSS transform transition which could create a GPU compositor layer. Added pointer-events:none to the SVG. Reverted onMouseDown experiment (broke Chrome; mouse clicks have e.detail=1 not handled by the e.detail===0 onClick guard). Back to plain onClick; MobileMenu element unmounting (Fix 3) eliminates the external overlay issue."
     },
     {
       "id": "BUG-2",

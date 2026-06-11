@@ -57,8 +57,21 @@ export async function signInAction(
   const email = ((formData.get("email") as string | null)?.trim() ?? "").toLowerCase();
   const password = (formData.get("password") as string | null) ?? "";
 
+  // Resolve the destination BEFORE signIn so we redirect there directly,
+  // avoiding the /  → dashboard double-hop that can stall under --experimental-https.
+  const record = await prisma.user.findUnique({
+    where: { email },
+    select: { roles: true },
+  });
+  const roles: string[] = Array.isArray(record?.roles) ? (record!.roles as string[]) : [];
+  const redirectTo = roles.includes("ADMIN")
+    ? "/dashboard/admin"
+    : roles.includes("SELLER")
+    ? "/dashboard/seller"
+    : "/dashboard/buyer";
+
   try {
-    await signIn("credentials", { email, password, redirectTo: "/" });
+    await signIn("credentials", { email, password, redirectTo });
   } catch (err) {
     if (err instanceof AuthError) {
       return { error: "Invalid email or password." };

@@ -82,17 +82,7 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
-        onMouseDown={(e) => {
-          // Use mousedown so Firefox compositor layers inside the button
-          // can't eat the event before it reaches the handler.
-          e.stopPropagation(); // don't let the click-outside handler see this
-          setOpen((v) => !v);
-        }}
-        onClick={(e) => {
-          // Keyboard-only path: Enter/Space dispatch click with detail=0,
-          // no preceding mousedown, so we handle it here.
-          if (e.detail === 0) setOpen((v) => !v);
-        }}
+        onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1 text-sm text-blue-slate hover:text-cerulean transition-colors max-w-[160px]"
       >
         <span className="truncate">{label}</span>
