@@ -1,6 +1,17 @@
 {
   "stories": [
     {
+      "id": "BUG-8",
+      "epic": "Infrastructure",
+      "title": "NavDropdown obscured by listing cards on browse page",
+      "status": "Passed",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": "2026-06-11",
+      "testPassedCommit": "pending",
+      "notes": "The NavDropdown wrapper div (position:relative, no z-index) created no stacking context. Listing cards on the browse page create their own stacking contexts (via CSS transform or explicit z-index) and were painting above the dropdown menu. Fixed by adding z-50 to the wrapper div, which creates a stacking context that keeps the dropdown above all page content."
+    },
+    {
       "id": "BUG-7",
       "epic": "Infrastructure",
       "title": "Mobile menu circle-expand animation missing on open after conditional-mount fix",

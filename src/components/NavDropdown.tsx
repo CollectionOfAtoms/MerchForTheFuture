@@ -76,7 +76,7 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
   }
 
   return (
-    <div className="relative hidden sm:block">
+    <div className="relative hidden sm:block z-50">
       <button
         ref={triggerRef}
         type="button"
