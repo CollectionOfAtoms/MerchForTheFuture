@@ -26,6 +26,9 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
   // splashMounted stays true for 420ms after isOpen goes false so the
   // circle collapse animation can finish before the element is removed.
   const [splashMounted, setSplashMounted] = useState(false);
+  // splashVisible drives scale(1); it lags one paint behind splashMounted so the
+  // browser can render scale(0) before the opening transition begins.
+  const [splashVisible, setSplashVisible] = useState(false);
   const splashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLUListElement>(null);
@@ -50,14 +53,23 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
 
   // Mount/unmount the splash overlay in sync with open state, but delay
   // unmount by 420ms so the circle collapse animation completes first.
+  // On open: mount at scale(0), then tick twice via rAF before setting
+  // splashVisible=true so the browser paints the starting state first.
   useEffect(() => {
     if (isOpen) {
       if (splashTimerRef.current) clearTimeout(splashTimerRef.current);
       setSplashMounted(true);
+      // Double rAF: first frame ensures the element is in the DOM,
+      // second frame lets the browser paint scale(0) before we animate.
+      const raf1 = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setSplashVisible(true));
+      });
+      return () => cancelAnimationFrame(raf1);
     } else {
+      setSplashVisible(false);
       splashTimerRef.current = setTimeout(() => setSplashMounted(false), 420);
+      return () => { if (splashTimerRef.current) clearTimeout(splashTimerRef.current); };
     }
-    return () => { if (splashTimerRef.current) clearTimeout(splashTimerRef.current); };
   }, [isOpen]);
 
   // Cleanup timers on unmount
@@ -264,9 +276,9 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
               height: "284vmax",
               top: "-142vmax",
               left: "-142vmax",
-              transform: isOpen ? "scale(1)" : "scale(0)",
+              transform: splashVisible ? "scale(1)" : "scale(0)",
               transformOrigin: "50% 50%",
-              transition: isOpen
+              transition: splashVisible
                 ? "transform .42s cubic-bezier(0.755, 0.050, 0.855, 0.060)"
                 : "transform .42s cubic-bezier(0.145, 0.885, 0.355, 1.000)",
               pointerEvents: "none",

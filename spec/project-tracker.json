@@ -1,6 +1,17 @@
 {
   "stories": [
     {
+      "id": "BUG-7",
+      "epic": "Infrastructure",
+      "title": "Mobile menu circle-expand animation missing on open after conditional-mount fix",
+      "status": "Passed",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": "2026-06-11",
+      "testPassedCommit": "pending",
+      "notes": "Regression introduced when the splash overlay was changed from always-mounted to conditionally-mounted (splashMounted state). The element now enters the DOM with isOpen already true, so the transform starts at scale(1) immediately — no prior scale(0) state to transition from. Close animation was unaffected because the element is already at scale(1) in the DOM when isOpen goes false. Fix: added splashVisible state (separate from splashMounted). On open: element mounts at scale(0), then a double requestAnimationFrame defers setSplashVisible(true) by two paint frames so the browser renders the starting state before the transition fires. The circle-expand and circle-collapse animations are both driven by splashVisible."
+    },
+    {
       "id": "BUG-3",
       "epic": "Infrastructure",
       "title": "Password reset form conflicts with LastPass autofill on iOS",
