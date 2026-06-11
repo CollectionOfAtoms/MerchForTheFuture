@@ -12,6 +12,17 @@
       "notes": "Reported 2026-06-08. Fixed by replacing the two-input (password + confirm) pattern with a single password input and a show/hide visibility toggle. Confirm field removed from ResetPasswordForm.tsx and the confirm validation removed from resetPasswordAction in actions/auth.ts. US-17.2 tests updated to drop confirm from all makeFormData calls; 'passwords do not match' test case removed as the code path no longer exists."
     },
     {
+      "id": "BUG-4",
+      "epic": "Infrastructure",
+      "title": "MobileMenu fixed-position overlay blocks clicks on desktop in Firefox/Waterfox",
+      "status": "Passed",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": "2026-06-11",
+      "testPassedCommit": "pending",
+      "notes": "Reported 2026-06-11. On Waterfox (Firefox ESR-based), position:fixed descendants can escape a parent's display:none context and remain interactive. The 284vmax splash circle and full-viewport menu ul were sitting over the page on desktop, swallowing clicks and preventing the NavDropdown trigger from firing. Fix: explicit pointer-events:none on both the splash div and menu ul when closed; removed willChange:transform from the circle (GPU compositing hint was triggering the escape). No code change to NavDropdown itself."
+    },
+    {
       "id": "BUG-2",
       "epic": "Infrastructure",
       "title": "Auth redirects can send user to http:// instead of https://",

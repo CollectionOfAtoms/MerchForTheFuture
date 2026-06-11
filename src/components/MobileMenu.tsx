@@ -231,7 +231,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
           width: 1,
           height: 1,
           zIndex: 40,
-          pointerEvents: isOpen ? "auto" : "none",
+          pointerEvents: "none",
         }}
       >
         <div
@@ -248,7 +248,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
             transition: isOpen
               ? "transform .42s cubic-bezier(0.755, 0.050, 0.855, 0.060)"
               : "transform .42s cubic-bezier(0.145, 0.885, 0.355, 1.000)",
-            willChange: "transform",
+            pointerEvents: "none",
           }}
         />
       </div>
@@ -264,6 +264,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
           inset: 0,
           zIndex: 50,
           display: isOpen ? "flex" : "none",
+          pointerEvents: isOpen ? "auto" : "none",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
