@@ -12,6 +12,17 @@
       "notes": "Reported 2026-06-08. Fixed by replacing the two-input (password + confirm) pattern with a single password input and a show/hide visibility toggle. Confirm field removed from ResetPasswordForm.tsx and the confirm validation removed from resetPasswordAction in actions/auth.ts. US-17.2 tests updated to drop confirm from all makeFormData calls; 'passwords do not match' test case removed as the code path no longer exists."
     },
     {
+      "id": "BUG-5",
+      "epic": "Infrastructure",
+      "title": "Buyer dashboard 'View →' link 404s — wrong route /listings instead of /artwork",
+      "status": "Passed",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": "2026-06-11",
+      "testPassedCommit": "pending",
+      "notes": "Reported 2026-06-11. Both 'View →' links on the buyer dashboard (winning bids highlight and active bids list) used href /listings/${bid.listingId}. The route is /artwork/[id] keyed by artwork ID. Fix: added artworkId to BuyerActiveBid interface and query (selected artwork.id), changed both hrefs to /artwork/${bid.artworkId}."
+    },
+    {
       "id": "BUG-4",
       "epic": "Infrastructure",
       "title": "MobileMenu fixed-position overlay blocks clicks on desktop in Firefox/Waterfox",
@@ -2130,5 +2141,5 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-06-10"
+  "lastUpdated": "2026-06-11"
 }

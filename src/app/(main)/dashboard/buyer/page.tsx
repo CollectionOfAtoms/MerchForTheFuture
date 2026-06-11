@@ -57,7 +57,7 @@ export default async function BuyerDashboardPage() {
                     </p>
                   </div>
                   <Link
-                    href={`/listings/${bid.listingId}`}
+                    href={`/artwork/${bid.artworkId}`}
                     className="shrink-0 text-xs text-emerald-700 hover:text-emerald-900 transition-colors"
                   >
                     View →
@@ -114,7 +114,7 @@ export default async function BuyerDashboardPage() {
                     {bid.isWinning ? "Winning" : "Outbid"}
                   </span>
                   <Link
-                    href={`/listings/${bid.listingId}`}
+                    href={`/artwork/${bid.artworkId}`}
                     className="shrink-0 text-xs text-dark-cyan hover:text-blue-slate transition-colors"
                   >
                     View →
