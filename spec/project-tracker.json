@@ -42,7 +42,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Regression introduced when the splash overlay was changed from always-mounted to conditionally-mounted (splashMounted state). The element now enters the DOM with isOpen already true, so the transform starts at scale(1) immediately — no prior scale(0) state to transition from. Close animation was unaffected because the element is already at scale(1) in the DOM when isOpen goes false. Fix: added splashVisible state (separate from splashMounted). On open: element mounts at scale(0), then a double requestAnimationFrame defers setSplashVisible(true) by two paint frames so the browser renders the starting state before the transition fires. The circle-expand and circle-collapse animations are both driven by splashVisible."
+      "notes": "Regression introduced when the splash overlay was changed from always-mounted to conditionally-mounted (splashMounted state). The element now enters the DOM with isOpen already true, so the transform starts at scale(1) immediately \u2014 no prior scale(0) state to transition from. Close animation was unaffected because the element is already at scale(1) in the DOM when isOpen goes false. Fix: added splashVisible state (separate from splashMounted). On open: element mounts at scale(0), then a double requestAnimationFrame defers setSplashVisible(true) by two paint frames so the browser renders the starting state before the transition fires. The circle-expand and circle-collapse animations are both driven by splashVisible."
     },
     {
       "id": "BUG-3",
@@ -64,29 +64,29 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. Symptom: sign-in form shows 'Signing in…' indefinitely; refreshing lands on the correct dashboard (session was created server-side). Root cause: the mkcert certificate in certificates/localhost.pem covered only localhost/127.0.0.1/::1/0.0.0.0 — not 192.168.68.54. When accessing the dev server from the network at https://192.168.68.54:3000, browsers allow the initial HTML page load (user clicks through the cert warning) but silently block all subsequent JS-driven subresource requests including RSC payload fetches. After signInAction throws NEXT_REDIRECT, the client router tries to fetch the RSC payload for the destination route — that fetch is blocked, leaving useActionState pending:true forever. Fix: (1) regenerated the mkcert cert with mkcert -cert-file certificates/localhost.pem -key-file certificates/localhost-key.pem localhost 127.0.0.1 ::1 192.168.68.54; (2) updated the dev script in package.json to explicitly pass --experimental-https-key and --experimental-https-cert so Next.js uses the custom cert. Previous partial fix (direct-role redirect in signInAction to avoid the double-hop) is kept as a latency improvement."
+      "notes": "Reported 2026-06-11. Symptom: sign-in form shows 'Signing in\u2026' indefinitely; refreshing lands on the correct dashboard (session was created server-side). Root cause: the mkcert certificate in certificates/localhost.pem covered only localhost/127.0.0.1/::1/0.0.0.0 \u2014 not 192.168.68.54. When accessing the dev server from the network at https://192.168.68.54:3000, browsers allow the initial HTML page load (user clicks through the cert warning) but silently block all subsequent JS-driven subresource requests including RSC payload fetches. After signInAction throws NEXT_REDIRECT, the client router tries to fetch the RSC payload for the destination route \u2014 that fetch is blocked, leaving useActionState pending:true forever. Fix: (1) regenerated the mkcert cert with mkcert -cert-file certificates/localhost.pem -key-file certificates/localhost-key.pem localhost 127.0.0.1 ::1 192.168.68.54; (2) updated the dev script in package.json to explicitly pass --experimental-https-key and --experimental-https-cert so Next.js uses the custom cert. Previous partial fix (direct-role redirect in signInAction to avoid the double-hop) is kept as a latency improvement."
     },
     {
       "id": "BUG-5",
       "epic": "Infrastructure",
-      "title": "Buyer dashboard 'View →' link 404s — wrong route /listings instead of /artwork",
+      "title": "Buyer dashboard 'View \u2192' link 404s \u2014 wrong route /listings instead of /artwork",
       "status": "Passed",
       "testWrittenDate": null,
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. Both 'View →' links on the buyer dashboard (winning bids highlight and active bids list) used href /listings/${bid.listingId}. The route is /artwork/[id] keyed by artwork ID. Fix: added artworkId to BuyerActiveBid interface and query (selected artwork.id), changed both hrefs to /artwork/${bid.artworkId}."
+      "notes": "Reported 2026-06-11. Both 'View \u2192' links on the buyer dashboard (winning bids highlight and active bids list) used href /listings/${bid.listingId}. The route is /artwork/[id] keyed by artwork ID. Fix: added artworkId to BuyerActiveBid interface and query (selected artwork.id), changed both hrefs to /artwork/${bid.artworkId}."
     },
     {
       "id": "BUG-4",
       "epic": "Infrastructure",
-      "title": "NavDropdown unclickable and sign-in hangs on network dev — mkcert cert missing 192.168.68.54 SAN",
+      "title": "NavDropdown unclickable and sign-in hangs on network dev \u2014 mkcert cert missing 192.168.68.54 SAN",
       "status": "Passed",
       "testWrittenDate": null,
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. NavDropdown button showed hover styles (CSS worked) but clicking gave no feedback in any browser (Chrome, Waterfox) when accessed via https://192.168.68.54:3000. Root cause: same as BUG-6 — mkcert cert did not list 192.168.68.54 as a Subject Alternative Name. Browsers load the initial HTML (user accepts the cert warning for the page) but block JS subresource fetches to an untrusted HTTPS origin. Without JS loading, React never hydrates, event handlers are never attached, and the dropdown cannot open. The 'sometimes works' behavior occurred on fresh page loads where the browser's cert exception was still active in memory. Fixed by the same cert regeneration as BUG-6. Earlier code-level fixes (conditional MobileMenu mounting, pointer-events:none on SVG, direct-role redirect in signInAction) remain as defensive improvements but were not the root cause."
+      "notes": "Reported 2026-06-11. NavDropdown button showed hover styles (CSS worked) but clicking gave no feedback in any browser (Chrome, Waterfox) when accessed via https://192.168.68.54:3000. Root cause: same as BUG-6 \u2014 mkcert cert did not list 192.168.68.54 as a Subject Alternative Name. Browsers load the initial HTML (user accepts the cert warning for the page) but block JS subresource fetches to an untrusted HTTPS origin. Without JS loading, React never hydrates, event handlers are never attached, and the dropdown cannot open. The 'sometimes works' behavior occurred on fresh page loads where the browser's cert exception was still active in memory. Fixed by the same cert regeneration as BUG-6. Earlier code-level fixes (conditional MobileMenu mounting, pointer-events:none on SVG, direct-role redirect in signInAction) remain as defensive improvements but were not the root cause."
     },
     {
       "id": "BUG-2",
@@ -1463,7 +1463,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "28 tests. 6 server actions in src/app/actions/admin/product-catalog.ts: createProductTypeAction, updateProductTypeAction, addProductTypeColorAction, toggleProductTypeColorAction, addProductTypeSizeAction, toggleProductTypeSizeAction. All auth-guarded (ADMIN only). Validation: required name/SKU, unique name, activation requires >=1 active color + size. Pages at /admin/products/new and /admin/products/[id]."
+      "notes": "28 tests. 6 server actions in src/app/actions/admin/product-catalog.ts: createProductTypeAction, updateProductTypeAction, addProductTypeColorAction, toggleProductTypeColorAction, addProductTypeSizeAction, toggleProductTypeSizeAction. All auth-guarded (ADMIN only). Validation: required name/SKU, unique name, activation requires >=1 active color + size. Pages at /admin/products/new and /admin/products/[id]. \u2014 Enhancement (2026-06-11): Added Teemill product grid picker to /admin/products/new. Client component TeemillProductPicker fetches /api/teemill/catalog (route handler with 1h revalidation), displays a 2-col grid of all 18 Teemill products with per-card color carousel. Selecting a product collapses grid to single-product summary showing all color thumbnails. createProductTypeAction extended to parse teemillColorsJson hidden field and bulk-create ProductTypeColor records (backward compatible). Prodigi path shows manual SKU instructions."
     },
     {
       "id": "US-MFTF-5.1",
@@ -2196,5 +2196,5 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-06-11"
+  "lastUpdated": "2026-06-11T00:00:00Z"
 }

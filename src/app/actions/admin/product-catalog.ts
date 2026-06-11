@@ -37,6 +37,25 @@ export async function createProductTypeAction(fd: FormData): Promise<ActionResul
     data: { name, description, fulfillmentProvider: fulfillmentProvider as "TEEMILL" | "PRODIGI", providerSkuBase, isActive },
   });
 
+  const teemillColorsRaw = (fd.get("teemillColorsJson") as string | null)?.trim();
+  if (teemillColorsRaw) {
+    try {
+      const colors: { name: string; imageUrl: string }[] = JSON.parse(teemillColorsRaw);
+      if (Array.isArray(colors) && colors.length > 0) {
+        await prisma.productTypeColor.createMany({
+          data: colors.map((c) => ({
+            productTypeId: pt.id,
+            colorName: c.name,
+            colorHex: "",
+            providerColorCode: c.name,
+          })),
+        });
+      }
+    } catch {
+      // Malformed JSON — skip color seeding; admin can add colors manually
+    }
+  }
+
   revalidatePath("/admin/products");
   return { id: pt.id };
 }
