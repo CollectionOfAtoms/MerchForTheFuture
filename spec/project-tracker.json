@@ -12,6 +12,17 @@
       "notes": "The NavDropdown wrapper div (position:relative, no z-index) created no stacking context. Listing cards on the browse page create their own stacking contexts (via CSS transform or explicit z-index) and were painting above the dropdown menu. Fixed by adding z-50 to the wrapper div, which creates a stacking context that keeps the dropdown above all page content."
     },
     {
+      "id": "BUG-9",
+      "epic": "Infrastructure",
+      "title": "Mobile menu X button jumps position on open; circle expand animation missing",
+      "status": "Passed",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": "2026-06-11",
+      "testPassedCommit": "pending",
+      "notes": "Two related issues. (1) Button position: using overflow:hidden on body causes iOS Safari to hide the URL bar and shift the visual viewport, making the static-positioned header appear to jump. Fixed with the standard iOS position:fixed scroll-lock technique: save scrollY, set body position:fixed + top:-scrollY + width:100%, restore all on close and call window.scrollTo() to preserve scroll position. (2) Animation: the previous BUG-7 double-rAF fix for the splash overlay still failed because React batches both the mount render and the splashVisible=true update into the same paint frame. Reverted to always-mounting the splash overlay inside sm:hidden (safe because sm:hidden=display:none on desktop, so no compositor-layer interference with NavDropdown). With the element always in the DOM at scale(0), the CSS transition fires correctly when isOpen changes to true."
+    },
+    {
       "id": "BUG-7",
       "epic": "Infrastructure",
       "title": "Mobile menu circle-expand animation missing on open after conditional-mount fix",

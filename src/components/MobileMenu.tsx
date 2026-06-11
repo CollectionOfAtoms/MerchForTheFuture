@@ -23,13 +23,6 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
   // showLinks lags behind isOpen by ~420ms so links only animate in
   // after the splash overlay has finished expanding.
   const [showLinks, setShowLinks] = useState(false);
-  // splashMounted stays true for 420ms after isOpen goes false so the
-  // circle collapse animation can finish before the element is removed.
-  const [splashMounted, setSplashMounted] = useState(false);
-  // splashVisible drives scale(1); it lags one paint behind splashMounted so the
-  // browser can render scale(0) before the opening transition begins.
-  const [splashVisible, setSplashVisible] = useState(false);
-  const splashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLUListElement>(null);
   const linksTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,33 +44,9 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
     }
   }, [isOpen, close]);
 
-  // Mount/unmount the splash overlay in sync with open state, but delay
-  // unmount by 420ms so the circle collapse animation completes first.
-  // On open: mount at scale(0), then tick twice via rAF before setting
-  // splashVisible=true so the browser paints the starting state first.
-  useEffect(() => {
-    if (isOpen) {
-      if (splashTimerRef.current) clearTimeout(splashTimerRef.current);
-      setSplashMounted(true);
-      // Double rAF: first frame ensures the element is in the DOM,
-      // second frame lets the browser paint scale(0) before we animate.
-      const raf1 = requestAnimationFrame(() => {
-        requestAnimationFrame(() => setSplashVisible(true));
-      });
-      return () => cancelAnimationFrame(raf1);
-    } else {
-      setSplashVisible(false);
-      splashTimerRef.current = setTimeout(() => setSplashMounted(false), 420);
-      return () => { if (splashTimerRef.current) clearTimeout(splashTimerRef.current); };
-    }
-  }, [isOpen]);
-
   // Cleanup timers on unmount
   useEffect(() => {
-    return () => {
-      if (linksTimerRef.current) clearTimeout(linksTimerRef.current);
-      if (splashTimerRef.current) clearTimeout(splashTimerRef.current);
-    };
+    return () => { if (linksTimerRef.current) clearTimeout(linksTimerRef.current); };
   }, []);
 
   // Escape key + tab trap
@@ -108,10 +77,22 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
     return () => document.removeEventListener("keydown", handler);
   }, [isOpen, close]);
 
-  // Scroll lock
+  // Scroll lock — uses position:fixed technique so iOS Safari doesn't
+  // hide the URL bar and shift page content when the menu opens.
   useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    if (!isOpen) return;
+    const scrollY = window.scrollY;
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, scrollY);
+    };
   }, [isOpen]);
 
   // currentPath prop overrides the hook — used only in tests where Next.js router context is absent.
@@ -252,42 +233,41 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
         }
       `}</style>
 
-      {/* Splash overlay — mounted only while open (or during the 420ms close animation)
-          so Firefox never holds a GPU compositor layer for it when the menu is idle. */}
-      {splashMounted && (
+      {/* Splash overlay — always in the DOM (inside sm:hidden so it can't
+          interfere with desktop layouts). isOpen drives the CSS transition
+          directly; no conditional mounting needed. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: "1.25rem",
+          right: "1.25rem",
+          width: 1,
+          height: 1,
+          zIndex: 40,
+          pointerEvents: "none",
+        }}
+      >
         <div
-          aria-hidden="true"
           style={{
-            position: "fixed",
-            top: "1.25rem",
-            right: "1.25rem",
-            width: 1,
-            height: 1,
-            zIndex: 40,
+            position: "absolute",
+            borderRadius: "50%",
+            backgroundColor: "#277da1", // cerulean
+            width: "284vmax",
+            height: "284vmax",
+            top: "-142vmax",
+            left: "-142vmax",
+            transform: isOpen ? "scale(1)" : "scale(0)",
+            transformOrigin: "50% 50%",
+            transition: isOpen
+              ? "transform .42s cubic-bezier(0.755, 0.050, 0.855, 0.060)"
+              : "transform .42s cubic-bezier(0.145, 0.885, 0.355, 1.000)",
             pointerEvents: "none",
           }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              borderRadius: "50%",
-              backgroundColor: "#277da1", // cerulean
-              width: "284vmax",
-              height: "284vmax",
-              top: "-142vmax",
-              left: "-142vmax",
-              transform: splashVisible ? "scale(1)" : "scale(0)",
-              transformOrigin: "50% 50%",
-              transition: splashVisible
-                ? "transform .42s cubic-bezier(0.755, 0.050, 0.855, 0.060)"
-                : "transform .42s cubic-bezier(0.145, 0.885, 0.355, 1.000)",
-              pointerEvents: "none",
-            }}
-          />
-        </div>
-      )}
+        />
+      </div>
 
-      {/* Menu items — unmounted when closed so Firefox creates no compositor layer */}
+      {/* Menu items — unmounted when closed */}
       {isOpen && (
         <ul
           ref={menuRef}
