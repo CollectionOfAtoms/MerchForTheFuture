@@ -253,42 +253,42 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
         />
       </div>
 
-      {/* Menu items */}
-      <ul
-        ref={menuRef}
-        id="mobile-menu"
-        hidden={!isOpen}
-        aria-label="Mobile navigation"
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 50,
-          display: isOpen ? "flex" : "none",
-          pointerEvents: isOpen ? "auto" : "none",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "0.25rem",
-          listStyle: "none",
-          margin: 0,
-          padding: 0,
-        }}
-      >
-        {allItems.map(({ key, node }, i) => (
-          <li
-            key={key}
-            style={
-              showLinks
-                ? {
-                    animation: `mb-slide-in 0.32s cubic-bezier(0.000, 0.995, 0.990, 1.000) ${i * 0.055}s both`,
-                  }
-                : { opacity: 0 }
-            }
-          >
-            {node}
-          </li>
-        ))}
-      </ul>
+      {/* Menu items — unmounted when closed so Firefox creates no compositor layer */}
+      {isOpen && (
+        <ul
+          ref={menuRef}
+          id="mobile-menu"
+          aria-label="Mobile navigation"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.25rem",
+            listStyle: "none",
+            margin: 0,
+            padding: 0,
+          }}
+        >
+          {allItems.map(({ key, node }, i) => (
+            <li
+              key={key}
+              style={
+                showLinks
+                  ? {
+                      animation: `mb-slide-in 0.32s cubic-bezier(0.000, 0.995, 0.990, 1.000) ${i * 0.055}s both`,
+                    }
+                  : { opacity: 0 }
+              }
+            >
+              {node}
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/* Hamburger toggle button */}
       <button

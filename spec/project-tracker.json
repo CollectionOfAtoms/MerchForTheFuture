@@ -31,7 +31,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. On Waterfox (Firefox ESR-based), position:fixed descendants can escape a parent's display:none context and remain interactive. The 284vmax splash circle and full-viewport menu ul were sitting over the page on desktop, swallowing clicks and preventing the NavDropdown trigger from firing. Fix: explicit pointer-events:none on both the splash div and menu ul when closed; removed willChange:transform from the circle (GPU compositing hint was triggering the escape). No code change to NavDropdown itself."
+      "notes": "Reported 2026-06-11. On Waterfox (Firefox ESR-based), position:fixed descendants can escape a parent's display:none context and remain interactive. The 284vmax splash circle and full-viewport menu ul were sitting over the page on desktop, swallowing clicks and preventing the NavDropdown trigger from firing. Fix 1 (partial): explicit pointer-events:none on both the splash div and menu ul when closed; removed willChange:transform from the circle. Fix 2 (complete): unmount the menu ul entirely when isOpen is false — Firefox cannot create a compositor layer for an element that does not exist in the DOM. The splash overlay divs retain pointer-events:none as defence-in-depth."
     },
     {
       "id": "BUG-2",
