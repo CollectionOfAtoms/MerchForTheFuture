@@ -60,27 +60,24 @@ describe("US-20.1 — Mobile Navigation (MobileMenu)", () => {
   });
 
   describe("Menu visibility", () => {
-    it("menu is hidden initially (hidden attribute)", () => {
+    it("menu is not in the DOM initially", () => {
       render(<MobileMenu user={null} roles={[]} />);
-      const menu = document.getElementById("mobile-menu");
-      expect(menu).toHaveAttribute("hidden");
+      expect(document.getElementById("mobile-menu")).toBeNull();
     });
 
-    it("menu becomes visible after toggle button click", () => {
+    it("menu is mounted after toggle button click", () => {
       render(<MobileMenu user={null} roles={[]} />);
       const btn = screen.getByRole("button", { name: /toggle menu/i });
       fireEvent.click(btn);
-      const menu = document.getElementById("mobile-menu");
-      expect(menu).not.toHaveAttribute("hidden");
+      expect(document.getElementById("mobile-menu")).toBeInTheDocument();
     });
 
-    it("menu hides again when toggle button is clicked a second time", () => {
+    it("menu is removed from DOM when toggle button is clicked a second time", () => {
       render(<MobileMenu user={null} roles={[]} />);
       const btn = screen.getByRole("button", { name: /toggle menu/i });
       fireEvent.click(btn);
       fireEvent.click(btn);
-      const menu = document.getElementById("mobile-menu");
-      expect(menu).toHaveAttribute("hidden");
+      expect(document.getElementById("mobile-menu")).toBeNull();
     });
   });
 
@@ -103,8 +100,7 @@ describe("US-20.1 — Mobile Navigation (MobileMenu)", () => {
       render(<MobileMenu user={null} roles={[]} />);
       fireEvent.click(screen.getByRole("button", { name: /toggle menu/i }));
       fireEvent.click(screen.getByRole("link", { name: /^browse$/i }));
-      const menu = document.getElementById("mobile-menu");
-      expect(menu).toHaveAttribute("hidden");
+      expect(document.getElementById("mobile-menu")).toBeNull();
     });
   });
 
@@ -161,8 +157,7 @@ describe("US-20.1 — Mobile Navigation (MobileMenu)", () => {
       render(<MobileMenu user={null} roles={[]} />);
       fireEvent.click(screen.getByRole("button", { name: /toggle menu/i }));
       fireEvent.keyDown(document, { key: "Escape" });
-      const menu = document.getElementById("mobile-menu");
-      expect(menu).toHaveAttribute("hidden");
+      expect(document.getElementById("mobile-menu")).toBeNull();
     });
   });
 
@@ -183,8 +178,9 @@ describe("US-20.1 — Mobile Navigation (MobileMenu)", () => {
   });
 
   describe("Accessibility", () => {
-    it("menu has aria-label", () => {
+    it("menu has aria-label when open", () => {
       render(<MobileMenu user={null} roles={[]} />);
+      fireEvent.click(screen.getByRole("button", { name: /toggle menu/i }));
       const menu = document.getElementById("mobile-menu");
       expect(menu).toHaveAttribute("aria-label", "Mobile navigation");
     });

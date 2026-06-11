@@ -23,6 +23,10 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
   // showLinks lags behind isOpen by ~420ms so links only animate in
   // after the splash overlay has finished expanding.
   const [showLinks, setShowLinks] = useState(false);
+  // splashMounted stays true for 420ms after isOpen goes false so the
+  // circle collapse animation can finish before the element is removed.
+  const [splashMounted, setSplashMounted] = useState(false);
+  const splashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLUListElement>(null);
   const linksTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -44,9 +48,24 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
     }
   }, [isOpen, close]);
 
-  // Cleanup timer on unmount
+  // Mount/unmount the splash overlay in sync with open state, but delay
+  // unmount by 420ms so the circle collapse animation completes first.
   useEffect(() => {
-    return () => { if (linksTimerRef.current) clearTimeout(linksTimerRef.current); };
+    if (isOpen) {
+      if (splashTimerRef.current) clearTimeout(splashTimerRef.current);
+      setSplashMounted(true);
+    } else {
+      splashTimerRef.current = setTimeout(() => setSplashMounted(false), 420);
+    }
+    return () => { if (splashTimerRef.current) clearTimeout(splashTimerRef.current); };
+  }, [isOpen]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (linksTimerRef.current) clearTimeout(linksTimerRef.current);
+      if (splashTimerRef.current) clearTimeout(splashTimerRef.current);
+    };
   }, []);
 
   // Escape key + tab trap
@@ -221,37 +240,40 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
         }
       `}</style>
 
-      {/* Splash overlay — a large circle that scales from the button position */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "fixed",
-          top: "1.25rem",
-          right: "1.25rem",
-          width: 1,
-          height: 1,
-          zIndex: 40,
-          pointerEvents: "none",
-        }}
-      >
+      {/* Splash overlay — mounted only while open (or during the 420ms close animation)
+          so Firefox never holds a GPU compositor layer for it when the menu is idle. */}
+      {splashMounted && (
         <div
+          aria-hidden="true"
           style={{
-            position: "absolute",
-            borderRadius: "50%",
-            backgroundColor: "#277da1", // cerulean
-            width: "284vmax",
-            height: "284vmax",
-            top: "-142vmax",
-            left: "-142vmax",
-            transform: isOpen ? "scale(1)" : "scale(0)",
-            transformOrigin: "50% 50%",
-            transition: isOpen
-              ? "transform .42s cubic-bezier(0.755, 0.050, 0.855, 0.060)"
-              : "transform .42s cubic-bezier(0.145, 0.885, 0.355, 1.000)",
+            position: "fixed",
+            top: "1.25rem",
+            right: "1.25rem",
+            width: 1,
+            height: 1,
+            zIndex: 40,
             pointerEvents: "none",
           }}
-        />
-      </div>
+        >
+          <div
+            style={{
+              position: "absolute",
+              borderRadius: "50%",
+              backgroundColor: "#277da1", // cerulean
+              width: "284vmax",
+              height: "284vmax",
+              top: "-142vmax",
+              left: "-142vmax",
+              transform: isOpen ? "scale(1)" : "scale(0)",
+              transformOrigin: "50% 50%",
+              transition: isOpen
+                ? "transform .42s cubic-bezier(0.755, 0.050, 0.855, 0.060)"
+                : "transform .42s cubic-bezier(0.145, 0.885, 0.355, 1.000)",
+              pointerEvents: "none",
+            }}
+          />
+        </div>
+      )}
 
       {/* Menu items — unmounted when closed so Firefox creates no compositor layer */}
       {isOpen && (
