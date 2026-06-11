@@ -343,37 +343,37 @@ describe("US-23.2 — Restructured Mobile Menu with Role-Aware Sections", () => 
   // ─── Toggle / visibility (smoke tests preserved from US-20.1) ─────────────
 
   describe("Toggle and visibility", () => {
-    it("menu is hidden initially", () => {
+    it("menu is not in the DOM initially", () => {
       render(<MobileMenu user={null} roles={[]} />);
-      expect(document.getElementById("mobile-menu")).toHaveAttribute("hidden");
+      expect(document.getElementById("mobile-menu")).toBeNull();
     });
 
-    it("menu visible after toggle click", () => {
+    it("menu is mounted after toggle click", () => {
       render(<MobileMenu user={null} roles={[]} />);
       open();
-      expect(document.getElementById("mobile-menu")).not.toHaveAttribute("hidden");
+      expect(document.getElementById("mobile-menu")).toBeInTheDocument();
     });
 
-    it("menu hides on second toggle click", () => {
+    it("menu is removed from DOM on second toggle click", () => {
       render(<MobileMenu user={null} roles={[]} />);
       const btn = screen.getByRole("button", { name: /toggle menu/i });
       fireEvent.click(btn);
       fireEvent.click(btn);
-      expect(document.getElementById("mobile-menu")).toHaveAttribute("hidden");
+      expect(document.getElementById("mobile-menu")).toBeNull();
     });
 
     it("Escape closes the menu", () => {
       render(<MobileMenu user={null} roles={[]} />);
       open();
       fireEvent.keyDown(document, { key: "Escape" });
-      expect(document.getElementById("mobile-menu")).toHaveAttribute("hidden");
+      expect(document.getElementById("mobile-menu")).toBeNull();
     });
 
     it("clicking a link closes the menu", () => {
       render(<MobileMenu user={null} roles={[]} />);
       open();
       fireEvent.click(screen.getByRole("link", { name: /^browse$/i }));
-      expect(document.getElementById("mobile-menu")).toHaveAttribute("hidden");
+      expect(document.getElementById("mobile-menu")).toBeNull();
     });
   });
 });

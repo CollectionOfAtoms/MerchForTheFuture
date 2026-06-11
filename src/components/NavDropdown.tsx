@@ -82,11 +82,22 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
-        onClick={() => setOpen((v) => !v)}
+        onMouseDown={(e) => {
+          // Use mousedown so Firefox compositor layers inside the button
+          // can't eat the event before it reaches the handler.
+          e.stopPropagation(); // don't let the click-outside handler see this
+          setOpen((v) => !v);
+        }}
+        onClick={(e) => {
+          // Keyboard-only path: Enter/Space dispatch click with detail=0,
+          // no preceding mousedown, so we handle it here.
+          if (e.detail === 0) setOpen((v) => !v);
+        }}
         className="flex items-center gap-1 text-sm text-blue-slate hover:text-cerulean transition-colors max-w-[160px]"
       >
         <span className="truncate">{label}</span>
-        {/* Chevron-down */}
+        {/* Chevron-down — pointer-events:none prevents the SVG's transform
+            compositor layer from intercepting clicks in Firefox/Waterfox. */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="14"
@@ -102,6 +113,7 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
             flexShrink: 0,
             transform: open ? "rotate(180deg)" : "rotate(0deg)",
             transition: "transform 0.2s ease",
+            pointerEvents: "none",
           }}
         >
           <polyline points="6 9 12 15 18 9" />
