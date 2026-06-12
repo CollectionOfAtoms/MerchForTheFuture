@@ -42,12 +42,20 @@ export default async function SellerListingsPage() {
             {listings.length === 0 ? "No listings yet." : `${listings.length} listing${listings.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Link
-          href="/seller/listings/new"
-          className="self-start sm:self-auto rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
-        >
-          + Add listing
-        </Link>
+        <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+          <Link
+            href="/seller/apparel/new"
+            className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+          >
+            + Apparel listing
+          </Link>
+          <Link
+            href="/seller/listings/new"
+            className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
+          >
+            + Artwork listing
+          </Link>
+        </div>
       </div>
 
       {listings.length === 0 ? (

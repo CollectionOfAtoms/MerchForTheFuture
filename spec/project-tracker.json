@@ -1528,12 +1528,12 @@
    "id": "US-MFTF-5.3",
    "epic": "Epic MFTF-5: Apparel Listing Creation",
    "title": "Create Apparel Listing Form",
-   "status": "Not Started",
-   "testWrittenDate": null,
-   "testWrittenCommit": null,
-   "testPassedDate": null,
-   "testPassedCommit": null,
-   "notes": null
+   "status": "Passed",
+   "testWrittenDate": "2026-06-12",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-06-12",
+   "testPassedCommit": "pending",
+   "notes": "19 tests passing. createApparelListingAction (src/app/actions/apparel.ts) returns { error: 'Unauthorized' } for non-sellers; validates title, active product type, design file, retail price >= $1, >=1 offered color, color-belongs-to-type, <=10 lifestyle photos; creates ApparelListing (ACTIVE on publish, ARCHIVED on draft) + ApparelListingColor (isOffered) + ApparelListingImage (originalUrl, primary/sortOrder) rows; design file stored verbatim. getActiveProductTypesForListing (src/lib/apparel/listings.ts) exposes name/colors(name+image)/sizes only — never provider/SKU/providerColorCode. Form at /seller/apparel/new (server page + NewApparelListingForm client component): product picker (name only), clean design upload (PNG/SVG/TIFF, no watermark), colorImageUrl swatch curation (all offered by default), lifestyle photo upload, price. Seller listings page now links '+ Apparel listing'. Deviation from AC: publish redirects to the seller edit page (not /shop/[id]) so lifestyle variants are generated client-side and because the public storefront lands in MFTF-6."
   },
   {
    "id": "US-MFTF-5.4",
