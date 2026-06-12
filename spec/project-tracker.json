@@ -1517,12 +1517,12 @@
    "id": "US-MFTF-5.2",
    "epic": "Epic MFTF-5: Apparel Listing Creation",
    "title": "Lifestyle Photo Upload with Corner Watermark",
-   "status": "Not Started",
-   "testWrittenDate": null,
-   "testWrittenCommit": null,
-   "testPassedDate": null,
-   "testPassedCommit": null,
-   "notes": null
+   "status": "Passed",
+   "testWrittenDate": "2026-06-12",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-06-12",
+   "testPassedCommit": "pending",
+   "notes": "16 tests passing. generateVariants() gained an optional watermarkStyle ('diagonal' | 'corner', defaults to 'diagonal'). Shared buildVariantBuffers()/uploadVariants() helpers extracted; sharp call sequence preserved so all US-18.2 diagonal tests stay green. New generateApparelImageVariants(apparelImageId) processes ApparelListingImage lifestyle photos with the corner watermark (MFTF wordmark, ~8% width, 70% opacity, bottom-right; grid/thumbnail unwatermarked) and uploads under apparel/variants/. POST /api/apparel/images/process route added. Clean design files bypass the pipeline entirely — stored verbatim, never watermarked."
   },
   {
    "id": "US-MFTF-5.3",
