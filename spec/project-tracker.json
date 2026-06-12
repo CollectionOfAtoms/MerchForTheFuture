@@ -42,7 +42,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Regression introduced when the splash overlay was changed from always-mounted to conditionally-mounted (splashMounted state). The element now enters the DOM with isOpen already true, so the transform starts at scale(1) immediately \u2014 no prior scale(0) state to transition from. Close animation was unaffected because the element is already at scale(1) in the DOM when isOpen goes false. Fix: added splashVisible state (separate from splashMounted). On open: element mounts at scale(0), then a double requestAnimationFrame defers setSplashVisible(true) by two paint frames so the browser renders the starting state before the transition fires. The circle-expand and circle-collapse animations are both driven by splashVisible."
+      "notes": "Regression introduced when the splash overlay was changed from always-mounted to conditionally-mounted (splashMounted state). The element now enters the DOM with isOpen already true, so the transform starts at scale(1) immediately — no prior scale(0) state to transition from. Close animation was unaffected because the element is already at scale(1) in the DOM when isOpen goes false. Fix: added splashVisible state (separate from splashMounted). On open: element mounts at scale(0), then a double requestAnimationFrame defers setSplashVisible(true) by two paint frames so the browser renders the starting state before the transition fires. The circle-expand and circle-collapse animations are both driven by splashVisible."
     },
     {
       "id": "BUG-3",
@@ -64,29 +64,29 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. Symptom: sign-in form shows 'Signing in\u2026' indefinitely; refreshing lands on the correct dashboard (session was created server-side). Root cause: the mkcert certificate in certificates/localhost.pem covered only localhost/127.0.0.1/::1/0.0.0.0 \u2014 not 192.168.68.54. When accessing the dev server from the network at https://192.168.68.54:3000, browsers allow the initial HTML page load (user clicks through the cert warning) but silently block all subsequent JS-driven subresource requests including RSC payload fetches. After signInAction throws NEXT_REDIRECT, the client router tries to fetch the RSC payload for the destination route \u2014 that fetch is blocked, leaving useActionState pending:true forever. Fix: (1) regenerated the mkcert cert with mkcert -cert-file certificates/localhost.pem -key-file certificates/localhost-key.pem localhost 127.0.0.1 ::1 192.168.68.54; (2) updated the dev script in package.json to explicitly pass --experimental-https-key and --experimental-https-cert so Next.js uses the custom cert. Previous partial fix (direct-role redirect in signInAction to avoid the double-hop) is kept as a latency improvement."
+      "notes": "Reported 2026-06-11. Symptom: sign-in form shows 'Signing in…' indefinitely; refreshing lands on the correct dashboard (session was created server-side). Root cause: the mkcert certificate in certificates/localhost.pem covered only localhost/127.0.0.1/::1/0.0.0.0 — not 192.168.68.54. When accessing the dev server from the network at https://192.168.68.54:3000, browsers allow the initial HTML page load (user clicks through the cert warning) but silently block all subsequent JS-driven subresource requests including RSC payload fetches. After signInAction throws NEXT_REDIRECT, the client router tries to fetch the RSC payload for the destination route — that fetch is blocked, leaving useActionState pending:true forever. Fix: (1) regenerated the mkcert cert with mkcert -cert-file certificates/localhost.pem -key-file certificates/localhost-key.pem localhost 127.0.0.1 ::1 192.168.68.54; (2) updated the dev script in package.json to explicitly pass --experimental-https-key and --experimental-https-cert so Next.js uses the custom cert. Previous partial fix (direct-role redirect in signInAction to avoid the double-hop) is kept as a latency improvement."
     },
     {
       "id": "BUG-5",
       "epic": "Infrastructure",
-      "title": "Buyer dashboard 'View \u2192' link 404s \u2014 wrong route /listings instead of /artwork",
+      "title": "Buyer dashboard 'View →' link 404s — wrong route /listings instead of /artwork",
       "status": "Passed",
       "testWrittenDate": null,
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. Both 'View \u2192' links on the buyer dashboard (winning bids highlight and active bids list) used href /listings/${bid.listingId}. The route is /artwork/[id] keyed by artwork ID. Fix: added artworkId to BuyerActiveBid interface and query (selected artwork.id), changed both hrefs to /artwork/${bid.artworkId}."
+      "notes": "Reported 2026-06-11. Both 'View →' links on the buyer dashboard (winning bids highlight and active bids list) used href /listings/${bid.listingId}. The route is /artwork/[id] keyed by artwork ID. Fix: added artworkId to BuyerActiveBid interface and query (selected artwork.id), changed both hrefs to /artwork/${bid.artworkId}."
     },
     {
       "id": "BUG-4",
       "epic": "Infrastructure",
-      "title": "NavDropdown unclickable and sign-in hangs on network dev \u2014 mkcert cert missing 192.168.68.54 SAN",
+      "title": "NavDropdown unclickable and sign-in hangs on network dev — mkcert cert missing 192.168.68.54 SAN",
       "status": "Passed",
       "testWrittenDate": null,
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. NavDropdown button showed hover styles (CSS worked) but clicking gave no feedback in any browser (Chrome, Waterfox) when accessed via https://192.168.68.54:3000. Root cause: same as BUG-6 \u2014 mkcert cert did not list 192.168.68.54 as a Subject Alternative Name. Browsers load the initial HTML (user accepts the cert warning for the page) but block JS subresource fetches to an untrusted HTTPS origin. Without JS loading, React never hydrates, event handlers are never attached, and the dropdown cannot open. The 'sometimes works' behavior occurred on fresh page loads where the browser's cert exception was still active in memory. Fixed by the same cert regeneration as BUG-6. Earlier code-level fixes (conditional MobileMenu mounting, pointer-events:none on SVG, direct-role redirect in signInAction) remain as defensive improvements but were not the root cause."
+      "notes": "Reported 2026-06-11. NavDropdown button showed hover styles (CSS worked) but clicking gave no feedback in any browser (Chrome, Waterfox) when accessed via https://192.168.68.54:3000. Root cause: same as BUG-6 — mkcert cert did not list 192.168.68.54 as a Subject Alternative Name. Browsers load the initial HTML (user accepts the cert warning for the page) but block JS subresource fetches to an untrusted HTTPS origin. Without JS loading, React never hydrates, event handlers are never attached, and the dropdown cannot open. The 'sometimes works' behavior occurred on fresh page loads where the browser's cert exception was still active in memory. Fixed by the same cert regeneration as BUG-6. Earlier code-level fixes (conditional MobileMenu mounting, pointer-events:none on SVG, direct-role redirect in signInAction) remain as defensive improvements but were not the root cause."
     },
     {
       "id": "BUG-2",
@@ -108,7 +108,7 @@
       "testWrittenCommit": "a714364",
       "testPassedDate": "2026-06-03",
       "testPassedCommit": "a163102",
-      "notes": "Reported 2026-06-03. Portrait (tall/narrow) images come out rotated 90\u00b0 in generated variants (display, grid, thumbnail). Fix 1: add .rotate() as first call in the normalizedBuffer Sharp pipeline (src/lib/artworks/variants.ts). Fix 2: use timestamped filenames for variant blobs so each generation produces a unique URL, defeating Vercel CDN and browser caching of the old rotated variants."
+      "notes": "Reported 2026-06-03. Portrait (tall/narrow) images come out rotated 90° in generated variants (display, grid, thumbnail). Fix 1: add .rotate() as first call in the normalizedBuffer Sharp pipeline (src/lib/artworks/variants.ts). Fix 2: use timestamped filenames for variant blobs so each generation produces a unique URL, defeating Vercel CDN and browser caching of the old rotated variants."
     },
     {
       "id": "CHORE-13",
@@ -174,7 +174,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "pending",
-      "notes": "53 tests across US-9.1\u2013US-9.6 covering nav role logic, listings index data, createListingAction validation and success paths, updateListingAction, toggleListingStatusAction with browse visibility, and tracker JSON structure. Epic 11/12 statuses corrected from Complete to Passed with dates and commit refs."
+      "notes": "53 tests across US-9.1–US-9.6 covering nav role logic, listings index data, createListingAction validation and success paths, updateListingAction, toggleListingStatusAction with browse visibility, and tracker JSON structure. Epic 11/12 statuses corrected from Complete to Passed with dates and commit refs."
     },
     {
       "id": "US-1.1",
@@ -383,7 +383,7 @@
       "testWrittenCommit": "c0e7a59",
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Deferred \u2014 single-seller model; no Stripe Connect onboarding"
+      "notes": "Deferred — single-seller model; no Stripe Connect onboarding"
     },
     {
       "id": "US-4.4",
@@ -493,7 +493,7 @@
       "testWrittenCommit": "dbd05a8",
       "testPassedDate": "2026-06-04",
       "testPassedCommit": "33df65e",
-      "notes": "On sign-up: show holding page, send 'You're almost done' email with single-use magic-link token (24h expiry). Clicking link opens new tab, shows verified confirmation, redirects to buyer dashboard. Expired/used tokens show error + resend option. Unverified users hitting auth pages redirected to holding page. Sets emailVerified timestamp on user record. Data migration: backfill emailVerified=createdAt for existing users on deploy. Post-merge fix: narrowed result.error type on verify-email page (string|undefined \u2192 string) to resolve Vercel TypeScript build error."
+      "notes": "On sign-up: show holding page, send 'You're almost done' email with single-use magic-link token (24h expiry). Clicking link opens new tab, shows verified confirmation, redirects to buyer dashboard. Expired/used tokens show error + resend option. Unverified users hitting auth pages redirected to holding page. Sets emailVerified timestamp on user record. Data migration: backfill emailVerified=createdAt for existing users on deploy. Post-merge fix: narrowed result.error type on verify-email page (string|undefined → string) to resolve Vercel TypeScript build error."
     },
     {
       "id": "US-7.1",
@@ -625,7 +625,7 @@
       "testWrittenCommit": "9e790dc",
       "testPassedDate": "2026-05-09",
       "testPassedCommit": "9e790dc",
-      "notes": "Grid of all seller listings with status badge, price, sale type, and action buttons. Mobile fix: each listing row wraps to two lines \u2014 thumbnail+title on line 1, status badge+actions on line 2. Header also stacks on mobile with Add listing button left-aligned."
+      "notes": "Grid of all seller listings with status badge, price, sale type, and action buttons. Mobile fix: each listing row wraps to two lines — thumbnail+title on line 1, status badge+actions on line 2. Header also stacks on mobile with Add listing button left-aligned."
     },
     {
       "id": "US-9.3",
@@ -706,7 +706,7 @@
       "commitLog": [
         {
           "hash": "pending",
-          "message": "feat(epic-11): implement US-11.1 \u2014 require image on listing creation (tests only)"
+          "message": "feat(epic-11): implement US-11.1 — require image on listing creation (tests only)"
         }
       ]
     },
@@ -723,7 +723,7 @@
       "commitLog": [
         {
           "hash": "pending",
-          "message": "feat(epic-11): implement US-11.2 \u2014 deactivate listing with auction bid guard"
+          "message": "feat(epic-11): implement US-11.2 — deactivate listing with auction bid guard"
         }
       ]
     },
@@ -740,7 +740,7 @@
       "commitLog": [
         {
           "hash": "pending",
-          "message": "feat(epic-11): implement US-11.3 \u2014 delete unsold listing"
+          "message": "feat(epic-11): implement US-11.3 — delete unsold listing"
         }
       ]
     },
@@ -774,7 +774,7 @@
       "commitLog": [
         {
           "hash": "9f739e6",
-          "message": "feat(epic-12): implement US-12.2 \u2014 my bids page with full bid history"
+          "message": "feat(epic-12): implement US-12.2 — my bids page with full bid history"
         }
       ]
     },
@@ -791,7 +791,7 @@
       "commitLog": [
         {
           "hash": "ba5c9c6",
-          "message": "feat(epic-12): implement US-12.3 \u2014 outbid email notification via Resend"
+          "message": "feat(epic-12): implement US-12.3 — outbid email notification via Resend"
         }
       ]
     },
@@ -808,7 +808,7 @@
       "commitLog": [
         {
           "hash": "0b5c10e",
-          "message": "feat(epic-12): implement US-12.4 \u2014 buyer account settings (profile, shipping, notifications)"
+          "message": "feat(epic-12): implement US-12.4 — buyer account settings (profile, shipping, notifications)"
         },
         {
           "hash": "4b19739",
@@ -825,7 +825,7 @@
       "testWrittenCommit": "1330b55",
       "testPassedDate": "2026-05-09",
       "testPassedCommit": "02b719b",
-      "notes": "PRIORITY \u2014 implement before Epics 10-12. 14 tests passing. Tracker summary, site metrics, activity feed. Homepage redirects admin to /dashboard/admin. Mobile fix: header stacks vertically on small screens, buttons expand to fill row width."
+      "notes": "PRIORITY — implement before Epics 10-12. 14 tests passing. Tracker summary, site metrics, activity feed. Homepage redirects admin to /dashboard/admin. Mobile fix: header stacks vertically on small screens, buttons expand to fill row width."
     },
     {
       "id": "US-13.2",
@@ -836,7 +836,7 @@
       "testWrittenCommit": "b1dfabf",
       "testPassedDate": "2026-05-09",
       "testPassedCommit": "8e92e98",
-      "notes": "PRIORITY \u2014 implement before Epics 10-12. 17 tests passing. Listings summary, active listings grid, activity feed, revenue snapshot. Homepage redirects seller to /dashboard/seller"
+      "notes": "PRIORITY — implement before Epics 10-12. 17 tests passing. Listings summary, active listings grid, activity feed, revenue snapshot. Homepage redirects seller to /dashboard/seller"
     },
     {
       "id": "US-13.3",
@@ -847,7 +847,7 @@
       "testWrittenCommit": "b48f87c",
       "testPassedDate": "2026-05-09",
       "testPassedCommit": "0ef37b0",
-      "notes": "PRIORITY \u2014 implement before Epics 10-12. 14 tests passing. Active bids with winning/outbid status, top bids highlight, order history. Homepage redirects buyer to /dashboard/buyer"
+      "notes": "PRIORITY — implement before Epics 10-12. 14 tests passing. Active bids with winning/outbid status, top bids highlight, order history. Homepage redirects buyer to /dashboard/buyer"
     },
     {
       "id": "US-14.1",
@@ -858,7 +858,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-10",
       "testPassedCommit": "6062d0f",
-      "notes": "Authenticated buyer-locked page at /orders/[orderId]/fulfill. Multi-step: shipping \u2192 payment \u2192 confirmation."
+      "notes": "Authenticated buyer-locked page at /orders/[orderId]/fulfill. Multi-step: shipping → payment → confirmation."
     },
     {
       "id": "US-14.2",
@@ -946,7 +946,7 @@
       "testWrittenCommit": "6140ab9",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "6140ab9",
-      "notes": "7 tests passing. /prints/page.tsx created with browseArtworks availability:print filter. SOLD originals with print enabled appear. Pagination works. Bugfix: browse page Prints tab was not passing availability filter \u2014 saleTypeParam \"print\" fell through auction/fixed mapping to undefined."
+      "notes": "7 tests passing. /prints/page.tsx created with browseArtworks availability:print filter. SOLD originals with print enabled appear. Pagination works. Bugfix: browse page Prints tab was not passing availability filter — saleTypeParam \"print\" fell through auction/fixed mapping to undefined."
     },
     {
       "id": "US-15.4",
@@ -979,7 +979,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "pending",
-      "notes": "filterByAspectRatio() in listing.ts filters catalog to \u00b110% ratio match, sorted by closeness."
+      "notes": "filterByAspectRatio() in listing.ts filters catalog to ±10% ratio match, sorted by closeness."
     },
     {
       "id": "US-15.7",
@@ -1001,7 +1001,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "pending",
-      "notes": "8 tests. updateUserRolesAction in actions/admin.ts; /admin/users page with UserRoleEditor client component. Toggle-on-click saves immediately. BUYER cannot be removed. Admin cannot remove own ADMIN role. Mobile layout fix: table-fixed with col widths (45/22/33%), email mid-truncated (first 15 chars + \u2026 + last 6) in monospace so Roles column never gets squeezed off-screen."
+      "notes": "8 tests. updateUserRolesAction in actions/admin.ts; /admin/users page with UserRoleEditor client component. Toggle-on-click saves immediately. BUYER cannot be removed. Admin cannot remove own ADMIN role. Mobile layout fix: table-fixed with col widths (45/22/33%), email mid-truncated (first 15 chars + … + last 6) in monospace so Roles column never gets squeezed off-screen."
     },
     {
       "id": "US-16.1",
@@ -1045,7 +1045,7 @@
       "testWrittenCommit": "649e6ce",
       "testPassedDate": "2026-06-10",
       "testPassedCommit": "f269950",
-      "notes": "12 tests. Error notification logic extracted into createFulfillmentOrder() wrapper in src/lib/fulfillment/createOrder.ts \u2014 any provider (Prodigi, Teemill, future) that throws automatically alerts the seller. 7 integration tests via confirmShippingAction; 5 provider-agnostic unit tests use a hand-rolled mock provider. sendFulfillmentErrorEmail walks order \u2192 originalListing \u2192 artwork \u2192 seller. Buyer always receives success response."
+      "notes": "12 tests. Error notification logic extracted into createFulfillmentOrder() wrapper in src/lib/fulfillment/createOrder.ts — any provider (Prodigi, Teemill, future) that throws automatically alerts the seller. 7 integration tests via confirmShippingAction; 5 provider-agnostic unit tests use a hand-rolled mock provider. sendFulfillmentErrorEmail walks order → originalListing → artwork → seller. Buyer always receives success response."
     },
     {
       "id": "CHORE-7",
@@ -1067,7 +1067,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "pending",
-      "notes": "Three bugs fixed: (1) MSW v2 does not support RegExp URL patterns \u2014 replaced with explicit PRODIGI_BASES.flatMap() for both live and sandbox URLs so tests are intercepted correctly. (2) Print order Prodigi flow was broken: confirmShippingAction rejected PAID orders; now allows PENDING|PAID; creates Prodigi order + transitions to PROCESSING after shipping collected for PAID PRINT orders. (3) fulfillPayment() webhook guarded against calling Prodigi with empty shipping fields (shippingName check). sendPurchaseConfirmation now called from confirmShippingAction for PAID PRINT orders after Prodigi creation."
+      "notes": "Three bugs fixed: (1) MSW v2 does not support RegExp URL patterns — replaced with explicit PRODIGI_BASES.flatMap() for both live and sandbox URLs so tests are intercepted correctly. (2) Print order Prodigi flow was broken: confirmShippingAction rejected PAID orders; now allows PENDING|PAID; creates Prodigi order + transitions to PROCESSING after shipping collected for PAID PRINT orders. (3) fulfillPayment() webhook guarded against calling Prodigi with empty shipping fields (shippingName check). sendPurchaseConfirmation now called from confirmShippingAction for PAID PRINT orders after Prodigi creation."
     },
     {
       "id": "CHORE-5",
@@ -1100,7 +1100,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "In Vercel production env vars: (1) PRODIGI_API_KEY \u2192 live key from dashboard.prodigi.com; PRODIGI_API_BASE_URL \u2192 leave unset (defaults to live API). (2) STRIPE_SECRET_KEY \u2192 live sk_live_... key; NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \u2192 live pk_live_... key; STRIPE_WEBHOOK_SECRET \u2192 re-register webhook at api.stripe.com/webhooks pointing to production domain and use the new signing secret. Verify Stripe Connect is enabled for live mode. Double-check no test_ or sandbox keys remain in Vercel settings."
+      "notes": "In Vercel production env vars: (1) PRODIGI_API_KEY → live key from dashboard.prodigi.com; PRODIGI_API_BASE_URL → leave unset (defaults to live API). (2) STRIPE_SECRET_KEY → live sk_live_... key; NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY → live pk_live_... key; STRIPE_WEBHOOK_SECRET → re-register webhook at api.stripe.com/webhooks pointing to production domain and use the new signing secret. Verify Stripe Connect is enabled for live mode. Double-check no test_ or sandbox keys remain in Vercel settings."
     },
     {
       "id": "CHORE-3",
@@ -1133,7 +1133,7 @@
       "testWrittenCommit": "4ab9a6c",
       "testPassedDate": "2026-05-12",
       "testPassedCommit": "4ab9a6c",
-      "notes": "Forgot-password form \u2192 sends time-limited reset email. No account enumeration. Invalidates previous token."
+      "notes": "Forgot-password form → sends time-limited reset email. No account enumeration. Invalidates previous token."
     },
     {
       "id": "US-17.2",
@@ -1166,7 +1166,7 @@
       "testWrittenCommit": "11534a7",
       "testPassedDate": "2026-05-12",
       "testPassedCommit": "521cf77",
-      "notes": "Three variants: display (watermarked, 2400px max, JPEG 85), grid (800px max, JPEG 75), thumbnail (400\u00d7400 crop, JPEG 70). Stored in CDN, URLs on ArtworkImage. Blocking UX; form submit disabled until all images processed. Watermark: 'Art & Sol' diagonal, SVG sized to match output. Tests updated for two-pass sharp flow and brand watermark text. Bugfix: new-listing page hydration mismatch \u2014 Date.now() moved to stable useState initialisers; suppressHydrationWarning added to submit button for React 19 PE-driven disabled mismatch. Bugfix: TIFF variant generation \u2014 added sRGB normalisation and alpha flattening pass so CMYK/multi-channel TIFFs encode to JPEG correctly."
+      "notes": "Three variants: display (watermarked, 2400px max, JPEG 85), grid (800px max, JPEG 75), thumbnail (400×400 crop, JPEG 70). Stored in CDN, URLs on ArtworkImage. Blocking UX; form submit disabled until all images processed. Watermark: 'Art & Sol' diagonal, SVG sized to match output. Tests updated for two-pass sharp flow and brand watermark text. Bugfix: new-listing page hydration mismatch — Date.now() moved to stable useState initialisers; suppressHydrationWarning added to submit button for React 19 PE-driven disabled mismatch. Bugfix: TIFF variant generation — added sRGB normalisation and alpha flattening pass so CMYK/multi-channel TIFFs encode to JPEG correctly."
     },
     {
       "id": "US-18.3",
@@ -1177,7 +1177,7 @@
       "testWrittenCommit": "b8e69f5",
       "testPassedDate": "2026-06-03",
       "testPassedCommit": "7727427",
-      "notes": "Regenerate button (\u21ba) on each image card in listing edit page. Calls regenerateVariantsAction server action which re-runs generateVariants for the given imageId. Auth-guarded (returns {error} not redirect), seller-ownership-checked; works for SOLD listings. EditListingForm images type updated to include displayUrl so ImageUploader does not re-queue already-processed images. BUG-2 fix included: deleteImageAction guards against deleting last image; \u2715 button hidden in UI when only one image remains."
+      "notes": "Regenerate button (↺) on each image card in listing edit page. Calls regenerateVariantsAction server action which re-runs generateVariants for the given imageId. Auth-guarded (returns {error} not redirect), seller-ownership-checked; works for SOLD listings. EditListingForm images type updated to include displayUrl so ImageUploader does not re-queue already-processed images. BUG-2 fix included: deleteImageAction guards against deleting last image; ✕ button hidden in UI when only one image remains."
     },
     {
       "id": "US-19.1",
@@ -1188,7 +1188,7 @@
       "testWrittenCommit": "7392ac7",
       "testPassedDate": "2026-05-16",
       "testPassedCommit": "04e8f43",
-      "notes": "Click image \u2192 full-screen lightbox with display variant. Darkened backdrop. Backdrop click closes. cursor-zoom-in on thumbnail."
+      "notes": "Click image → full-screen lightbox with display variant. Darkened backdrop. Backdrop click closes. cursor-zoom-in on thumbnail."
     },
     {
       "id": "US-19.2",
@@ -1210,7 +1210,7 @@
       "testWrittenCommit": "7392ac7",
       "testPassedDate": "2026-05-16",
       "testPassedCommit": "04e8f43",
-      "notes": "\u00d7 button top-right, Escape key, backdrop click. Body scroll locked while open; scroll position restored on close."
+      "notes": "× button top-right, Escape key, backdrop click. Body scroll locked while open; scroll position restored on close."
     },
     {
       "id": "US-19.4",
@@ -1221,7 +1221,7 @@
       "testWrittenCommit": "7392ac7",
       "testPassedDate": "2026-05-16",
       "testPassedCommit": "04e8f43",
-      "notes": "Circular lens follows cursor, 2\u20133\u00d7 zoom, uses display variant for sharpness. Hidden on touch devices. Disappears on mouse leave. Distinct border."
+      "notes": "Circular lens follows cursor, 2–3× zoom, uses display variant for sharpness. Hidden on touch devices. Disappears on mouse leave. Distinct border."
     },
     {
       "id": "US-20.1",
@@ -1232,7 +1232,7 @@
       "testWrittenCommit": "17b0077",
       "testPassedDate": "2026-05-17",
       "testPassedCommit": "17b0077",
-      "notes": "Animated hamburger mobile nav (SVG bars\u2192X, circular splash overlay, staggered items). Tab trap, Escape key, scroll lock. Active page underline+glow indicator (data-active). CSS focus ring on keyboard nav. 28 tests."
+      "notes": "Animated hamburger mobile nav (SVG bars→X, circular splash overlay, staggered items). Tab trap, Escape key, scroll lock. Active page underline+glow indicator (data-active). CSS focus ring on keyboard nav. 28 tests."
     },
     {
       "id": "US-21.1",
@@ -1254,7 +1254,7 @@
       "testWrittenCommit": "6f38052",
       "testPassedDate": "2026-06-02",
       "testPassedCommit": "ff05ccc",
-      "notes": "5 tests passing. fulfillPaymentBySession verifies Stripe session payment_status before marking PAID; resolveSessionFulfillment called on fulfill page load when ?session_id present \u2014 eliminates webhook race condition. Both are idempotent."
+      "notes": "5 tests passing. fulfillPaymentBySession verifies Stripe session payment_status before marking PAID; resolveSessionFulfillment called on fulfill page load when ?session_id present — eliminates webhook race condition. Both are idempotent."
     },
     {
       "id": "US-22.1",
@@ -1276,7 +1276,7 @@
       "testWrittenCommit": "053df6c",
       "testPassedDate": "2026-06-03",
       "testPassedCommit": "90e8d9d",
-      "notes": "11 tests. getOrderDetail() buyer-locked, full fields, shipping, tracking, seller email via artwork\u2192seller, null artwork for orphan prints. /buyer/orders/[orderId] page with CancelOrderButton and ContactSupportModal client islands."
+      "notes": "11 tests. getOrderDetail() buyer-locked, full fields, shipping, tracking, seller email via artwork→seller, null artwork for orphan prints. /buyer/orders/[orderId] page with CancelOrderButton and ContactSupportModal client islands."
     },
     {
       "id": "US-22.3",
@@ -1309,7 +1309,7 @@
       "testWrittenCommit": "522818c",
       "testPassedDate": "2026-06-05",
       "testPassedCommit": "32bbc27",
-      "notes": "44 tests. NavDropdown client component: toggle open/close, Escape+focus return, click-outside, role-dependent menu items (buyer/seller/admin), active page highlight, signed-out renders nothing. Nav.tsx wired up \u2014 flat inline role links removed from desktop nav, mobile menu unaffected. Admin dropdown includes /admin/tracker (labelled Tracker), /admin/users, /admin/fulfillment. Settings link routes by role (/buyer/settings, /seller/settings, /admin/settings). Seller settings page (Profile + bidReceivedEmails/saleCompletedEmails notifications). Admin settings page (Profile only). updateProfileAction revalidates role-specific path. updateSellerNotificationPrefsAction added. Obsolete 'Creating privileged accounts' callout removed from /admin/tracker page."
+      "notes": "44 tests. NavDropdown client component: toggle open/close, Escape+focus return, click-outside, role-dependent menu items (buyer/seller/admin), active page highlight, signed-out renders nothing. Nav.tsx wired up — flat inline role links removed from desktop nav, mobile menu unaffected. Admin dropdown includes /admin/tracker (labelled Tracker), /admin/users, /admin/fulfillment. Settings link routes by role (/buyer/settings, /seller/settings, /admin/settings). Seller settings page (Profile + bidReceivedEmails/saleCompletedEmails notifications). Admin settings page (Profile only). updateProfileAction revalidates role-specific path. updateSellerNotificationPrefsAction added. Obsolete 'Creating privileged accounts' callout removed from /admin/tracker page."
     },
     {
       "id": "US-23.2",
@@ -1353,7 +1353,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-06",
       "testPassedCommit": "pending",
-      "notes": "Replaced Art & Sol art-marketplace hero copy with MerchForTheFuture brand copy. Added mission statement section. Updated categories (Apparel/Prints/Originals) and how-it-works steps to match the apparel domain. Revised hero: big h1 is now \"We are living up to our name!\", subtitle is coming-soon copy, shop button removed. Removed How-it-works and Shop-by-type sections. Removed Nav from homepage via (main) route group. Excluded scripts/ from tsconfig. Hero section made full-viewport, text centered, all sizes doubled. H1 reduced from 8xl/9xl to 7xl/8xl. Moved api/ back out of (main) route group \u2014 tests import routes by @/app/api path which broke when nested. Staged (main) route group file renames (were committed as mv but not git-added)."
+      "notes": "Replaced Art & Sol art-marketplace hero copy with MerchForTheFuture brand copy. Added mission statement section. Updated categories (Apparel/Prints/Originals) and how-it-works steps to match the apparel domain. Revised hero: big h1 is now \"We are living up to our name!\", subtitle is coming-soon copy, shop button removed. Removed How-it-works and Shop-by-type sections. Removed Nav from homepage via (main) route group. Excluded scripts/ from tsconfig. Hero section made full-viewport, text centered, all sizes doubled. H1 reduced from 8xl/9xl to 7xl/8xl. Moved api/ back out of (main) route group — tests import routes by @/app/api path which broke when nested. Staged (main) route group file renames (were committed as mv but not git-added)."
     },
     {
       "id": "CHORE-14",
@@ -1364,7 +1364,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-07",
       "testPassedCommit": "pending",
-      "notes": "mailersend() helper was fire-and-forget \u2014 returned raw fetch Response so .catch() in callers never fired on 4xx/5xx. Fixed: mailersend() now awaits fetch, throws Error('MailerSend {status}: {body}') on non-ok responses. sendSupportRequestEmail() updated to remove now-redundant manual res.ok check. Root cause of delivery failure identified as MailerSend trial account unique-recipient limit (#MS42225) \u2014 not a code issue."
+      "notes": "mailersend() helper was fire-and-forget — returned raw fetch Response so .catch() in callers never fired on 4xx/5xx. Fixed: mailersend() now awaits fetch, throws Error('MailerSend {status}: {body}') on non-ok responses. sendSupportRequestEmail() updated to remove now-redundant manual res.ok check. Root cause of delivery failure identified as MailerSend trial account unique-recipient limit (#MS42225) — not a code issue."
     },
     {
       "id": "CHORE-15",
@@ -1375,7 +1375,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-07",
       "testPassedCommit": "pending",
-      "notes": "Created /coming-soon page (src/app/coming-soon/page.tsx) outside (main) route group \u2014 no nav, no footer. Homepage (/) is now a pure redirect dispatcher: authenticated users go to their role dashboard, unauthenticated users go to /coming-soon. Footer moved from root layout.tsx into (main)/layout.tsx so it only renders on main-site pages, not on /coming-soon."
+      "notes": "Created /coming-soon page (src/app/coming-soon/page.tsx) outside (main) route group — no nav, no footer. Homepage (/) is now a pure redirect dispatcher: authenticated users go to their role dashboard, unauthenticated users go to /coming-soon. Footer moved from root layout.tsx into (main)/layout.tsx so it only renders on main-site pages, not on /coming-soon."
     },
     {
       "id": "CHORE-16",
@@ -1397,7 +1397,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "BLOCKED: Teemill 2FA is broken \u2014 support ticket open. Cannot generate API key until resolved. Partial findings documented in /docs/teemill-api-notes.md from public sources (GitHub demos, live /product/options endpoint, Node-RED package docs). Key findings: (1) Two APIs exist \u2014 Custom Product API (omnis/v3, creates Teemill-hosted storefront listing, NOT what we want) and Orders API (api.teemill.com/v1, programmatic order submission, correct target for MFTF-7). (2) Orders API is a two-step flow: POST /orders returns fulfillments with shipping options, then POST /orders/{id}/confirm selects shipping method. (3) No sandbox environment found \u2014 likely none, unlike Prodigi. (4) Product catalog confirmed: 18 product types, all GOTS-certified organic cotton. Colors identified by plain name strings (\"White\", \"Navy Blue\" etc). (5) Webhook payload unknown \u2014 not publicly documented. (6) Mockup API endpoint unconfirmed \u2014 browser UI tool exists but no programmatic endpoint found. Open questions requiring live access documented in /docs/teemill-api-notes.md. \u2014 UPDATE 2026-06-10: API key obtained; 2FA issue resolved. Spike can now proceed against live API. No sandbox exists; use MSW for automated tests."
+      "notes": "BLOCKED: Teemill 2FA is broken — support ticket open. Cannot generate API key until resolved. Partial findings documented in /docs/teemill-api-notes.md from public sources (GitHub demos, live /product/options endpoint, Node-RED package docs). Key findings: (1) Two APIs exist — Custom Product API (omnis/v3, creates Teemill-hosted storefront listing, NOT what we want) and Orders API (api.teemill.com/v1, programmatic order submission, correct target for MFTF-7). (2) Orders API is a two-step flow: POST /orders returns fulfillments with shipping options, then POST /orders/{id}/confirm selects shipping method. (3) No sandbox environment found — likely none, unlike Prodigi. (4) Product catalog confirmed: 18 product types, all GOTS-certified organic cotton. Colors identified by plain name strings (\"White\", \"Navy Blue\" etc). (5) Webhook payload unknown — not publicly documented. (6) Mockup API endpoint unconfirmed — browser UI tool exists but no programmatic endpoint found. Open questions requiring live access documented in /docs/teemill-api-notes.md. — UPDATE 2026-06-10: API key obtained; 2FA issue resolved. Spike can now proceed against live API. No sandbox exists; use MSW for automated tests."
     },
     {
       "id": "US-MFTF-3.1",
@@ -1419,7 +1419,7 @@
       "testWrittenCommit": "ec85b07",
       "testPassedDate": "2026-06-07",
       "testPassedCommit": "dcac6eb",
-      "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.2-prodigi-provider.test.ts. Validates: provider name, factory routing, correct Prodigi request shape (shippingMethod, recipient, items), FulfillmentOrderResult fields, canonical status mapping (InProgress\u2192PROCESSING, Complete+shipments\u2192SHIPPED, Cancelled\u2192CANCELLED, unknown\u2192ERROR), error on non-ok response. Includes regression test: createPrintOrder still POSTs to Prodigi and sets prodigiOrderId."
+      "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.2-prodigi-provider.test.ts. Validates: provider name, factory routing, correct Prodigi request shape (shippingMethod, recipient, items), FulfillmentOrderResult fields, canonical status mapping (InProgress→PROCESSING, Complete+shipments→SHIPPED, Cancelled→CANCELLED, unknown→ERROR), error on non-ok response. Includes regression test: createPrintOrder still POSTs to Prodigi and sets prodigiOrderId."
     },
     {
       "id": "US-MFTF-3.3",
@@ -1463,7 +1463,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "28 tests. 6 server actions in src/app/actions/admin/product-catalog.ts: createProductTypeAction, updateProductTypeAction, addProductTypeColorAction, toggleProductTypeColorAction, addProductTypeSizeAction, toggleProductTypeSizeAction. All auth-guarded (ADMIN only). Validation: required name/SKU, unique name, activation requires >=1 active color + size. Pages at /admin/products/new and /admin/products/[id]. \u2014 Enhancement (2026-06-11): Added Teemill product grid picker to /admin/products/new. Client component TeemillProductPicker fetches /api/teemill/catalog (route handler with 1h revalidation), displays a 2-col grid of all 18 Teemill products with per-card color carousel. Selecting a product collapses grid to single-product summary showing all color thumbnails. createProductTypeAction extended to parse teemillColorsJson hidden field and bulk-create ProductTypeColor records (backward compatible). Prodigi path shows manual SKU instructions. \u2014 UI revision (2026-06-11): Product detail page (/admin/products/[id]) redesigned: hero image from Teemill catalog; colors shown as read-only thumbnail grid (images fetched from Teemill, matched by color name); sizes section removed entirely (all provider sizes always available); activation guard updated to require at least one color (not active color, since toggling was removed). \u2014 Provider design audit + schema hardening (2026-06-11): (1) ProductTypeColor.colorHex made nullable \u2014 Teemill has no hex values; was storing empty string. (2) ProductTypeColor.colorImageUrl added \u2014 persists provider color photo URLs so pages no longer re-fetch Teemill API on every render. (3) ProductType.blankImageUrl added \u2014 admin-uploaded product blank photo for Prodigi products. (4) Blob upload route now accepts ADMIN role. (5) BlankImageUploader client component added. (6) Detail page shows BlankImageUploader for Prodigi; Teemill shows read-only API image. (7) Catalog list prefers stored colorImageUrl, falls back to Teemill API only when needed. Audit flagged 6 open design issues: provider routing by listingType not fulfillmentProvider, Order model has Prodigi-specific field names, isActive on colors/sizes is dead, OriginalListing.printProducts should FK to ProductType. These are deferred. \u2014 Schema cleanup (2026-06-12): Removed ProductTypeColor.colorHex (vestigial; superceded by colorImageUrl), removed ProductTypeColor.isActive and ProductTypeSizeOption.isActive (all provider colors/sizes always available \u2014 design decision). Renamed Order.prodigiSku\u2192externalSku, Order.prodigiOrderId\u2192externalOrderId, Transaction.prodigiFulfillmentCost\u2192fulfillmentCost (provider-agnostic naming). Updated all 15+ source + test files referencing old field names. resetDatabase() updated to include new ApparelListing tables."
+      "notes": "28 tests. 6 server actions in src/app/actions/admin/product-catalog.ts: createProductTypeAction, updateProductTypeAction, addProductTypeColorAction, toggleProductTypeColorAction, addProductTypeSizeAction, toggleProductTypeSizeAction. All auth-guarded (ADMIN only). Validation: required name/SKU, unique name, activation requires >=1 active color + size. Pages at /admin/products/new and /admin/products/[id]. — Enhancement (2026-06-11): Added Teemill product grid picker to /admin/products/new. Client component TeemillProductPicker fetches /api/teemill/catalog (route handler with 1h revalidation), displays a 2-col grid of all 18 Teemill products with per-card color carousel. Selecting a product collapses grid to single-product summary showing all color thumbnails. createProductTypeAction extended to parse teemillColorsJson hidden field and bulk-create ProductTypeColor records (backward compatible). Prodigi path shows manual SKU instructions. — UI revision (2026-06-11): Product detail page (/admin/products/[id]) redesigned: hero image from Teemill catalog; colors shown as read-only thumbnail grid (images fetched from Teemill, matched by color name); sizes section removed entirely (all provider sizes always available); activation guard updated to require at least one color (not active color, since toggling was removed). — Provider design audit + schema hardening (2026-06-11): (1) ProductTypeColor.colorHex made nullable — Teemill has no hex values; was storing empty string. (2) ProductTypeColor.colorImageUrl added — persists provider color photo URLs so pages no longer re-fetch Teemill API on every render. (3) ProductType.blankImageUrl added — admin-uploaded product blank photo for Prodigi products. (4) Blob upload route now accepts ADMIN role. (5) BlankImageUploader client component added. (6) Detail page shows BlankImageUploader for Prodigi; Teemill shows read-only API image. (7) Catalog list prefers stored colorImageUrl, falls back to Teemill API only when needed. Audit flagged 6 open design issues: provider routing by listingType not fulfillmentProvider, Order model has Prodigi-specific field names, isActive on colors/sizes is dead, OriginalListing.printProducts should FK to ProductType. These are deferred. — Schema cleanup (2026-06-12): Removed ProductTypeColor.colorHex (vestigial; superceded by colorImageUrl), removed ProductTypeColor.isActive and ProductTypeSizeOption.isActive (all provider colors/sizes always available — design decision). Renamed Order.prodigiSku→externalSku, Order.prodigiOrderId→externalOrderId, Transaction.prodigiFulfillmentCost→fulfillmentCost (provider-agnostic naming). Updated all 15+ source + test files referencing old field names. resetDatabase() updated to include new ApparelListing tables."
     },
     {
       "id": "US-MFTF-5.1",
@@ -1573,7 +1573,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Stub \u2014 acceptance criteria to be written after CHORE-17 spike."
+      "notes": "Stub — acceptance criteria to be written after CHORE-17 spike."
     },
     {
       "id": "US-MFTF-8.2",
@@ -1584,7 +1584,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Stub \u2014 acceptance criteria to be written after CHORE-17 spike."
+      "notes": "Stub — acceptance criteria to be written after CHORE-17 spike."
     },
     {
       "id": "US-MFTF-9.1",
@@ -1694,7 +1694,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Human task (with a small code component). Remove or disable the under-construction route guard added in CHORE-15. Confirm the homepage and /shop are publicly accessible. This is the final step \u2014 all other US-MFTF-10.x items should be complete before this one."
+      "notes": "Human task (with a small code component). Remove or disable the under-construction route guard added in CHORE-15. Confirm the homepage and /shop are publicly accessible. This is the final step — all other US-MFTF-10.x items should be complete before this one."
     }
   ],
   "commits": [
@@ -1703,7 +1703,7 @@
       "date": "2026-05-09",
       "author": "Claude Sonnet 4.6",
       "storiesAffected": [],
-      "message": "chore: project scaffolding \u2014 Next.js, Prisma schema, test infrastructure",
+      "message": "chore: project scaffolding — Next.js, Prisma schema, test infrastructure",
       "trackerUpdated": true
     },
     {
@@ -1715,7 +1715,7 @@
         "US-6.2",
         "US-6.3"
       ],
-      "message": "feat(epic-6): implement US-6.1 through US-6.3 \u2014 user accounts and authentication",
+      "message": "feat(epic-6): implement US-6.1 through US-6.3 — user accounts and authentication",
       "trackerUpdated": true
     },
     {
@@ -1730,7 +1730,7 @@
         "US-1.5",
         "US-1.6"
       ],
-      "message": "feat(epic-1): implement US-1.1 through US-1.6 \u2014 artwork listing and product page",
+      "message": "feat(epic-1): implement US-1.1 through US-1.6 — artwork listing and product page",
       "trackerUpdated": true
     },
     {
@@ -1746,7 +1746,7 @@
       "date": "2026-05-09",
       "author": "Claude Sonnet 4.6",
       "storiesAffected": [],
-      "message": "feat: navigable site shell \u2014 homepage, nav, footer, stub pages for browse/sign-in/sign-up/sell",
+      "message": "feat: navigable site shell — homepage, nav, footer, stub pages for browse/sign-in/sign-up/sell",
       "trackerUpdated": true
     },
     {
@@ -1759,7 +1759,7 @@
         "US-7.3",
         "US-7.4"
       ],
-      "message": "feat(epic-7): implement US-7.1 through US-7.4 \u2014 browsing, filtering, search, unified display",
+      "message": "feat(epic-7): implement US-7.1 through US-7.4 — browsing, filtering, search, unified display",
       "trackerUpdated": true
     },
     {
@@ -1772,7 +1772,7 @@
         "US-2.3",
         "US-2.4"
       ],
-      "message": "feat(epic-2): implement US-2.1 through US-2.4 \u2014 fixed-price sales",
+      "message": "feat(epic-2): implement US-2.1 through US-2.4 — fixed-price sales",
       "trackerUpdated": true
     },
     {
@@ -1797,7 +1797,7 @@
         "US-4.4",
         "US-4.5"
       ],
-      "message": "feat(epic-4): implement US-4.1\u20134.5 \u2014 payments via Stripe",
+      "message": "feat(epic-4): implement US-4.1–4.5 — payments via Stripe",
       "trackerUpdated": true
     },
     {
@@ -1815,7 +1815,7 @@
       "storiesAffected": [
         "US-13.1"
       ],
-      "message": "feat(epic-13): implement US-13.1 \u2014 admin dashboard homepage",
+      "message": "feat(epic-13): implement US-13.1 — admin dashboard homepage",
       "trackerUpdated": true
     },
     {
@@ -1825,7 +1825,7 @@
       "storiesAffected": [
         "US-13.2"
       ],
-      "message": "feat(epic-13): implement US-13.2 \u2014 seller dashboard homepage",
+      "message": "feat(epic-13): implement US-13.2 — seller dashboard homepage",
       "trackerUpdated": true
     },
     {
@@ -1835,7 +1835,7 @@
       "storiesAffected": [
         "US-13.3"
       ],
-      "message": "feat(epic-13): implement US-13.3 \u2014 buyer dashboard homepage",
+      "message": "feat(epic-13): implement US-13.3 — buyer dashboard homepage",
       "trackerUpdated": true
     },
     {
@@ -1872,7 +1872,7 @@
       "storiesAffected": [
         "US-10.1"
       ],
-      "message": "feat(epic-10): implement US-10.1 \u2014 browse gallery layout",
+      "message": "feat(epic-10): implement US-10.1 — browse gallery layout",
       "trackerUpdated": true
     },
     {
@@ -1882,7 +1882,7 @@
       "storiesAffected": [
         "US-10.2"
       ],
-      "message": "feat(epic-10): implement US-10.2 \u2014 listing detail page",
+      "message": "feat(epic-10): implement US-10.2 — listing detail page",
       "trackerUpdated": true
     },
     {
@@ -1897,7 +1897,7 @@
       "storiesAffected": [
         "US-15.1"
       ],
-      "message": "feat(epic-15): implement US-15.1 \u2014 buy from listing page (fixed-price)",
+      "message": "feat(epic-15): implement US-15.1 — buy from listing page (fixed-price)",
       "trackerUpdated": true
     },
     {
@@ -1907,7 +1907,7 @@
       "storiesAffected": [
         "US-15.2"
       ],
-      "message": "feat(epic-15): implement US-15.2 \u2014 print availability toggle on OriginalListing",
+      "message": "feat(epic-15): implement US-15.2 — print availability toggle on OriginalListing",
       "trackerUpdated": true
     },
     {
@@ -1917,7 +1917,7 @@
       "storiesAffected": [
         "US-15.3"
       ],
-      "message": "feat(epic-15): implement US-15.3 \u2014 prints page with filtered browse",
+      "message": "feat(epic-15): implement US-15.3 — prints page with filtered browse",
       "trackerUpdated": true
     },
     {
@@ -1927,7 +1927,7 @@
       "storiesAffected": [
         "US-15.4"
       ],
-      "message": "feat(epic-15): implement US-15.4 \u2014 order a print from listing page",
+      "message": "feat(epic-15): implement US-15.4 — order a print from listing page",
       "trackerUpdated": true
     },
     {
@@ -1940,7 +1940,7 @@
         "US-19.3",
         "US-19.4"
       ],
-      "message": "feat(epic-19): implement US-19.1-19.4 \u2014 artwork image lightbox & magnifier",
+      "message": "feat(epic-19): implement US-19.1-19.4 — artwork image lightbox & magnifier",
       "trackerUpdated": true
     },
     {
@@ -2001,7 +2001,7 @@
       "storiesAffected": [
         "US-20.1"
       ],
-      "message": "chore: add Epic 20 Mobile Usability \u2014 US-20.1 Mobile Navigation",
+      "message": "chore: add Epic 20 Mobile Usability — US-20.1 Mobile Navigation",
       "trackerUpdated": true
     },
     {
@@ -2026,7 +2026,7 @@
       "storiesAffected": [
         "US-20.1"
       ],
-      "message": "feat(mobile-menu): active page indicator (underline+glow) and CSS focus ring \u2014 28 tests pass",
+      "message": "feat(mobile-menu): active page indicator (underline+glow) and CSS focus ring — 28 tests pass",
       "trackerUpdated": true
     },
     {
@@ -2058,7 +2058,7 @@
         "US-21.1",
         "US-21.2"
       ],
-      "message": "feat(epic-21): implement US-21.1 and US-21.2 \u2014 Stripe Checkout Sessions & payment confirmation",
+      "message": "feat(epic-21): implement US-21.1 and US-21.2 — Stripe Checkout Sessions & payment confirmation",
       "trackerUpdated": true
     },
     {
@@ -2090,7 +2090,7 @@
       "storiesAffected": [
         "US-21.2"
       ],
-      "message": "feat(epic-21): reverse fulfillment flow \u2014 payment first, shipping after",
+      "message": "feat(epic-21): reverse fulfillment flow — payment first, shipping after",
       "trackerUpdated": true
     },
     {
@@ -2146,7 +2146,7 @@
         "US-22.3",
         "US-22.4"
       ],
-      "message": "feat(epic-22): implement US-22.1 through US-22.4 \u2014 buyer order history & order detail",
+      "message": "feat(epic-22): implement US-22.1 through US-22.4 — buyer order history & order detail",
       "trackerUpdated": true
     },
     {
@@ -2164,7 +2164,7 @@
       "date": "2026-06-03",
       "author": "Claude Sonnet 4.6",
       "storiesAffected": [],
-      "message": "chore(tracker): log BUG-1 \u2014 portrait images rotated/cropped in variant generation",
+      "message": "chore(tracker): log BUG-1 — portrait images rotated/cropped in variant generation",
       "trackerUpdated": true
     },
     {
@@ -2196,5 +2196,5 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-06-12T00:00:00Z"
+  "lastUpdated": "2026-06-12T07:40:42.315Z"
 }

@@ -38,6 +38,7 @@ describe("US-MFTF-4.1 — ProductType model", () => {
     expect(pt.fulfillmentProvider).toBe("PRODIGI");
   });
 
+  it("stores an optional description", async () => {
     const pt = await prisma.productType.create({
       data: {
         name: "Tote Bag",
@@ -95,12 +96,9 @@ describe("US-MFTF-4.1 — ProductTypeColor model", () => {
   it("creates multiple colors for a product type", async () => {
     await prisma.productTypeColor.createMany({
       data: [
-        { productTypeId, colorName: "White",
- providerColorCode: "White" },
-        { productTypeId, colorName: "Black",
- providerColorCode: "Black" },
-        { productTypeId, colorName: "Navy Blue",
- providerColorCode: "Navy Blue" },
+        { productTypeId, colorName: "White", providerColorCode: "White" },
+        { productTypeId, colorName: "Black", providerColorCode: "Black" },
+        { productTypeId, colorName: "Navy Blue", providerColorCode: "Navy Blue" },
       ],
     });
 
@@ -110,8 +108,7 @@ describe("US-MFTF-4.1 — ProductTypeColor model", () => {
 
   it("cascades delete when product type is deleted", async () => {
     await prisma.productTypeColor.create({
-      data: { productTypeId, colorName: "White",
- providerColorCode: "White" },
+      data: { productTypeId, colorName: "White", providerColorCode: "White" },
     });
 
     await prisma.productType.delete({ where: { id: productTypeId } });
@@ -120,12 +117,12 @@ describe("US-MFTF-4.1 — ProductTypeColor model", () => {
     expect(colors).toHaveLength(0);
   });
 
-  it("can be set inactive independently", async () => {
+  it("has colorImageUrl field that defaults to null", async () => {
     const color = await prisma.productTypeColor.create({
-      data: { productTypeId, colorName: "White",
- providerColorCode: "White" },
+      data: { productTypeId, colorName: "White", providerColorCode: "White" },
     });
 
+    expect(color.colorImageUrl).toBeNull();
   });
 });
 
@@ -203,10 +200,8 @@ describe("US-MFTF-4.1 — Full round-trip with includes", () => {
         providerSkuBase: "RNA1",
         colors: {
           create: [
-            { colorName: "White",
- providerColorCode: "White" },
-            { colorName: "Black",
- providerColorCode: "Black" },
+            { colorName: "White", providerColorCode: "White" },
+            { colorName: "Black", providerColorCode: "Black" },
           ],
         },
         sizes: {

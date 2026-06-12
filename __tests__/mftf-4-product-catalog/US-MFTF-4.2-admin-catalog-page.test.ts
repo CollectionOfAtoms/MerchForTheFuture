@@ -43,6 +43,7 @@ describe("US-MFTF-4.2 — getAdminProductCatalog data layer", () => {
     expect(result).toHaveLength(2);
   });
 
+  it("returns product types with correct name and fulfillmentProvider fields", async () => {
     await prisma.productType.create({
       data: { name: "Unisex Tee", fulfillmentProvider: "TEEMILL", providerSkuBase: "RNA1" },
     });
@@ -53,7 +54,7 @@ describe("US-MFTF-4.2 — getAdminProductCatalog data layer", () => {
     expect(pt.fulfillmentProvider).toBe("TEEMILL");
   });
 
-  it("includes active color count and active size count per product type", async () => {
+  it("includes color count and size count per product type", async () => {
     await prisma.productType.create({
       data: {
         name: "Unisex Tee",
@@ -81,8 +82,8 @@ describe("US-MFTF-4.2 — getAdminProductCatalog data layer", () => {
 
     const [pt] = await getAdminProductCatalog();
 
-    expect(pt.activeColorCount).toBe(2);
-    expect(pt.activeSizeCount).toBe(2);
+    expect(pt.activeColorCount).toBe(3);
+    expect(pt.activeSizeCount).toBe(3);
   });
 
   it("returns product types ordered by name ascending", async () => {

@@ -7,10 +7,10 @@ const PRODUCT_TYPES = [
     fulfillmentProvider: "TEEMILL" as const,
     providerSkuBase: "RNA1",
     colors: [
-      { colorName: "White",        colorHex: "#FFFFFF", providerColorCode: "White" },
-      { colorName: "Black",        colorHex: "#000000", providerColorCode: "Black" },
-      { colorName: "Navy Blue",    colorHex: "#001F5B", providerColorCode: "Navy Blue" },
-      { colorName: "Athletic Grey",colorHex: "#A9A9A9", providerColorCode: "Athletic Grey" },
+      { colorName: "White",         providerColorCode: "White" },
+      { colorName: "Black",         providerColorCode: "Black" },
+      { colorName: "Navy Blue",     providerColorCode: "Navy Blue" },
+      { colorName: "Athletic Grey", providerColorCode: "Athletic Grey" },
     ],
     sizes: [
       { sizeLabel: "S",   providerSizeCode: "S",   sortOrder: 1 },
@@ -26,9 +26,9 @@ const PRODUCT_TYPES = [
     fulfillmentProvider: "TEEMILL" as const,
     providerSkuBase: "RNT1",
     colors: [
-      { colorName: "Natural", colorHex: "#F5F0E8", providerColorCode: "Natural" },
-      { colorName: "White",   colorHex: "#FFFFFF",  providerColorCode: "White" },
-      { colorName: "Black",   colorHex: "#000000",  providerColorCode: "Black" },
+      { colorName: "Natural", providerColorCode: "Natural" },
+      { colorName: "White",   providerColorCode: "White" },
+      { colorName: "Black",   providerColorCode: "Black" },
     ],
     sizes: [
       { sizeLabel: "One Size", providerSizeCode: "ONE_SIZE", sortOrder: 1 },
@@ -40,7 +40,7 @@ const PRODUCT_TYPES = [
     fulfillmentProvider: "PRODIGI" as const,
     providerSkuBase: "GLOBAL-FAP",
     colors: [
-      { colorName: "N/A", colorHex: "#FFFFFF", providerColorCode: "N/A" },
+      { colorName: "N/A", providerColorCode: "N/A" },
     ],
     sizes: [
       { sizeLabel: '8"×10"',  providerSizeCode: "8X10",   sortOrder: 1 },

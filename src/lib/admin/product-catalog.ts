@@ -8,7 +8,7 @@ export async function getAdminProductCatalog() {
         select: { id: true, colorName: true, colorImageUrl: true },
         orderBy: { colorName: "asc" },
       },
-      sizes: { where: { isActive: true }, select: { id: true } },
+      sizes: { select: { id: true } },
     },
   });
 

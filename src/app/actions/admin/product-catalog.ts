@@ -119,14 +119,15 @@ export async function addProductTypeColorAction(productTypeId: string, fd: FormD
 }
 
 // ─── toggleProductTypeColorAction ────────────────────────────────────────────
+// NOTE: ProductTypeColor no longer has an isActive field — all colors are always
+// available. This action is retained for API compatibility but is effectively a
+// no-op (it verifies the color exists and revalidates the page).
 
-export async function toggleProductTypeColorAction(colorId: string, isActive: boolean): Promise<ActionResult> {
+export async function toggleProductTypeColorAction(colorId: string, _active: boolean): Promise<ActionResult> {
   if (!(await requireAdmin())) return { error: "Unauthorized" };
 
-  const color = await prisma.productTypeColor.update({
-    where: { id: colorId },
-    data: { isActive },
-  });
+  const color = await prisma.productTypeColor.findUnique({ where: { id: colorId } });
+  if (!color) return { error: "Color not found" };
 
   revalidatePath(`/admin/products/${color.productTypeId}`);
   return { id: color.id };
@@ -155,14 +156,14 @@ export async function addProductTypeSizeAction(productTypeId: string, fd: FormDa
 }
 
 // ─── toggleProductTypeSizeAction ─────────────────────────────────────────────
+// NOTE: ProductTypeSizeOption no longer has an isActive field — all sizes are
+// always available. This action is retained for API compatibility but is a no-op.
 
-export async function toggleProductTypeSizeAction(sizeId: string, isActive: boolean): Promise<ActionResult> {
+export async function toggleProductTypeSizeAction(sizeId: string, _active: boolean): Promise<ActionResult> {
   if (!(await requireAdmin())) return { error: "Unauthorized" };
 
-  const size = await prisma.productTypeSizeOption.update({
-    where: { id: sizeId },
-    data: { isActive },
-  });
+  const size = await prisma.productTypeSizeOption.findUnique({ where: { id: sizeId } });
+  if (!size) return { error: "Size not found" };
 
   revalidatePath(`/admin/products/${size.productTypeId}`);
   return { id: size.id };

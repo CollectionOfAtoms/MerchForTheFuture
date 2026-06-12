@@ -27,6 +27,7 @@ function makeProductTypeForm(overrides: Record<string, string> = {}): FormData {
   fd.set("description",         overrides.description         ?? "Great tee");
   fd.set("fulfillmentProvider", overrides.fulfillmentProvider ?? "TEEMILL");
   fd.set("providerSkuBase",     overrides.providerSkuBase     ?? "RNA1");
+  if (overrides.isActive !== undefined) fd.set("isActive", overrides.isActive);
   return fd;
 }
 
@@ -102,9 +103,6 @@ describe("US-MFTF-4.3 — createProductTypeAction", () => {
     expect(pt!.fulfillmentProvider).toBe("TEEMILL");
     expect(pt!.providerSkuBase).toBe("RNA1");
   });
-
-    const pt = await prisma.productType.findUnique({ where: { name: "Unisex Tee" } });
-  });
 });
 
 // ─── updateProductTypeAction ──────────────────────────────────────────────────
@@ -137,9 +135,10 @@ describe("US-MFTF-4.3 — updateProductTypeAction", () => {
     expect(result).toMatchObject({ error: expect.stringContaining("not found") });
   });
 
-    await updateProductTypeAction(
-      productTypeId,
-    );
+  it("updates all fields and returns id", async () => {
+    const fd = makeProductTypeForm({ name: "Updated Tee", description: "Updated", providerSkuBase: "RNA2" });
+    const result = await updateProductTypeAction(productTypeId, fd);
+    expect(result).toMatchObject({ id: productTypeId });
 
     const pt = await prisma.productType.findUnique({ where: { id: productTypeId } });
     expect(pt!.name).toBe("Updated Tee");
@@ -147,28 +146,23 @@ describe("US-MFTF-4.3 — updateProductTypeAction", () => {
     expect(pt!.providerSkuBase).toBe("RNA2");
   });
 
-  it("returns validation error when activating a product type with no active colors or sizes", async () => {
-    await prisma.productType.update({ where: { id: productTypeId }, data: {
- } });
+  it("returns validation error when activating a product type with no colors", async () => {
+    await prisma.productType.update({ where: { id: productTypeId }, data: { isActive: false } });
     const result = await updateProductTypeAction(
       productTypeId,
+      makeProductTypeForm({ isActive: "true" }),
     );
     expect(result).toMatchObject({ error: expect.stringContaining("color") });
   });
 
-  it("allows activating a product type that has at least one active color and one active size", async () => {
-    await prisma.productType.update({ where: { id: productTypeId }, data: {
- } });
+  it("allows activating a product type that has at least one color", async () => {
+    await prisma.productType.update({ where: { id: productTypeId }, data: { isActive: false } });
     await prisma.productTypeColor.create({
-      data: { productTypeId, colorName: "White",
- providerColorCode: "White" },
+      data: { productTypeId, colorName: "White", providerColorCode: "White" },
     });
-    await prisma.productTypeSizeOption.create({
-      data: { productTypeId, sizeLabel: "M", providerSizeCode: "M", sortOrder: 2 },
-    });
-
     const result = await updateProductTypeAction(
       productTypeId,
+      makeProductTypeForm({ isActive: "true" }),
     );
     expect(result).toMatchObject({ id: productTypeId });
   });
@@ -231,6 +225,8 @@ describe("US-MFTF-4.3 — addProductTypeColorAction", () => {
 });
 
 // ─── toggleProductTypeColorAction ────────────────────────────────────────────
+// Colors no longer have an isActive field — this action is a no-op that verifies
+// the color exists and revalidates. Tests confirm the auth guard and return value.
 
 describe("US-MFTF-4.3 — toggleProductTypeColorAction", () => {
   let colorId: string;
@@ -242,8 +238,7 @@ describe("US-MFTF-4.3 — toggleProductTypeColorAction", () => {
       data: { name: "Unisex Tee", fulfillmentProvider: "TEEMILL", providerSkuBase: "RNA1" },
     });
     const color = await prisma.productTypeColor.create({
-      data: { productTypeId: pt.id, colorName: "White",
- providerColorCode: "White" },
+      data: { productTypeId: pt.id, colorName: "White", providerColorCode: "White" },
     });
     colorId = color.id;
   });
@@ -259,16 +254,14 @@ describe("US-MFTF-4.3 — toggleProductTypeColorAction", () => {
     expect(result).toEqual({ error: "Unauthorized" });
   });
 
-  it("deactivates an active color", async () => {
-    await toggleProductTypeColorAction(colorId, false);
-    const color = await prisma.productTypeColor.findUnique({ where: { id: colorId } });
+  it("returns the color id when called by an admin (false)", async () => {
+    const result = await toggleProductTypeColorAction(colorId, false);
+    expect(result).toMatchObject({ id: colorId });
   });
 
-  it("activates an inactive color", async () => {
-    await prisma.productTypeColor.update({ where: { id: colorId }, data: {
- } });
-    await toggleProductTypeColorAction(colorId, true);
-    const color = await prisma.productTypeColor.findUnique({ where: { id: colorId } });
+  it("returns the color id when called by an admin (true)", async () => {
+    const result = await toggleProductTypeColorAction(colorId, true);
+    expect(result).toMatchObject({ id: colorId });
   });
 });
 
@@ -319,6 +312,8 @@ describe("US-MFTF-4.3 — addProductTypeSizeAction", () => {
 });
 
 // ─── toggleProductTypeSizeAction ─────────────────────────────────────────────
+// Sizes no longer have an isActive field — this action is a no-op that verifies
+// the size exists and revalidates. Tests confirm the auth guard and return value.
 
 describe("US-MFTF-4.3 — toggleProductTypeSizeAction", () => {
   let sizeId: string;
@@ -346,15 +341,13 @@ describe("US-MFTF-4.3 — toggleProductTypeSizeAction", () => {
     expect(result).toEqual({ error: "Unauthorized" });
   });
 
-  it("deactivates an active size", async () => {
-    await toggleProductTypeSizeAction(sizeId, false);
-    const size = await prisma.productTypeSizeOption.findUnique({ where: { id: sizeId } });
+  it("returns the size id when called by an admin (false)", async () => {
+    const result = await toggleProductTypeSizeAction(sizeId, false);
+    expect(result).toMatchObject({ id: sizeId });
   });
 
-  it("activates an inactive size", async () => {
-    await prisma.productTypeSizeOption.update({ where: { id: sizeId }, data: {
- } });
-    await toggleProductTypeSizeAction(sizeId, true);
-    const size = await prisma.productTypeSizeOption.findUnique({ where: { id: sizeId } });
+  it("returns the size id when called by an admin (true)", async () => {
+    const result = await toggleProductTypeSizeAction(sizeId, true);
+    expect(result).toMatchObject({ id: sizeId });
   });
 });
