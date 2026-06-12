@@ -52,10 +52,13 @@ export default async function EditProductTypePage({ params }: Props) {
     ? teemillProduct.colours
     : {};
 
-  // Hero image: first color's image, or null
-  const heroImageUrl = teemillProduct
-    ? Object.values(teemillProduct.colours)[0] ?? null
-    : null;
+  // Hero image: prefer a non-gray color so the shirt is visible against the background
+  const heroImageUrl = (() => {
+    if (!teemillProduct) return null;
+    const entries = Object.entries(teemillProduct.colours);
+    const nonGray = entries.find(([name]) => !/gr[ae]y/i.test(name));
+    return (nonGray ?? entries[0])?.[1] ?? null;
+  })();
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12 space-y-10">
@@ -76,7 +79,7 @@ export default async function EditProductTypePage({ params }: Props) {
         {/* Left: hero image */}
         <div className="space-y-4">
           {heroImageUrl ? (
-            <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 aspect-square">
+            <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-200 aspect-square">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={heroImageUrl}
@@ -202,7 +205,7 @@ export default async function EditProductTypePage({ params }: Props) {
                         />
                       ) : (
                         <div
-                          className="h-12 w-12 rounded-lg border border-stone-200 bg-stone-100 flex items-center justify-center text-xs text-stone-400"
+                          className="h-12 w-12 rounded-lg border border-stone-200 bg-stone-200 flex items-center justify-center text-xs text-stone-400"
                           title={c.colorName}
                         >
                           {c.colorName.slice(0, 2)}

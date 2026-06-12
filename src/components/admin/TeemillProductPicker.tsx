@@ -179,7 +179,7 @@ export default function TeemillProductPicker({ defaultItemCode }: Props) {
               }`}
             >
               {/* Image + carousel */}
-              <div className="relative aspect-square bg-stone-100">
+              <div className="relative aspect-square bg-stone-200">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageUrl}
