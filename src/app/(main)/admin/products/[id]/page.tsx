@@ -56,7 +56,7 @@ export default async function EditProductTypePage({ params }: Props) {
   const heroImageUrl = (() => {
     if (!teemillProduct) return null;
     const entries = Object.entries(teemillProduct.colours);
-    const nonGray = entries.find(([name]) => !/gr[ae]y/i.test(name));
+    const nonGray = entries.find(([name]) => !/gr[ae]y|white/i.test(name));
     return (nonGray ?? entries[0])?.[1] ?? null;
   })();
 
