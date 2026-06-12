@@ -151,6 +151,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
         ...(isBuyer  ? [navLink("/buyer/bids",         "My Bids"),    navLink("/buyer/orders",      "Orders")]      : []),
         ...(isSeller ? [navLink("/seller/listings",     "Listings")]                                                 : []),
         ...(isAdmin  ? [
+          navLink("/admin/products",   "Products"),
           navLink("/admin/tracker",    "Tracker"),
           navLink("/admin/users",      "Users"),
           navLink("/admin/fulfillment","Fulfillment"),
@@ -273,11 +274,14 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            justifyContent: "center",
+            justifyContent: "safe center",
             gap: "0.25rem",
             listStyle: "none",
             margin: 0,
-            padding: 0,
+            /* top padding clears the fixed close button; bottom gives breathing room */
+            paddingTop: "5rem",
+            paddingBottom: "2rem",
+            overflowY: "auto",
           }}
         >
           {allItems.map(({ key, node }, i) => (

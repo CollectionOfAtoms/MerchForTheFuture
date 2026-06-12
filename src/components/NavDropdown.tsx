@@ -114,7 +114,7 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
         <div
           ref={menuRef}
           role="menu"
-          className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-tuscan-sun/30 bg-white py-1 shadow-lg"
+          className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-tuscan-sun/30 bg-white py-1 shadow-lg max-h-[min(28rem,80vh)] overflow-y-auto"
         >
           <MenuItem href={dashboardHref} active={isActive(dashboardHref)}>
             Dashboard
@@ -135,6 +135,12 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
           {isSeller && (
             <MenuItem href="/seller/listings" active={isActive("/seller/listings")}>
               Listings
+            </MenuItem>
+          )}
+
+          {isAdmin && (
+            <MenuItem href="/admin/products" active={isActive("/admin/products")}>
+              Products
             </MenuItem>
           )}
 
