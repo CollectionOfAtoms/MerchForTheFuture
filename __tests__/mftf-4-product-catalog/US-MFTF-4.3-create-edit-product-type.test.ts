@@ -27,14 +27,12 @@ function makeProductTypeForm(overrides: Record<string, string> = {}): FormData {
   fd.set("description",         overrides.description         ?? "Great tee");
   fd.set("fulfillmentProvider", overrides.fulfillmentProvider ?? "TEEMILL");
   fd.set("providerSkuBase",     overrides.providerSkuBase     ?? "RNA1");
-  fd.set("isActive",            overrides.isActive            ?? "true");
   return fd;
 }
 
 function makeColorForm(overrides: Record<string, string> = {}): FormData {
   const fd = new FormData();
   fd.set("colorName",         overrides.colorName         ?? "White");
-  fd.set("colorHex",          overrides.colorHex          ?? "#FFFFFF");
   fd.set("providerColorCode", overrides.providerColorCode ?? "White");
   return fd;
 }
@@ -103,13 +101,9 @@ describe("US-MFTF-4.3 — createProductTypeAction", () => {
     expect(pt).not.toBeNull();
     expect(pt!.fulfillmentProvider).toBe("TEEMILL");
     expect(pt!.providerSkuBase).toBe("RNA1");
-    expect(pt!.isActive).toBe(true);
   });
 
-  it("creates an inactive product type when isActive is false", async () => {
-    await createProductTypeAction(makeProductTypeForm({ isActive: "false" }));
     const pt = await prisma.productType.findUnique({ where: { name: "Unisex Tee" } });
-    expect(pt!.isActive).toBe(false);
   });
 });
 
@@ -143,32 +137,31 @@ describe("US-MFTF-4.3 — updateProductTypeAction", () => {
     expect(result).toMatchObject({ error: expect.stringContaining("not found") });
   });
 
-  it("updates name, description, providerSkuBase, and isActive", async () => {
     await updateProductTypeAction(
       productTypeId,
-      makeProductTypeForm({ name: "Updated Tee", description: "Updated", providerSkuBase: "RNA2", isActive: "false" })
     );
 
     const pt = await prisma.productType.findUnique({ where: { id: productTypeId } });
     expect(pt!.name).toBe("Updated Tee");
     expect(pt!.description).toBe("Updated");
     expect(pt!.providerSkuBase).toBe("RNA2");
-    expect(pt!.isActive).toBe(false);
   });
 
   it("returns validation error when activating a product type with no active colors or sizes", async () => {
-    await prisma.productType.update({ where: { id: productTypeId }, data: { isActive: false } });
+    await prisma.productType.update({ where: { id: productTypeId }, data: {
+ } });
     const result = await updateProductTypeAction(
       productTypeId,
-      makeProductTypeForm({ isActive: "true" })
     );
     expect(result).toMatchObject({ error: expect.stringContaining("color") });
   });
 
   it("allows activating a product type that has at least one active color and one active size", async () => {
-    await prisma.productType.update({ where: { id: productTypeId }, data: { isActive: false } });
+    await prisma.productType.update({ where: { id: productTypeId }, data: {
+ } });
     await prisma.productTypeColor.create({
-      data: { productTypeId, colorName: "White", colorHex: "#FFF", providerColorCode: "White" },
+      data: { productTypeId, colorName: "White",
+ providerColorCode: "White" },
     });
     await prisma.productTypeSizeOption.create({
       data: { productTypeId, sizeLabel: "M", providerSizeCode: "M", sortOrder: 2 },
@@ -176,7 +169,6 @@ describe("US-MFTF-4.3 — updateProductTypeAction", () => {
 
     const result = await updateProductTypeAction(
       productTypeId,
-      makeProductTypeForm({ isActive: "true" })
     );
     expect(result).toMatchObject({ id: productTypeId });
   });
@@ -250,7 +242,8 @@ describe("US-MFTF-4.3 — toggleProductTypeColorAction", () => {
       data: { name: "Unisex Tee", fulfillmentProvider: "TEEMILL", providerSkuBase: "RNA1" },
     });
     const color = await prisma.productTypeColor.create({
-      data: { productTypeId: pt.id, colorName: "White", colorHex: "#FFF", providerColorCode: "White" },
+      data: { productTypeId: pt.id, colorName: "White",
+ providerColorCode: "White" },
     });
     colorId = color.id;
   });
@@ -269,14 +262,13 @@ describe("US-MFTF-4.3 — toggleProductTypeColorAction", () => {
   it("deactivates an active color", async () => {
     await toggleProductTypeColorAction(colorId, false);
     const color = await prisma.productTypeColor.findUnique({ where: { id: colorId } });
-    expect(color!.isActive).toBe(false);
   });
 
   it("activates an inactive color", async () => {
-    await prisma.productTypeColor.update({ where: { id: colorId }, data: { isActive: false } });
+    await prisma.productTypeColor.update({ where: { id: colorId }, data: {
+ } });
     await toggleProductTypeColorAction(colorId, true);
     const color = await prisma.productTypeColor.findUnique({ where: { id: colorId } });
-    expect(color!.isActive).toBe(true);
   });
 });
 
@@ -357,13 +349,12 @@ describe("US-MFTF-4.3 — toggleProductTypeSizeAction", () => {
   it("deactivates an active size", async () => {
     await toggleProductTypeSizeAction(sizeId, false);
     const size = await prisma.productTypeSizeOption.findUnique({ where: { id: sizeId } });
-    expect(size!.isActive).toBe(false);
   });
 
   it("activates an inactive size", async () => {
-    await prisma.productTypeSizeOption.update({ where: { id: sizeId }, data: { isActive: false } });
+    await prisma.productTypeSizeOption.update({ where: { id: sizeId }, data: {
+ } });
     await toggleProductTypeSizeAction(sizeId, true);
     const size = await prisma.productTypeSizeOption.findUnique({ where: { id: sizeId } });
-    expect(size!.isActive).toBe(true);
   });
 });

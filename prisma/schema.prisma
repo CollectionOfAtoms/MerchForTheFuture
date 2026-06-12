@@ -84,13 +84,14 @@ model User {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  artworks      Artwork[]
-  bids          Bid[]
-  orders        Order[]
-  notifications Notification[]
-  addresses     UserAddress[]
+  accounts        Account[]
+  sessions        Session[]
+  artworks        Artwork[]
+  bids            Bid[]
+  orders          Order[]
+  notifications   Notification[]
+  addresses       UserAddress[]
+  apparelListings ApparelListing[]
 
   @@index([email])
 }
@@ -270,7 +271,10 @@ model Order {
   buyerId               String
   listingType           OrderListingType
   originalListingId     String?
-  prodigiSku            String?
+  /// FK to ApparelListing — set for apparel orders; null for original/print orders
+  apparelListingId      String?
+  /// Provider-agnostic SKU sent to the fulfillment provider (e.g. Prodigi print SKU or Teemill variant ref)
+  externalSku           String?
   printSize             String?
   quantity              Int              @default(1)
   subtotal              Decimal          @db.Decimal(12, 2)
@@ -288,7 +292,8 @@ model Order {
   shippingCountry       String?
   stripePaymentIntentId String?          @unique
   stripeSessionId       String?          @unique
-  prodigiOrderId        String?
+  /// Provider-agnostic external order ID returned by the fulfillment provider after submission
+  externalOrderId       String?
   trackingNumber        String?
   carrier               String?
   paymentDeadline       DateTime?
@@ -296,8 +301,9 @@ model Order {
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
-  buyer           User             @relation(fields: [buyerId], references: [id])
-  originalListing OriginalListing? @relation(fields: [originalListingId], references: [id])
+  buyer           User              @relation(fields: [buyerId], references: [id])
+  originalListing OriginalListing?  @relation(fields: [originalListingId], references: [id])
+  apparelListing  ApparelListing?   @relation(fields: [apparelListingId], references: [id])
   transaction     Transaction?
 
   @@index([buyerId])
@@ -305,16 +311,17 @@ model Order {
 }
 
 model Transaction {
-  id                    String   @id @default(cuid())
-  orderId               String   @unique
-  stripeChargeId        String?
-  grossAmount           Decimal  @db.Decimal(12, 2)
-  platformFee           Decimal  @db.Decimal(12, 2)
-  processingFee         Decimal  @db.Decimal(12, 2)
-  netPayout             Decimal  @db.Decimal(12, 2)
-  prodigiFulfillmentCost Decimal? @db.Decimal(12, 2)
-  currency              String   @default("USD")
-  createdAt             DateTime @default(now())
+  id                 String   @id @default(cuid())
+  orderId            String   @unique
+  stripeChargeId     String?
+  grossAmount        Decimal  @db.Decimal(12, 2)
+  platformFee        Decimal  @db.Decimal(12, 2)
+  processingFee      Decimal  @db.Decimal(12, 2)
+  netPayout          Decimal  @db.Decimal(12, 2)
+  /// Cost charged by the fulfillment provider (provider-agnostic; was prodigiFulfillmentCost)
+  fulfillmentCost    Decimal? @db.Decimal(12, 2)
+  currency           String   @default("USD")
+  createdAt          DateTime @default(now())
 
   order Order @relation(fields: [orderId], references: [id])
 }
@@ -338,8 +345,9 @@ model ProductType {
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
 
-  colors ProductTypeColor[]
-  sizes  ProductTypeSizeOption[]
+  colors          ProductTypeColor[]
+  sizes           ProductTypeSizeOption[]
+  apparelListings ApparelListing[]
 
   @@index([isActive])
 }
@@ -347,14 +355,16 @@ model ProductType {
 model ProductTypeColor {
   id                String      @id @default(cuid())
   productTypeId     String
+  /// Human-readable color name (e.g. "Navy Blue") — also used as the display label in seller UIs
   colorName         String
-  colorHex          String?     // nullable — Teemill does not provide hex values
+  /// String sent to the fulfillment provider's API to identify this color.
+  /// May be the same as colorName (Teemill) or a different code (other providers).
   providerColorCode String
   /// Provider-sourced color photo URL (populated from Teemill catalog; may be null for Prodigi)
   colorImageUrl     String?
-  isActive          Boolean     @default(true)
 
-  productType ProductType @relation(fields: [productTypeId], references: [id], onDelete: Cascade)
+  productType       ProductType          @relation(fields: [productTypeId], references: [id], onDelete: Cascade)
+  apparelListingColors ApparelListingColor[]
 
   @@index([productTypeId])
 }
@@ -365,11 +375,66 @@ model ProductTypeSizeOption {
   sizeLabel        String
   providerSizeCode String
   sortOrder        Int
-  isActive         Boolean     @default(true)
 
   productType ProductType @relation(fields: [productTypeId], references: [id], onDelete: Cascade)
 
   @@index([productTypeId])
+}
+
+// ─── Apparel Listings (MFTF-5) ────────────────────────────────────────────────
+
+model ApparelListing {
+  id             String        @id @default(cuid())
+  sellerId       String
+  productTypeId  String
+  title          String
+  description    String?       @db.Text
+  retailPrice    Decimal       @db.Decimal(12, 2)
+  status         ListingStatus @default(ACTIVE)
+  /// Clean design file URL (no watermark) — sent directly to the fulfillment provider
+  designImageUrl String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  seller      User                  @relation(fields: [sellerId], references: [id])
+  productType ProductType           @relation(fields: [productTypeId], references: [id])
+  colors      ApparelListingColor[]
+  images      ApparelListingImage[]
+  orders      Order[]
+
+  @@index([sellerId])
+  @@index([status])
+  @@index([productTypeId])
+}
+
+model ApparelListingColor {
+  id                  String  @id @default(cuid())
+  apparelListingId    String
+  productTypeColorId  String
+  /// Whether the seller is offering this color on their listing
+  isOffered           Boolean @default(true)
+
+  apparelListing   ApparelListing   @relation(fields: [apparelListingId], references: [id], onDelete: Cascade)
+  productTypeColor ProductTypeColor @relation(fields: [productTypeColorId], references: [id])
+
+  @@unique([apparelListingId, productTypeColorId])
+  @@index([apparelListingId])
+}
+
+model ApparelListingImage {
+  id               String   @id @default(cuid())
+  apparelListingId String
+  originalUrl      String
+  displayUrl       String?
+  gridUrl          String?
+  thumbnailUrl     String?
+  isPrimary        Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  apparelListing ApparelListing @relation(fields: [apparelListingId], references: [id], onDelete: Cascade)
+
+  @@index([apparelListingId])
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────

@@ -55,12 +55,12 @@ describe("US-8.3 — Purchase a Print", () => {
     });
     expect(order.buyerId).toBe(buyer.id);
     expect(order.originalListingId).toBe(originalListing.id);
-    expect(order.prodigiSku).toBe("GLOBAL-FAP-16X24");
+    expect(order.externalSku).toBe("GLOBAL-FAP-16X24");
     expect(order.listingType).toBe("PRINT");
     expect(Number(order.subtotal)).toBe(75);
   });
 
-  it("submits the order to Prodigi API and stores prodigiOrderId", async () => {
+  it("submits the order to Prodigi API and stores externalOrderId", async () => {
     const { buyer, originalListing } = await seedPrintListing();
     const order = await createPrintOrder({
       buyerId: buyer.id,
@@ -77,7 +77,7 @@ describe("US-8.3 — Purchase a Print", () => {
         country: "US",
       },
     });
-    expect(order.prodigiOrderId).toBe("ord-test-mock");
+    expect(order.externalOrderId).toBe("ord-test-mock");
   });
 
   it("rejects order with invalid SKU not in listing products", async () => {

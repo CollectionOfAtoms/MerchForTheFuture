@@ -373,7 +373,7 @@ describe("US-MFTF-3.2 — ProdigiFulfillmentProvider", () => {
       });
 
       expect(prodigiCalled).toBe(true);
-      expect(order.prodigiOrderId).toBe("ord-regression-test");
+      expect(order.externalOrderId).toBe("ord-regression-test");
       expect(order.status).toBe("PROCESSING");
     });
   });

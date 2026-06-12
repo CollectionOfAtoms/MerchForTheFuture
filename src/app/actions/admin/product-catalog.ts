@@ -46,7 +46,6 @@ export async function createProductTypeAction(fd: FormData): Promise<ActionResul
           data: colors.map((c) => ({
             productTypeId: pt.id,
             colorName: c.name,
-            colorHex: null,
             providerColorCode: c.name,
             colorImageUrl: c.imageUrl || null,
           })),
@@ -107,13 +106,12 @@ export async function addProductTypeColorAction(productTypeId: string, fd: FormD
   if (!existing) return { error: "Product type not found" };
 
   const colorName = (fd.get("colorName") as string | null)?.trim() ?? "";
-  const colorHex = (fd.get("colorHex") as string | null)?.trim() ?? "";
   const providerColorCode = (fd.get("providerColorCode") as string | null)?.trim() ?? "";
 
   if (!colorName) return { error: "Color name is required" };
 
   const color = await prisma.productTypeColor.create({
-    data: { productTypeId, colorName, colorHex, providerColorCode },
+    data: { productTypeId, colorName, providerColorCode },
   });
 
   revalidatePath(`/admin/products/${productTypeId}`);

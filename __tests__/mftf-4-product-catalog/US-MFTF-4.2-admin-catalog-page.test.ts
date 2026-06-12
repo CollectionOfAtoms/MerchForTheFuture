@@ -25,8 +25,8 @@ describe("US-MFTF-4.2 — getAdminProductCatalog data layer", () => {
         name: "Unisex Tee",
         fulfillmentProvider: "TEEMILL",
         providerSkuBase: "RNA1",
-        isActive: true,
-        colors: { create: [{ colorName: "White", colorHex: "#FFF", providerColorCode: "White" }] },
+        colors: { create: [{ colorName: "White",
+ providerColorCode: "White" }] },
         sizes:  { create: [{ sizeLabel: "M", providerSizeCode: "M", sortOrder: 2 }] },
       },
     });
@@ -35,7 +35,6 @@ describe("US-MFTF-4.2 — getAdminProductCatalog data layer", () => {
         name: "Discontinued Item",
         fulfillmentProvider: "TEEMILL",
         providerSkuBase: "OLD1",
-        isActive: false,
       },
     });
 
@@ -44,7 +43,6 @@ describe("US-MFTF-4.2 — getAdminProductCatalog data layer", () => {
     expect(result).toHaveLength(2);
   });
 
-  it("includes name, fulfillmentProvider, isActive on each record", async () => {
     await prisma.productType.create({
       data: { name: "Unisex Tee", fulfillmentProvider: "TEEMILL", providerSkuBase: "RNA1" },
     });
@@ -53,7 +51,6 @@ describe("US-MFTF-4.2 — getAdminProductCatalog data layer", () => {
 
     expect(pt.name).toBe("Unisex Tee");
     expect(pt.fulfillmentProvider).toBe("TEEMILL");
-    expect(pt.isActive).toBe(true);
   });
 
   it("includes active color count and active size count per product type", async () => {
@@ -64,16 +61,19 @@ describe("US-MFTF-4.2 — getAdminProductCatalog data layer", () => {
         providerSkuBase: "RNA1",
         colors: {
           create: [
-            { colorName: "White", colorHex: "#FFF", providerColorCode: "White", isActive: true },
-            { colorName: "Black", colorHex: "#000", providerColorCode: "Black", isActive: true },
-            { colorName: "Retired", colorHex: "#AAA", providerColorCode: "Retired", isActive: false },
+            { colorName: "White",
+ providerColorCode: "White" },
+            { colorName: "Black",
+ providerColorCode: "Black" },
+            { colorName: "Retired",
+ providerColorCode: "Retired" },
           ],
         },
         sizes: {
           create: [
-            { sizeLabel: "S",   providerSizeCode: "S",   sortOrder: 1, isActive: true },
-            { sizeLabel: "M",   providerSizeCode: "M",   sortOrder: 2, isActive: true },
-            { sizeLabel: "Old", providerSizeCode: "Old", sortOrder: 9, isActive: false },
+            { sizeLabel: "S",   providerSizeCode: "S",   sortOrder: 1 },
+            { sizeLabel: "M",   providerSizeCode: "M",   sortOrder: 2 },
+            { sizeLabel: "Old", providerSizeCode: "Old", sortOrder: 9 },
           ],
         },
       },

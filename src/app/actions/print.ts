@@ -38,7 +38,7 @@ export async function createPrintOrderAction(
       buyerId: user.id,
       listingType: "PRINT",
       originalListingId: listingId,
-      prodigiSku: sku,
+      externalSku: sku,
       printSize: size,
       quantity,
       subtotal,

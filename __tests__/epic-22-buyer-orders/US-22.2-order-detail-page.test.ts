@@ -218,7 +218,7 @@ describe("US-22.2 — getOrderDetail", () => {
       data: {
         buyerId: buyer.id,
         listingType: "PRINT",
-        prodigiSku: "GLOBAL-FAP-8X10",
+        externalSku: "GLOBAL-FAP-8X10",
         printSize: "8x10",
         quantity: 1,
         subtotal: 25.0,

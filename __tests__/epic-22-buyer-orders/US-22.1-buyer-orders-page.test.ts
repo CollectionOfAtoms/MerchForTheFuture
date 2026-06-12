@@ -64,7 +64,7 @@ async function seedBuyerWithOrders() {
       buyerId: buyer.id,
       listingType: "PRINT",
       originalListingId: listing.id,
-      prodigiSku: "GLOBAL-FAP-16X24",
+      externalSku: "GLOBAL-FAP-16X24",
       printSize: "16x24",
       quantity: 1,
       subtotal: 45.0,
@@ -157,7 +157,7 @@ describe("US-22.1 — getBuyerOrders", () => {
       data: {
         buyerId: buyer.id,
         listingType: "PRINT",
-        prodigiSku: "GLOBAL-FAP-8X10",
+        externalSku: "GLOBAL-FAP-8X10",
         printSize: "8x10",
         quantity: 1,
         subtotal: 25.0,

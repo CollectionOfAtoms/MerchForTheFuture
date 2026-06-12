@@ -95,9 +95,9 @@ export async function getOrderDetail(
   const artwork = order.originalListing?.artwork ?? null;
 
   let mockupUrl: string | null = null;
-  if (order.prodigiSku && order.originalListing?.printProducts) {
+  if (order.externalSku && order.originalListing?.printProducts) {
     const products = order.originalListing.printProducts as { sku: string; mockupUrl?: string | null }[];
-    mockupUrl = products.find((p) => p.sku === order.prodigiSku)?.mockupUrl ?? null;
+    mockupUrl = products.find((p) => p.sku === order.externalSku)?.mockupUrl ?? null;
   }
 
   return {

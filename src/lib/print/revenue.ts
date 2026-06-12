@@ -53,7 +53,7 @@ export async function getPrintRevenueSummary(sellerId: string): Promise<PrintRev
 
     if (order.transaction) {
       totalPlatformFees += Number(order.transaction.platformFee);
-      totalFulfillmentCosts += Number(order.transaction.prodigiFulfillmentCost ?? 0);
+      totalFulfillmentCosts += Number(order.transaction.fulfillmentCost ?? 0);
       totalNetPayout += Number(order.transaction.netPayout);
     }
 
