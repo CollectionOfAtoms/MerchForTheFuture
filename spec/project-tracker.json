@@ -1539,12 +1539,12 @@
    "id": "US-MFTF-5.4",
    "epic": "Epic MFTF-5: Apparel Listing Creation",
    "title": "Edit Apparel Listing",
-   "status": "Not Started",
-   "testWrittenDate": null,
-   "testWrittenCommit": null,
-   "testPassedDate": null,
-   "testPassedCommit": null,
-   "notes": null
+   "status": "Passed",
+   "testWrittenDate": "2026-06-12",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-06-12",
+   "testPassedCommit": "pending",
+   "notes": "19 tests passing. Edit page at /seller/apparel/[listingId]/edit (server: SELLER + ownership guard; SOLD listings render a read-only view). getApparelListingForEdit returns title/description/price/design/status plus every product-type color flagged isOffered and lifestyle photos in order. updateApparelListingAction: ownership + Unauthorized guard, SOLD read-only, product-type-immutable error, last-color guard, title/price validation, color-belongs-to-type, then persists fields and syncs ApparelListingColor rows (deleteMany not-offered + upsert offered) in a transaction; returns { success: true }. Image-management actions: addApparelImageAction (append + return imageId), deleteApparelImageAction (blob del + reassign primary), setApparelPrimaryImageAction, replaceApparelDesignAction (swaps design, leaves photos). EditApparelListingForm + ApparelImageManager client components; manager processes unprocessed photos via /api/apparel/images/process on mount (mirrors artwork ImageUploader)."
   },
   {
    "id": "US-MFTF-6.1",
