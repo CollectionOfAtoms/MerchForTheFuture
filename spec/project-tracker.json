@@ -1,2200 +1,2359 @@
 {
-  "stories": [
-    {
-      "id": "BUG-8",
-      "epic": "Infrastructure",
-      "title": "NavDropdown obscured by listing cards on browse page",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-11",
-      "testPassedCommit": "pending",
-      "notes": "The NavDropdown wrapper div (position:relative, no z-index) created no stacking context. Listing cards on the browse page create their own stacking contexts (via CSS transform or explicit z-index) and were painting above the dropdown menu. Fixed by adding z-50 to the wrapper div, which creates a stacking context that keeps the dropdown above all page content."
-    },
-    {
-      "id": "BUG-10",
-      "epic": "Infrastructure",
-      "title": "Mobile menu toggle button shifts right on open; splash circle origin misaligned",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-11",
-      "testPassedCommit": "pending",
-      "notes": "Two related issues. (1) Button shifts right when menu opens because overflow:hidden or position:fixed scroll-lock on body caused layout reflow (scrollbar disappearance or iOS viewport resize) that moved the static-positioned button. Fixed by making the toggle button position:fixed at top:1rem / right:1.5rem (matching the header's py-4 / px-6 spacing) with a 44x44px in-flow spacer div to preserve header height. Reverted body scroll lock to simple overflow:hidden. (2) Splash circle emanated from top:1.25rem / right:1.25rem (viewport corner) instead of the button center. Fixed by updating the splash container origin to calc(1rem + 22px) / calc(1.5rem + 22px), which places it at the center of the 44px button (header padding + half button dimension)."
-    },
-    {
-      "id": "BUG-9",
-      "epic": "Infrastructure",
-      "title": "Mobile menu X button jumps position on open; circle expand animation missing",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-11",
-      "testPassedCommit": "pending",
-      "notes": "Two related issues. (1) Button position: using overflow:hidden on body causes iOS Safari to hide the URL bar and shift the visual viewport, making the static-positioned header appear to jump. Fixed with the standard iOS position:fixed scroll-lock technique: save scrollY, set body position:fixed + top:-scrollY + width:100%, restore all on close and call window.scrollTo() to preserve scroll position. (2) Animation: the previous BUG-7 double-rAF fix for the splash overlay still failed because React batches both the mount render and the splashVisible=true update into the same paint frame. Reverted to always-mounting the splash overlay inside sm:hidden (safe because sm:hidden=display:none on desktop, so no compositor-layer interference with NavDropdown). With the element always in the DOM at scale(0), the CSS transition fires correctly when isOpen changes to true."
-    },
-    {
-      "id": "BUG-7",
-      "epic": "Infrastructure",
-      "title": "Mobile menu circle-expand animation missing on open after conditional-mount fix",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-11",
-      "testPassedCommit": "pending",
-      "notes": "Regression introduced when the splash overlay was changed from always-mounted to conditionally-mounted (splashMounted state). The element now enters the DOM with isOpen already true, so the transform starts at scale(1) immediately — no prior scale(0) state to transition from. Close animation was unaffected because the element is already at scale(1) in the DOM when isOpen goes false. Fix: added splashVisible state (separate from splashMounted). On open: element mounts at scale(0), then a double requestAnimationFrame defers setSplashVisible(true) by two paint frames so the browser renders the starting state before the transition fires. The circle-expand and circle-collapse animations are both driven by splashVisible."
-    },
-    {
-      "id": "BUG-3",
-      "epic": "Infrastructure",
-      "title": "Password reset form conflicts with LastPass autofill on iOS",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-08",
-      "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-08. Fixed by replacing the two-input (password + confirm) pattern with a single password input and a show/hide visibility toggle. Confirm field removed from ResetPasswordForm.tsx and the confirm validation removed from resetPasswordAction in actions/auth.ts. US-17.2 tests updated to drop confirm from all makeFormData calls; 'passwords do not match' test case removed as the code path no longer exists."
-    },
-    {
-      "id": "BUG-6",
-      "epic": "Infrastructure",
-      "title": "Sign-in hangs on loading screen after successful auth under --experimental-https on network IP",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-11",
-      "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. Symptom: sign-in form shows 'Signing in…' indefinitely; refreshing lands on the correct dashboard (session was created server-side). Root cause: the mkcert certificate in certificates/localhost.pem covered only localhost/127.0.0.1/::1/0.0.0.0 — not 192.168.68.54. When accessing the dev server from the network at https://192.168.68.54:3000, browsers allow the initial HTML page load (user clicks through the cert warning) but silently block all subsequent JS-driven subresource requests including RSC payload fetches. After signInAction throws NEXT_REDIRECT, the client router tries to fetch the RSC payload for the destination route — that fetch is blocked, leaving useActionState pending:true forever. Fix: (1) regenerated the mkcert cert with mkcert -cert-file certificates/localhost.pem -key-file certificates/localhost-key.pem localhost 127.0.0.1 ::1 192.168.68.54; (2) updated the dev script in package.json to explicitly pass --experimental-https-key and --experimental-https-cert so Next.js uses the custom cert. Previous partial fix (direct-role redirect in signInAction to avoid the double-hop) is kept as a latency improvement."
-    },
-    {
-      "id": "BUG-5",
-      "epic": "Infrastructure",
-      "title": "Buyer dashboard 'View →' link 404s — wrong route /listings instead of /artwork",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-11",
-      "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. Both 'View →' links on the buyer dashboard (winning bids highlight and active bids list) used href /listings/${bid.listingId}. The route is /artwork/[id] keyed by artwork ID. Fix: added artworkId to BuyerActiveBid interface and query (selected artwork.id), changed both hrefs to /artwork/${bid.artworkId}."
-    },
-    {
-      "id": "BUG-4",
-      "epic": "Infrastructure",
-      "title": "NavDropdown unclickable and sign-in hangs on network dev — mkcert cert missing 192.168.68.54 SAN",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-11",
-      "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. NavDropdown button showed hover styles (CSS worked) but clicking gave no feedback in any browser (Chrome, Waterfox) when accessed via https://192.168.68.54:3000. Root cause: same as BUG-6 — mkcert cert did not list 192.168.68.54 as a Subject Alternative Name. Browsers load the initial HTML (user accepts the cert warning for the page) but block JS subresource fetches to an untrusted HTTPS origin. Without JS loading, React never hydrates, event handlers are never attached, and the dropdown cannot open. The 'sometimes works' behavior occurred on fresh page loads where the browser's cert exception was still active in memory. Fixed by the same cert regeneration as BUG-6. Earlier code-level fixes (conditional MobileMenu mounting, pointer-events:none on SVG, direct-role redirect in signInAction) remain as defensive improvements but were not the root cause."
-    },
-    {
-      "id": "BUG-2",
-      "epic": "Infrastructure",
-      "title": "Auth redirects can send user to http:// instead of https://",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-10",
-      "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-08. Fixed 2026-06-10 by correcting environment variables (NEXTAUTH_URL and/or NEXT_PUBLIC_BASE_URL updated to https:// scheme in Vercel env vars). No code change required."
-    },
-    {
-      "id": "BUG-1",
-      "epic": "Infrastructure",
-      "title": "Fix image variant generation: tall/portrait images rotated sideways and cropped",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-03",
-      "testWrittenCommit": "a714364",
-      "testPassedDate": "2026-06-03",
-      "testPassedCommit": "a163102",
-      "notes": "Reported 2026-06-03. Portrait (tall/narrow) images come out rotated 90° in generated variants (display, grid, thumbnail). Fix 1: add .rotate() as first call in the normalizedBuffer Sharp pipeline (src/lib/artworks/variants.ts). Fix 2: use timestamped filenames for variant blobs so each generation produces a unique URL, defeating Vercel CDN and browser caching of the old rotated variants."
-    },
-    {
-      "id": "CHORE-13",
-      "epic": "Infrastructure",
-      "title": "Fix Vercel TypeScript build error on requestPasswordResetAction",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-12",
-      "testPassedCommit": "pending",
-      "notes": "useActionState requires _prev type to include all possible return types. Widened _prev from ActionState|undefined to ActionState|{success:true}|undefined."
-    },
-    {
-      "id": "CHORE-12",
-      "epic": "Infrastructure",
-      "title": "Pre-validate reset token on page load",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-12",
-      "testPassedCommit": "pending",
-      "notes": "reset-password page converted to server component that checks token validity (missing/invalid/used/expired) against the DB before rendering. Shows error immediately on page load instead of only after form submission. Form extracted to ResetPasswordForm client component."
-    },
-    {
-      "id": "CHORE-11",
-      "epic": "Infrastructure",
-      "title": "Fix input text contrast on forgot/reset password pages",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-12",
-      "testPassedCommit": "pending",
-      "notes": "Added text-stone-900 and placeholder:text-stone-400 to email and password inputs on forgot-password and reset-password pages."
-    },
-    {
-      "id": "CHORE-10",
-      "epic": "Infrastructure",
-      "title": "Fix production base URL and wire NEXT_PUBLIC_BASE_URL",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-12",
-      "testPassedCommit": "pending",
-      "notes": "email.ts fallback changed from artandsol.com to artandsol.quest. NEXT_PUBLIC_BASE_URL=https://localhost:3000 added to .env.local so email links from dev server point to localhost. .env.local.example documents the variable."
-    },
-    {
-      "id": "CHORE-9",
-      "epic": "Infrastructure",
-      "title": "Run prisma generate before dev server start",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-12",
-      "testPassedCommit": "pending",
-      "notes": "Dev script now runs prisma generate before next dev so schema changes are always reflected without a manual regenerate step. Mirrors the existing build script pattern."
-    },
-    {
-      "id": "CHORE-8",
-      "epic": "Infrastructure",
-      "title": "Write Epic 9 test suite and normalise tracker statuses",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-11",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "pending",
-      "notes": "53 tests across US-9.1–US-9.6 covering nav role logic, listings index data, createListingAction validation and success paths, updateListingAction, toggleListingStatusAction with browse visibility, and tracker JSON structure. Epic 11/12 statuses corrected from Complete to Passed with dates and commit refs."
-    },
-    {
-      "id": "US-1.1",
-      "epic": "Epic 1: Artwork Listing & Product Page",
-      "title": "Create Listing",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "2e0fc35",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "0207f37",
-      "notes": "6 tests passing. Artist, medium, dimensions, description, and image required at creation time."
-    },
-    {
-      "id": "US-1.2",
-      "epic": "Epic 1: Artwork Listing & Product Page",
-      "title": "Upload Images",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "2e0fc35",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "0207f37",
-      "notes": "9 tests passing"
-    },
-    {
-      "id": "US-1.3",
-      "epic": "Epic 1: Artwork Listing & Product Page",
-      "title": "Add Artwork Details",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "2e0fc35",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "0207f37",
-      "notes": "4 tests passing. Mobile fix: Medium+Dimensions grid changed to grid-cols-1 sm:grid-cols-2 so Dimensions row gets full width on mobile; W/H inputs get min-w-0 to prevent flex overflow. Applied to both new-listing page and EditListingForm. Year field now uses defaultValue=currentYear so stepper increments from the current year instead of jumping to min (1900)."
-    },
-    {
-      "id": "US-1.4",
-      "epic": "Epic 1: Artwork Listing & Product Page",
-      "title": "Choose Sale Type",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "2e0fc35",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "0207f37",
-      "notes": "5 tests passing"
-    },
-    {
-      "id": "US-1.5",
-      "epic": "Epic 1: Artwork Listing & Product Page",
-      "title": "Edit Listing",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "2e0fc35",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "0207f37",
-      "notes": "5 tests passing"
-    },
-    {
-      "id": "US-1.6",
-      "epic": "Epic 1: Artwork Listing & Product Page",
-      "title": "Remove Listing",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "2e0fc35",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "0207f37",
-      "notes": "5 tests passing"
-    },
-    {
-      "id": "US-2.1",
-      "epic": "Epic 2: Fixed-Price Sales",
-      "title": "Set Price",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "8a79bd5",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "c4d01aa",
-      "notes": "9 tests passing"
-    },
-    {
-      "id": "US-2.2",
-      "epic": "Epic 2: Fixed-Price Sales",
-      "title": "View Price",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "8a79bd5",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "c4d01aa",
-      "notes": "6 tests passing"
-    },
-    {
-      "id": "US-2.3",
-      "epic": "Epic 2: Fixed-Price Sales",
-      "title": "Buy Now",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "8a79bd5",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "c4d01aa",
-      "notes": "10 tests passing"
-    },
-    {
-      "id": "US-2.4",
-      "epic": "Epic 2: Fixed-Price Sales",
-      "title": "Auto-Mark as Sold",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "8a79bd5",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "c4d01aa",
-      "notes": "7 tests passing"
-    },
-    {
-      "id": "US-3.1",
-      "epic": "Epic 3: Auction Sales",
-      "title": "Configure Auction",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-3.2",
-      "epic": "Epic 3: Auction Sales",
-      "title": "Place Bid",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-3.3",
-      "epic": "Epic 3: Auction Sales",
-      "title": "View Auction Status",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-3.4",
-      "epic": "Epic 3: Auction Sales",
-      "title": "Outbid Notification",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-3.5",
-      "epic": "Epic 3: Auction Sales",
-      "title": "Auction Close",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-3.6",
-      "epic": "Epic 3: Auction Sales",
-      "title": "Reserve Price Protection",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-4.1",
-      "epic": "Epic 4: Payments",
-      "title": "Pay by Credit Card",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "c0e7a59",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "c0e7a59",
-      "notes": null
-    },
-    {
-      "id": "US-4.2",
-      "epic": "Epic 4: Payments",
-      "title": "Secure Payment Processing",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "c0e7a59",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "c0e7a59",
-      "notes": null
-    },
-    {
-      "id": "US-4.3",
-      "epic": "Epic 4: Payments",
-      "title": "Seller Payouts",
-      "status": "Deferred",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "c0e7a59",
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Deferred — single-seller model; no Stripe Connect onboarding"
-    },
-    {
-      "id": "US-4.4",
-      "epic": "Epic 4: Payments",
-      "title": "Transaction Records",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "c0e7a59",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "c0e7a59",
-      "notes": null
-    },
-    {
-      "id": "US-4.5",
-      "epic": "Epic 4: Payments",
-      "title": "Purchase Confirmation",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "c0e7a59",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "c0e7a59",
-      "notes": null
-    },
-    {
-      "id": "US-5.1",
-      "epic": "Epic 5: Tax Calculation",
-      "title": "Auto-Calculate Tax by Buyer Location",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-5.2",
-      "epic": "Epic 5: Tax Calculation",
-      "title": "Tax-Exempt Handling",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-5.3",
-      "epic": "Epic 5: Tax Calculation",
-      "title": "Seller Tax Reporting",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-5.4",
-      "epic": "Epic 5: Tax Calculation",
-      "title": "Multi-Currency Display",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-6.1",
-      "epic": "Epic 6: User Accounts & Authentication",
-      "title": "Account Creation",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "50ffb73",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "2e0fc35",
-      "notes": "12 tests passing. Web registration always assigns BUYER role; privileged roles assigned manually."
-    },
-    {
-      "id": "US-6.2",
-      "epic": "Epic 6: User Accounts & Authentication",
-      "title": "Secure Login",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "50ffb73",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "2e0fc35",
-      "notes": "7 tests passing"
-    },
-    {
-      "id": "US-6.3",
-      "epic": "Epic 6: User Accounts & Authentication",
-      "title": "Seller Onboarding",
-      "status": "Dropped",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "50ffb73",
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Dropped. Platform uses a single privileged seller account; no Stripe Connect onboarding. Code preserved in seller-onboarding.ts for future multi-seller extension."
-    },
-    {
-      "id": "US-6.4",
-      "epic": "Epic 6: User Accounts & Authentication",
-      "title": "Email Verification",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-04",
-      "testWrittenCommit": "dbd05a8",
-      "testPassedDate": "2026-06-04",
-      "testPassedCommit": "33df65e",
-      "notes": "On sign-up: show holding page, send 'You're almost done' email with single-use magic-link token (24h expiry). Clicking link opens new tab, shows verified confirmation, redirects to buyer dashboard. Expired/used tokens show error + resend option. Unverified users hitting auth pages redirected to holding page. Sets emailVerified timestamp on user record. Data migration: backfill emailVerified=createdAt for existing users on deploy. Post-merge fix: narrowed result.error type on verify-email page (string|undefined → string) to resolve Vercel TypeScript build error."
-    },
-    {
-      "id": "US-7.1",
-      "epic": "Epic 7: Browsing & Discovery",
-      "title": "Browse Artwork",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "f966f62",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "1fb638b",
-      "notes": "8 tests passing"
-    },
-    {
-      "id": "US-7.2",
-      "epic": "Epic 7: Browsing & Discovery",
-      "title": "Filter & Sort",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "f966f62",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "1fb638b",
-      "notes": "13 tests passing"
-    },
-    {
-      "id": "US-7.3",
-      "epic": "Epic 7: Browsing & Discovery",
-      "title": "Search",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "f966f62",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "1fb638b",
-      "notes": "8 tests passing"
-    },
-    {
-      "id": "US-7.4",
-      "epic": "Epic 7: Browsing & Discovery",
-      "title": "Unified Artwork Display",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "f966f62",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "1fb638b",
-      "notes": "9 tests passing"
-    },
-    {
-      "id": "US-8.1",
-      "epic": "Epic 8: Print Shop",
-      "title": "Create Print Listing",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-8.2",
-      "epic": "Epic 8: Print Shop",
-      "title": "Browse Print Options",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-8.3",
-      "epic": "Epic 8: Print Shop",
-      "title": "Purchase a Print",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-8.4",
-      "epic": "Epic 8: Print Shop",
-      "title": "Print Order Tracking",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-8.5",
-      "epic": "Epic 8: Print Shop",
-      "title": "Seller Print Revenue",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-8.6",
-      "epic": "Epic 8: Print Shop",
-      "title": "Print Quality Assurance",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-9.1",
-      "epic": "Epic 9: Seller Dashboard & Listing Management",
-      "title": "Listings Nav Link",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "9e790dc",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "9e790dc",
-      "notes": "Sellers see 'Listings' link in top nav; admins see 'Admin' link"
-    },
-    {
-      "id": "US-9.2",
-      "epic": "Epic 9: Seller Dashboard & Listing Management",
-      "title": "Seller Listings Index",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "9e790dc",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "9e790dc",
-      "notes": "Grid of all seller listings with status badge, price, sale type, and action buttons. Mobile fix: each listing row wraps to two lines — thumbnail+title on line 1, status badge+actions on line 2. Header also stacks on mobile with Add listing button left-aligned."
-    },
-    {
-      "id": "US-9.3",
-      "epic": "Epic 9: Seller Dashboard & Listing Management",
-      "title": "Create New Listing",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "9e790dc",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "9e790dc",
-      "notes": "Form to create artwork + fixed-price or auction listing; validates and redirects to edit page"
-    },
-    {
-      "id": "US-9.4",
-      "epic": "Epic 9: Seller Dashboard & Listing Management",
-      "title": "Edit Listing Details",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "9e790dc",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "9e790dc",
-      "notes": "Pre-populated edit form for title, description, medium, dimensions, year, price/reserve; locked fields on sold/active auctions"
-    },
-    {
-      "id": "US-9.5",
-      "epic": "Epic 9: Seller Dashboard & Listing Management",
-      "title": "Archive / Activate Listing",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "9e790dc",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "9e790dc",
-      "notes": "Toggle listing between Active and Archived from the listings index; sold listings cannot be toggled"
-    },
-    {
-      "id": "US-9.6",
-      "epic": "Epic 9: Seller Dashboard & Listing Management",
-      "title": "Admin Project Tracker View",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "9e790dc",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "9e790dc",
-      "notes": "Formatted tracker at /admin/tracker with per-epic progress bars, story status badges, and commit log"
-    },
-    {
-      "id": "US-10.1",
-      "epic": "Epic 10: Browse & Product Page UX",
-      "title": "Browse Gallery Layout",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "388a86f",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "bb3ab70",
-      "notes": "11 tests passing. Masonry CSS columns grid at /browse. Fixed ARCHIVED listing exclusion bug in browseArtworks(). ListingCard component links to /artwork/[id]. Pagination + filter/sort controls."
-    },
-    {
-      "id": "US-10.2",
-      "epic": "Epic 10: Browse & Product Page UX",
-      "title": "Listing Detail Page",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "388a86f",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "4103b71",
-      "notes": "15 tests passing. /artwork/[id] server-rendered page with generateMetadata(). ImageCarousel client component. Fixed-price Buy Now, auction countdown + bid placeholder (TODO US-12.1), print section placeholder (TODO US-8.2)."
-    },
-    {
-      "id": "US-11.1",
-      "epic": "Epic 11: Seller Listing Lifecycle",
-      "title": "Require Image on Listing Creation",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "a6455e4",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "a6455e4",
-      "notes": "Client-side and server-side validation; blocks publish without image",
-      "commitLog": [
-        {
-          "hash": "pending",
-          "message": "feat(epic-11): implement US-11.1 — require image on listing creation (tests only)"
-        }
-      ]
-    },
-    {
-      "id": "US-11.2",
-      "epic": "Epic 11: Seller Listing Lifecycle",
-      "title": "Deactivate Listing",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "a6455e4",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "a6455e4",
-      "notes": "Extends US-9.5 with clearer naming and auction-bid guard",
-      "commitLog": [
-        {
-          "hash": "pending",
-          "message": "feat(epic-11): implement US-11.2 — deactivate listing with auction bid guard"
-        }
-      ]
-    },
-    {
-      "id": "US-11.3",
-      "epic": "Epic 11: Seller Listing Lifecycle",
-      "title": "Delete Unsold Listing",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "a6455e4",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "a6455e4",
-      "notes": "Permanent deletion with confirmation; blocked on sold listings",
-      "commitLog": [
-        {
-          "hash": "pending",
-          "message": "feat(epic-11): implement US-11.3 — delete unsold listing"
-        }
-      ]
-    },
-    {
-      "id": "US-12.1",
-      "epic": "Epic 12: Buyer Experience",
-      "title": "Place Bid on Auction (UI Flow)",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "a6455e4",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "a6455e4",
-      "notes": "UI implementation of US-3.2; inline bid form on listing detail page",
-      "commitLog": [
-        {
-          "hash": "9775114",
-          "message": "fix: allow bidding on SCHEDULED auctions, transition to ACTIVE on first bid"
-        }
-      ]
-    },
-    {
-      "id": "US-12.2",
-      "epic": "Epic 12: Buyer Experience",
-      "title": "My Bids Page",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "a6455e4",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "a6455e4",
-      "notes": "Buyer dashboard showing all auctions bid on with status indicators. Bid again / View links per status.",
-      "commitLog": [
-        {
-          "hash": "9f739e6",
-          "message": "feat(epic-12): implement US-12.2 — my bids page with full bid history"
-        }
-      ]
-    },
-    {
-      "id": "US-12.3",
-      "epic": "Epic 12: Buyer Experience",
-      "title": "Outbid Email Notification",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "a6455e4",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "a6455e4",
-      "notes": "Email delivery implementation of US-3.4; includes opt-out. HTML email with artwork image. RESEND_FROM_EMAIL env var for sender.",
-      "commitLog": [
-        {
-          "hash": "ba5c9c6",
-          "message": "feat(epic-12): implement US-12.3 — outbid email notification via Resend"
-        }
-      ]
-    },
-    {
-      "id": "US-12.4",
-      "epic": "Epic 12: Buyer Experience",
-      "title": "Buyer Account Settings",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "a6455e4",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "a6455e4",
-      "notes": "Profile, billing (Stripe), shipping addresses, notification prefs. Fixed outbidEmails toggle (formData.getAll).",
-      "commitLog": [
-        {
-          "hash": "0b5c10e",
-          "message": "feat(epic-12): implement US-12.4 — buyer account settings (profile, shipping, notifications)"
-        },
-        {
-          "hash": "4b19739",
-          "message": "fix: lazy Stripe init in portal route + pin Blob image hostname"
-        }
-      ]
-    },
-    {
-      "id": "US-13.1",
-      "epic": "Epic 13: Role-Based Dashboards",
-      "title": "Admin Dashboard (Homepage)",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "1330b55",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "02b719b",
-      "notes": "PRIORITY — implement before Epics 10-12. 14 tests passing. Tracker summary, site metrics, activity feed. Homepage redirects admin to /dashboard/admin. Mobile fix: header stacks vertically on small screens, buttons expand to fill row width."
-    },
-    {
-      "id": "US-13.2",
-      "epic": "Epic 13: Role-Based Dashboards",
-      "title": "Seller Dashboard (Homepage)",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "b1dfabf",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "8e92e98",
-      "notes": "PRIORITY — implement before Epics 10-12. 17 tests passing. Listings summary, active listings grid, activity feed, revenue snapshot. Homepage redirects seller to /dashboard/seller"
-    },
-    {
-      "id": "US-13.3",
-      "epic": "Epic 13: Role-Based Dashboards",
-      "title": "Buyer Dashboard (Homepage)",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-09",
-      "testWrittenCommit": "b48f87c",
-      "testPassedDate": "2026-05-09",
-      "testPassedCommit": "0ef37b0",
-      "notes": "PRIORITY — implement before Epics 10-12. 14 tests passing. Active bids with winning/outbid status, top bids highlight, order history. Homepage redirects buyer to /dashboard/buyer"
-    },
-    {
-      "id": "US-14.1",
-      "epic": "Epic 14: Post-Sale Fulfillment",
-      "title": "Post-Sale Fulfillment Page",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "6062d0f",
-      "notes": "Authenticated buyer-locked page at /orders/[orderId]/fulfill. Multi-step: shipping → payment → confirmation."
-    },
-    {
-      "id": "US-14.2",
-      "epic": "Epic 14: Post-Sale Fulfillment",
-      "title": "Shipping Address Confirmation",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "6062d0f",
-      "notes": "Pre-populates from default UserAddress; optional save-to-account; confirmShippingAction validates and persists."
-    },
-    {
-      "id": "US-14.3",
-      "epic": "Epic 14: Post-Sale Fulfillment",
-      "title": "Auction Win Payment Collection",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "6062d0f",
-      "notes": "closeAuction creates PENDING Order with paymentDeadline. PaymentForm (Stripe Elements) on fulfillment page. /api/payment-intent route."
-    },
-    {
-      "id": "US-14.4",
-      "epic": "Epic 14: Post-Sale Fulfillment",
-      "title": "Fulfillment Confirmation & Order Status",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "69ad9fe",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "6062d0f",
-      "notes": "Fulfillment page renders confirmation view for PAID/SHIPPED orders. Shipping + tracking info shown. sendPurchaseConfirmation updated with fulfillment link."
-    },
-    {
-      "id": "US-14.5",
-      "epic": "Epic 14: Post-Sale Fulfillment",
-      "title": "Admin Fulfillment Queue",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "6062d0f",
-      "notes": "/admin/fulfillment page. markShippedAction updates Order to SHIPPED with carrier/trackingNumber. ORDER_SHIPPED notification + email. Mobile layout fix: Carrier and Tracking number fields each full-width on their own row (space-y-3 stack instead of side-by-side flex)."
-    },
-    {
-      "id": "US-14.6",
-      "epic": "Epic 14: Post-Sale Fulfillment",
-      "title": "Payment Deadline for Auction Wins",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "6062d0f",
-      "notes": "paymentDeadline set at auction close (endAt + AUCTION_PAYMENT_WINDOW_HOURS). /api/cron/payment-deadlines sends 24h reminder and cancels expired orders."
-    },
-    {
-      "id": "US-15.1",
-      "epic": "Epic 15: Listing-Page Purchase & Print Availability",
-      "title": "Buy from Listing Page (Fixed-Price)",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "6062d0f",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "42eb5fd",
-      "notes": "9 tests passing. initiateBuyNowAction server action creates PENDING Order and redirects to /checkout/[orderId]. Buy Now button on listing detail page uses form action."
-    },
-    {
-      "id": "US-15.2",
-      "epic": "Epic 15: Listing-Page Purchase & Print Availability",
-      "title": "Print Availability Toggle on Listing",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "0081968",
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "d33ea7e",
-      "notes": "15 tests passing. PrintListing model dropped; availableForPrint/printSourceImageUrl/printProducts fields added to OriginalListing. updatePrintConfigAction validates seller ownership. All epic-7/8/10 tests updated for new schema."
-    },
-    {
-      "id": "US-15.3",
-      "epic": "Epic 15: Listing-Page Purchase & Print Availability",
-      "title": "Prints Page (Filtered Browse)",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-11",
-      "testWrittenCommit": "6140ab9",
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "6140ab9",
-      "notes": "7 tests passing. /prints/page.tsx created with browseArtworks availability:print filter. SOLD originals with print enabled appear. Pagination works. Bugfix: browse page Prints tab was not passing availability filter — saleTypeParam \"print\" fell through auction/fixed mapping to undefined."
-    },
-    {
-      "id": "US-15.4",
-      "epic": "Epic 15: Listing-Page Purchase & Print Availability",
-      "title": "Order a Print from Listing Page",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-11",
-      "testWrittenCommit": "482856a",
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "482856a",
-      "notes": "8 tests passing. createPrintOrderAction server action, PrintOptionsSelector client component, print section on detail page. fulfillPayment does not mark SOLD for PRINT orders."
-    },
-    {
-      "id": "US-15.5",
-      "epic": "Epic 15: Listing-Page Purchase & Print Availability",
-      "title": "Structured Artwork Dimensions",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-11",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "pending",
-      "notes": "Width/height/unit fields replace free-text dimensions. Validated in createListingAction and updateListingAction."
-    },
-    {
-      "id": "US-15.6",
-      "epic": "Epic 15: Listing-Page Purchase & Print Availability",
-      "title": "Print Catalog Filtered by Aspect Ratio",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-11",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "pending",
-      "notes": "filterByAspectRatio() in listing.ts filters catalog to ±10% ratio match, sorted by closeness."
-    },
-    {
-      "id": "US-15.7",
-      "epic": "Epic 15: Listing-Page Purchase & Print Availability",
-      "title": "Print Cost Estimates in Setup",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-11",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "pending",
-      "notes": "costs.json populated by fetch-prodigi-costs.ts. ~$X shown in PrintConfigForm. No runtime API calls."
-    },
-    {
-      "id": "US-16.3",
-      "epic": "Epic 16: Seller UX Improvements",
-      "title": "Admin User Role Elevation",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-11",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "pending",
-      "notes": "8 tests. updateUserRolesAction in actions/admin.ts; /admin/users page with UserRoleEditor client component. Toggle-on-click saves immediately. BUYER cannot be removed. Admin cannot remove own ADMIN role. Mobile layout fix: table-fixed with col widths (45/22/33%), email mid-truncated (first 15 chars + … + last 6) in monospace so Roles column never gets squeezed off-screen."
-    },
-    {
-      "id": "US-16.1",
-      "epic": "Epic 16: Seller UX Improvements",
-      "title": "Seller Thumbnail Links to Artwork Page",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-11",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "pending",
-      "notes": "4 tests. Thumbnail in seller listings wrapped in Link to /artwork/[artworkId]."
-    },
-    {
-      "id": "US-16.2",
-      "epic": "Epic 16: Seller UX Improvements",
-      "title": "Edit Listing Button on Artwork Page",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-11",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "pending",
-      "notes": "4 tests. getArtworkDetail exposes sellerId. Artwork page shows Edit listing button when session user is the seller."
-    },
-    {
-      "id": "US-14.7",
-      "epic": "Epic 14: Post-Sale Fulfillment",
-      "title": "Runner-Up Offer on Payment Expiry",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-10",
-      "testWrittenCommit": "89a2b82",
-      "testPassedDate": "2026-05-10",
-      "testPassedCommit": "6062d0f",
-      "notes": "7 tests passing. Runner-up gets new PENDING order + email + notification when winner payment expires. Listing archived if no other bidders."
-    },
-    {
-      "id": "US-14.8",
-      "epic": "Epic 14: Post-Sale Fulfillment",
-      "title": "Fulfillment Error Email Notification to Seller",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-10",
-      "testWrittenCommit": "649e6ce",
-      "testPassedDate": "2026-06-10",
-      "testPassedCommit": "f269950",
-      "notes": "12 tests. Error notification logic extracted into createFulfillmentOrder() wrapper in src/lib/fulfillment/createOrder.ts — any provider (Prodigi, Teemill, future) that throws automatically alerts the seller. 7 integration tests via confirmShippingAction; 5 provider-agnostic unit tests use a hand-rolled mock provider. sendFulfillmentErrorEmail walks order → originalListing → artwork → seller. Buyer always receives success response."
-    },
-    {
-      "id": "CHORE-7",
-      "epic": "Infrastructure",
-      "title": "Remove seller sign-up language from homepage",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "pending",
-      "notes": "Homepage is buyer-facing only. Removed 'Start selling' hero button, replaced '03 Sell' how-it-works step with buyer-focused 'Bid' and 'Collect' steps, and dropped the seller CTA banner."
-    },
-    {
-      "id": "CHORE-6",
-      "epic": "Infrastructure",
-      "title": "Fix print order Prodigi flow, MSW sandbox intercept, purchase confirmation email",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "pending",
-      "notes": "Three bugs fixed: (1) MSW v2 does not support RegExp URL patterns — replaced with explicit PRODIGI_BASES.flatMap() for both live and sandbox URLs so tests are intercepted correctly. (2) Print order Prodigi flow was broken: confirmShippingAction rejected PAID orders; now allows PENDING|PAID; creates Prodigi order + transitions to PROCESSING after shipping collected for PAID PRINT orders. (3) fulfillPayment() webhook guarded against calling Prodigi with empty shipping fields (shippingName check). sendPurchaseConfirmation now called from confirmShippingAction for PAID PRINT orders after Prodigi creation."
-    },
-    {
-      "id": "CHORE-5",
-      "epic": "Infrastructure",
-      "title": "Fix Vercel build: missing Link import + auth form contrast",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "pending",
-      "notes": "artwork/[id]/page.tsx was missing `import Link from 'next/link'` causing TypeScript build failure on Vercel. Auth forms (sign-in, sign-up) wrapped in bg-white card so headings, links, and buttons have an explicit white surface instead of inheriting the stone-50 body; button softened to bg-stone-800."
-    },
-    {
-      "id": "CHORE-1",
-      "epic": "Infrastructure",
-      "title": "Upgrade Vercel to Pro and restore cron schedules",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Restore close-auctions to */5 * * * * and payment-deadlines to 0 * * * * in vercel.json. Remove TODO comments in both route files."
-    },
-    {
-      "id": "CHORE-4",
-      "epic": "Infrastructure",
-      "title": "Swap sandbox credentials for live before go-live",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "In Vercel production env vars: (1) PRODIGI_API_KEY → live key from dashboard.prodigi.com; PRODIGI_API_BASE_URL → leave unset (defaults to live API). (2) STRIPE_SECRET_KEY → live sk_live_... key; NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY → live pk_live_... key; STRIPE_WEBHOOK_SECRET → re-register webhook at api.stripe.com/webhooks pointing to production domain and use the new signing secret. Verify Stripe Connect is enabled for live mode. Double-check no test_ or sandbox keys remain in Vercel settings."
-    },
-    {
-      "id": "CHORE-3",
-      "epic": "Infrastructure",
-      "title": "Prodigi sandbox environment support",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-05-11",
-      "testPassedCommit": "pending",
-      "notes": "PRODIGI_API_BASE_URL env var added. Defaults to live API when unset; set to https://api.sandbox.prodigi.com/v4.0 in .env.local with a test_ key to avoid real fulfillment in dev. Updated .env.local.example and README."
-    },
-    {
-      "id": "CHORE-2",
-      "epic": "Infrastructure",
-      "title": "Verify DNS with Resend for transactional email",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Add Resend DNS records to domain registrar, verify in Resend dashboard. Update RESEND_FROM_EMAIL env var on Vercel to use verified domain instead of onboarding@resend.dev."
-    },
-    {
-      "id": "US-17.1",
-      "epic": "Epic 17: Password Reset",
-      "title": "Request Password Reset",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-12",
-      "testWrittenCommit": "4ab9a6c",
-      "testPassedDate": "2026-05-12",
-      "testPassedCommit": "4ab9a6c",
-      "notes": "Forgot-password form → sends time-limited reset email. No account enumeration. Invalidates previous token."
-    },
-    {
-      "id": "US-17.2",
-      "epic": "Epic 17: Password Reset",
-      "title": "Set New Password via Reset Link",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-12",
-      "testWrittenCommit": "4ab9a6c",
-      "testPassedDate": "2026-05-12",
-      "testPassedCommit": "4ab9a6c",
-      "notes": "Token validation (expired/used/missing), password match + min length, marks token used, redirects to sign-in."
-    },
-    {
-      "id": "US-18.1",
-      "epic": "Epic 18: Image Upload & Processing Pipeline",
-      "title": "Accept High-Resolution Artwork Uploads",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-12",
-      "testWrittenCommit": "11534a7",
-      "testPassedDate": "2026-05-12",
-      "testPassedCommit": "521cf77",
-      "notes": "Up to 70 MB via signed URL. JPEG/PNG/TIFF/WebP. Progress indicator. Client-side size and format validation. Bugfix: ActionResult imageId made optional so delete/setPrimary actions type-check correctly; ImageUploader guards the undefined case. Bugfix: new-listing page shows image placeholder for formats browsers cannot decode natively (e.g. TIFF); onError fallback prevents broken thumbnail. Bugfix: seller listings page used raw url instead of thumbnailUrl/gridUrl fallback chain, causing TIFF originals to fail to render."
-    },
-    {
-      "id": "US-18.2",
-      "epic": "Epic 18: Image Upload & Processing Pipeline",
-      "title": "Automatic Image Variant Generation",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-12",
-      "testWrittenCommit": "11534a7",
-      "testPassedDate": "2026-05-12",
-      "testPassedCommit": "521cf77",
-      "notes": "Three variants: display (watermarked, 2400px max, JPEG 85), grid (800px max, JPEG 75), thumbnail (400×400 crop, JPEG 70). Stored in CDN, URLs on ArtworkImage. Blocking UX; form submit disabled until all images processed. Watermark: 'Art & Sol' diagonal, SVG sized to match output. Tests updated for two-pass sharp flow and brand watermark text. Bugfix: new-listing page hydration mismatch — Date.now() moved to stable useState initialisers; suppressHydrationWarning added to submit button for React 19 PE-driven disabled mismatch. Bugfix: TIFF variant generation — added sRGB normalisation and alpha flattening pass so CMYK/multi-channel TIFFs encode to JPEG correctly."
-    },
-    {
-      "id": "US-18.3",
-      "epic": "Epic 18: Image Upload & Processing Pipeline",
-      "title": "Seller Can Regenerate Image Variants",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-03",
-      "testWrittenCommit": "b8e69f5",
-      "testPassedDate": "2026-06-03",
-      "testPassedCommit": "7727427",
-      "notes": "Regenerate button (↺) on each image card in listing edit page. Calls regenerateVariantsAction server action which re-runs generateVariants for the given imageId. Auth-guarded (returns {error} not redirect), seller-ownership-checked; works for SOLD listings. EditListingForm images type updated to include displayUrl so ImageUploader does not re-queue already-processed images. BUG-2 fix included: deleteImageAction guards against deleting last image; ✕ button hidden in UI when only one image remains."
-    },
-    {
-      "id": "US-19.1",
-      "epic": "Epic 19: Artwork Image Lightbox & Magnifier",
-      "title": "Open Image Lightbox from Artwork Detail Page",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-16",
-      "testWrittenCommit": "7392ac7",
-      "testPassedDate": "2026-05-16",
-      "testPassedCommit": "04e8f43",
-      "notes": "Click image → full-screen lightbox with display variant. Darkened backdrop. Backdrop click closes. cursor-zoom-in on thumbnail."
-    },
-    {
-      "id": "US-19.2",
-      "epic": "Epic 19: Artwork Image Lightbox & Magnifier",
-      "title": "Carousel Navigation Inside Lightbox",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-16",
-      "testWrittenCommit": "7392ac7",
-      "testPassedDate": "2026-05-16",
-      "testPassedCommit": "04e8f43",
-      "notes": "Arrow buttons, keyboard left/right, swipe on touch. Wraps. Index indicator (n / total). Hidden when single image."
-    },
-    {
-      "id": "US-19.3",
-      "epic": "Epic 19: Artwork Image Lightbox & Magnifier",
-      "title": "Close Lightbox",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-16",
-      "testWrittenCommit": "7392ac7",
-      "testPassedDate": "2026-05-16",
-      "testPassedCommit": "04e8f43",
-      "notes": "× button top-right, Escape key, backdrop click. Body scroll locked while open; scroll position restored on close."
-    },
-    {
-      "id": "US-19.4",
-      "epic": "Epic 19: Artwork Image Lightbox & Magnifier",
-      "title": "Magnifier Lens on Hover in Lightbox",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-16",
-      "testWrittenCommit": "7392ac7",
-      "testPassedDate": "2026-05-16",
-      "testPassedCommit": "04e8f43",
-      "notes": "Circular lens follows cursor, 2–3× zoom, uses display variant for sharpness. Hidden on touch devices. Disappears on mouse leave. Distinct border."
-    },
-    {
-      "id": "US-20.1",
-      "epic": "Epic 20: Mobile Usability",
-      "title": "Mobile Navigation",
-      "status": "Passed",
-      "testWrittenDate": "2026-05-17",
-      "testWrittenCommit": "17b0077",
-      "testPassedDate": "2026-05-17",
-      "testPassedCommit": "17b0077",
-      "notes": "Animated hamburger mobile nav (SVG bars→X, circular splash overlay, staggered items). Tab trap, Escape key, scroll lock. Active page underline+glow indicator (data-active). CSS focus ring on keyboard nav. 28 tests."
-    },
-    {
-      "id": "US-21.1",
-      "epic": "Epic 21: Stripe Checkout Sessions Migration & Payment UX",
-      "title": "Migrate Payment Collection to Stripe Checkout Sessions",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-02",
-      "testWrittenCommit": "6f38052",
-      "testPassedDate": "2026-06-02",
-      "testPassedCommit": "ff05ccc",
-      "notes": "14 tests passing. createCheckoutSession added to stripe.ts (ui_mode: embedded); stripeSessionId field added to Order schema + migrated; /api/checkout-session route (401/400/200); webhook handles checkout.session.completed via fulfillPaymentBySession; MSW handlers for POST+GET /v1/checkout/sessions."
-    },
-    {
-      "id": "US-21.2",
-      "epic": "Epic 21: Stripe Checkout Sessions Migration & Payment UX",
-      "title": "Show Order Confirmation Immediately After Payment",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-02",
-      "testWrittenCommit": "6f38052",
-      "testPassedDate": "2026-06-02",
-      "testPassedCommit": "ff05ccc",
-      "notes": "5 tests passing. fulfillPaymentBySession verifies Stripe session payment_status before marking PAID; resolveSessionFulfillment called on fulfill page load when ?session_id present — eliminates webhook race condition. Both are idempotent."
-    },
-    {
-      "id": "US-22.1",
-      "epic": "Epic 22: Buyer Order History & Order Detail",
-      "title": "Buyer Orders Page",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-03",
-      "testWrittenCommit": "053df6c",
-      "testPassedDate": "2026-06-03",
-      "testPassedCommit": "90e8d9d",
-      "notes": "8 tests. getBuyerOrders() sorted newest-first, listingType, artwork/thumbnailUrl, null artwork for orphan prints. /buyer/orders page, dashboard order rows linked, Orders in nav."
-    },
-    {
-      "id": "US-22.2",
-      "epic": "Epic 22: Buyer Order History & Order Detail",
-      "title": "Order Detail Page",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-03",
-      "testWrittenCommit": "053df6c",
-      "testPassedDate": "2026-06-03",
-      "testPassedCommit": "90e8d9d",
-      "notes": "11 tests. getOrderDetail() buyer-locked, full fields, shipping, tracking, seller email via artwork→seller, null artwork for orphan prints. /buyer/orders/[orderId] page with CancelOrderButton and ContactSupportModal client islands."
-    },
-    {
-      "id": "US-22.3",
-      "epic": "Epic 22: Buyer Order History & Order Detail",
-      "title": "Cancel Pending Order",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-03",
-      "testWrittenCommit": "053df6c",
-      "testPassedDate": "2026-06-03",
-      "testPassedCommit": "90e8d9d",
-      "notes": "8 tests. cancelOrderAction: cancels PENDING, rejects PAID/SHIPPED/PROCESSING/CANCELLED, Unauthorized for no-session or wrong buyer. cancelOrderAction in src/app/actions/order.ts."
-    },
-    {
-      "id": "US-22.4",
-      "epic": "Epic 22: Buyer Order History & Order Detail",
-      "title": "Contact Support About an Order",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-03",
-      "testWrittenCommit": "053df6c",
-      "testPassedDate": "2026-06-03",
-      "testPassedCommit": "90e8d9d",
-      "notes": "11 tests. contactSupportAction: Resend called, to=seller email, subject has Order #, message verbatim in body, blank/whitespace rejected, Unauthorized guards, Resend 500 returns error. sendSupportRequestEmail() added to email.ts."
-    },
-    {
-      "id": "US-23.1",
-      "epic": "Epic 23: Desktop Nav User Dropdown",
-      "title": "User Dropdown Menu in Desktop Nav",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-05",
-      "testWrittenCommit": "522818c",
-      "testPassedDate": "2026-06-05",
-      "testPassedCommit": "32bbc27",
-      "notes": "44 tests. NavDropdown client component: toggle open/close, Escape+focus return, click-outside, role-dependent menu items (buyer/seller/admin), active page highlight, signed-out renders nothing. Nav.tsx wired up — flat inline role links removed from desktop nav, mobile menu unaffected. Admin dropdown includes /admin/tracker (labelled Tracker), /admin/users, /admin/fulfillment. Settings link routes by role (/buyer/settings, /seller/settings, /admin/settings). Seller settings page (Profile + bidReceivedEmails/saleCompletedEmails notifications). Admin settings page (Profile only). updateProfileAction revalidates role-specific path. updateSellerNotificationPrefsAction added. Obsolete 'Creating privileged accounts' callout removed from /admin/tracker page."
-    },
-    {
-      "id": "US-23.2",
-      "epic": "Epic 23: Desktop Nav User Dropdown",
-      "title": "Restructured Mobile Menu with Role-Aware Sections",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-05",
-      "testWrittenCommit": "4d05644",
-      "testPassedDate": "2026-06-05",
-      "testPassedCommit": "41c2f92",
-      "notes": "74 tests (48 new US-23.2 + 26 migrated US-20.1). MobileMenu drops flat `links` prop; now takes `roles: string[]`. Nav.tsx no longer pre-builds mobileLinks. Layout: Browse/Auctions/Prints always at top; signed-in users get name then HR (75vw wide) as section divider, then Dashboard (role href) + role links (BUYER: My Bids+Orders, SELLER: Listings, ADMIN: Admin+Users+Fulfillment) + Settings (role href) + Sign Out; signed-out gets Sign In + Sign Up. Active page highlight, overlay animation, Escape/tab-trap, scroll lock all preserved."
-    },
-    {
-      "id": "MFTF-1.1",
-      "epic": "Epic MFTF-1: MerchForTheFuture Migration",
-      "title": "Migrate transactional email from Resend to MailerSend",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-06",
-      "testWrittenCommit": "4c568c6",
-      "testPassedDate": "2026-06-06",
-      "testPassedCommit": "4c568c6",
-      "notes": "Replaced Resend fetch helper with MailerSend in src/lib/payments/email.ts. Updated MSW intercept URLs and to-field assertions in US-12.3 and US-22.4 tests to match MailerSend request shape ({ to: [{ email }] }). Fixed stale Art & Sol brand copy in verification and password reset emails. 800/800 tests passing. Also fixed global MSW handler in __tests__/mocks/handlers.ts (was still intercepting api.resend.com, letting real MailerSend calls through during test runs)."
-    },
-    {
-      "id": "MFTF-1.2",
-      "epic": "Epic MFTF-1: MerchForTheFuture Migration",
-      "title": "Replace all Art & Sol brand references with Merch for the Future",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-06",
-      "testWrittenCommit": "ce4a95c",
-      "testPassedDate": "2026-06-06",
-      "testPassedCommit": "pending",
-      "notes": "Updated Nav.tsx logo, Footer.tsx copyright, variants.ts watermark SVG text, and US-18.2 watermark assertion. 800/800 tests passing."
-    },
-    {
-      "id": "MFTF-1.3",
-      "epic": "Epic MFTF-1: MerchForTheFuture Migration",
-      "title": "Update homepage with mission statement and brand copy",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-06",
-      "testPassedCommit": "pending",
-      "notes": "Replaced Art & Sol art-marketplace hero copy with MerchForTheFuture brand copy. Added mission statement section. Updated categories (Apparel/Prints/Originals) and how-it-works steps to match the apparel domain. Revised hero: big h1 is now \"We are living up to our name!\", subtitle is coming-soon copy, shop button removed. Removed How-it-works and Shop-by-type sections. Removed Nav from homepage via (main) route group. Excluded scripts/ from tsconfig. Hero section made full-viewport, text centered, all sizes doubled. H1 reduced from 8xl/9xl to 7xl/8xl. Moved api/ back out of (main) route group — tests import routes by @/app/api path which broke when nested. Staged (main) route group file renames (were committed as mv but not git-added)."
-    },
-    {
-      "id": "CHORE-14",
-      "epic": "Infrastructure",
-      "title": "Make MailerSend errors visible in server logs",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-07",
-      "testPassedCommit": "pending",
-      "notes": "mailersend() helper was fire-and-forget — returned raw fetch Response so .catch() in callers never fired on 4xx/5xx. Fixed: mailersend() now awaits fetch, throws Error('MailerSend {status}: {body}') on non-ok responses. sendSupportRequestEmail() updated to remove now-redundant manual res.ok check. Root cause of delivery failure identified as MailerSend trial account unique-recipient limit (#MS42225) — not a code issue."
-    },
-    {
-      "id": "CHORE-15",
-      "epic": "Infrastructure",
-      "title": "Separate under-construction page from homepage routing",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-07",
-      "testPassedCommit": "pending",
-      "notes": "Created /coming-soon page (src/app/coming-soon/page.tsx) outside (main) route group — no nav, no footer. Homepage (/) is now a pure redirect dispatcher: authenticated users go to their role dashboard, unauthenticated users go to /coming-soon. Footer moved from root layout.tsx into (main)/layout.tsx so it only renders on main-site pages, not on /coming-soon."
-    },
-    {
-      "id": "CHORE-16",
-      "epic": "Infrastructure",
-      "title": "Backfill pending commit hashes from git log",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "The following stories have testWrittenCommit or testPassedCommit set to \"pending\" and need real hashes backfilled from git log. Run: git log --oneline --all and match commits to story IDs by message. Stories: CHORE-13, CHORE-12, CHORE-11, CHORE-10, CHORE-9, CHORE-8, US-14.1, US-14.2, US-14.3, US-14.5, US-14.6, US-15.5, US-15.6, US-15.7, US-16.3, US-16.1, US-16.2, CHORE-7, CHORE-6, CHORE-5, CHORE-3, MFTF-1.2, MFTF-1.3, CHORE-14, CHORE-15"
-    },
-    {
-      "id": "CHORE-17",
-      "epic": "Infrastructure",
-      "title": "T-Mill API discovery spike",
-      "status": "Passed",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": "2026-06-10",
-      "testPassedCommit": "pending",
-      "notes": "Spike complete. API key obtained 2026-06-10 after 2FA issue was resolved with Teemill support. Findings: (1) Two APIs exist — Custom Product API (omnis/v3, creates Teemill-hosted storefront listing, NOT what we want) and Orders API (api.teemill.com/v1, correct target for MFTF-7). (2) Orders API is two-step: POST /orders returns available shipping options, then POST /orders/{id}/confirm selects method. (3) No sandbox environment — use MSW for automated tests. (4) Public product catalog endpoint (omnis/v3/product/options) returns 18 product types with colors and image URLs; used by MFTF-4 admin picker. (5) Colors identified by plain name strings (\"White\", \"Navy Blue\", etc). (6) Webhook payload still undocumented — stub in tests until confirmed from live integration. Full findings in /docs/teemill-api-notes.md."
-    },
-    {
-      "id": "US-MFTF-3.1",
-      "epic": "Epic MFTF-3: Fulfillment Abstraction Layer",
-      "title": "Define Fulfillment Provider Interface",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-07",
-      "testWrittenCommit": "ec85b07",
-      "testPassedDate": "2026-06-07",
-      "testPassedCommit": "dcac6eb",
-      "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.1-interface.test.ts. Validates: FULFILLMENT_STATUSES constant (6 values), mock provider satisfies interface shape (name, createOrder, getOrderStatus), getFulfillmentProvider factory exists and returns providers with correct shape for PRINT and APPAREL listing types."
-    },
-    {
-      "id": "US-MFTF-3.2",
-      "epic": "Epic MFTF-3: Fulfillment Abstraction Layer",
-      "title": "Refactor Prodigi Behind the Interface",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-07",
-      "testWrittenCommit": "ec85b07",
-      "testPassedDate": "2026-06-07",
-      "testPassedCommit": "dcac6eb",
-      "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.2-prodigi-provider.test.ts. Validates: provider name, factory routing, correct Prodigi request shape (shippingMethod, recipient, items), FulfillmentOrderResult fields, canonical status mapping (InProgress→PROCESSING, Complete+shipments→SHIPPED, Cancelled→CANCELLED, unknown→ERROR), error on non-ok response. Includes regression test: createPrintOrder still POSTs to Prodigi and sets prodigiOrderId."
-    },
-    {
-      "id": "US-MFTF-3.3",
-      "epic": "Epic MFTF-3: Fulfillment Abstraction Layer",
-      "title": "Stub T-Mill Provider",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-07",
-      "testWrittenCommit": "ec85b07",
-      "testPassedDate": "2026-06-07",
-      "testPassedCommit": "dcac6eb",
-      "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.3-teemill-stub.test.ts. Validates: createOrder and getOrderStatus both throw with 'TeemillFulfillmentProvider' and 'not yet implemented' in message, no HTTP calls made before throwing, getFulfillmentProvider('APPAREL') returns TeemillFulfillmentProvider instance."
-    },
-    {
-      "id": "US-MFTF-4.1",
-      "epic": "Epic MFTF-4: Platform Product Catalog",
-      "title": "Product Type Schema",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-10",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-06-10",
-      "testPassedCommit": "pending",
-      "notes": "14 tests. ProductType, ProductTypeColor, ProductTypeSizeOption models added to schema. FulfillmentProviderType enum (TEEMILL|PRODIGI). Seed file prisma/seed-product-catalog.ts creates 3 product types (Unisex Tee via T-Mill, Tote Bag via T-Mill, Art Print via Prodigi) with colors and sizes. resetDatabase() in test helpers updated to include new tables. Both main and test DBs pushed."
-    },
-    {
-      "id": "US-MFTF-4.2",
-      "epic": "Epic MFTF-4: Platform Product Catalog",
-      "title": "Admin Product Catalog Page",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-11",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-06-11",
-      "testPassedCommit": "pending",
-      "notes": "8 tests. getAdminProductCatalog() in src/lib/admin/product-catalog.ts returns all types (active+inactive) with activeColorCount/activeSizeCount, ordered by name. Page at /admin/products guards non-admin with redirect. Named export AdminProductsPage for testability."
-    },
-    {
-      "id": "US-MFTF-4.3",
-      "epic": "Epic MFTF-4: Platform Product Catalog",
-      "title": "Create and Edit Product Type",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-11",
-      "testWrittenCommit": "pending",
-      "testPassedDate": "2026-06-11",
-      "testPassedCommit": "pending",
-      "notes": "28 tests. 6 server actions in src/app/actions/admin/product-catalog.ts: createProductTypeAction, updateProductTypeAction, addProductTypeColorAction, toggleProductTypeColorAction, addProductTypeSizeAction, toggleProductTypeSizeAction. All auth-guarded (ADMIN only). Validation: required name/SKU, unique name, activation requires >=1 active color + size. Pages at /admin/products/new and /admin/products/[id]. — Enhancement (2026-06-11): Added Teemill product grid picker to /admin/products/new. Client component TeemillProductPicker fetches /api/teemill/catalog (route handler with 1h revalidation), displays a 2-col grid of all 18 Teemill products with per-card color carousel. Selecting a product collapses grid to single-product summary showing all color thumbnails. createProductTypeAction extended to parse teemillColorsJson hidden field and bulk-create ProductTypeColor records (backward compatible). Prodigi path shows manual SKU instructions. — UI revision (2026-06-11): Product detail page (/admin/products/[id]) redesigned: hero image from Teemill catalog; colors shown as read-only thumbnail grid (images fetched from Teemill, matched by color name); sizes section removed entirely (all provider sizes always available); activation guard updated to require at least one color (not active color, since toggling was removed). — Provider design audit + schema hardening (2026-06-11): (1) ProductTypeColor.colorHex made nullable — Teemill has no hex values; was storing empty string. (2) ProductTypeColor.colorImageUrl added — persists provider color photo URLs so pages no longer re-fetch Teemill API on every render. (3) ProductType.blankImageUrl added — admin-uploaded product blank photo for Prodigi products. (4) Blob upload route now accepts ADMIN role. (5) BlankImageUploader client component added. (6) Detail page shows BlankImageUploader for Prodigi; Teemill shows read-only API image. (7) Catalog list prefers stored colorImageUrl, falls back to Teemill API only when needed. Audit flagged 6 open design issues: provider routing by listingType not fulfillmentProvider, Order model has Prodigi-specific field names, isActive on colors/sizes is dead, OriginalListing.printProducts should FK to ProductType. These are deferred. — Schema cleanup (2026-06-12): Removed ProductTypeColor.colorHex (vestigial; superceded by colorImageUrl), removed ProductTypeColor.isActive and ProductTypeSizeOption.isActive (all provider colors/sizes always available — design decision). Renamed Order.prodigiSku→externalSku, Order.prodigiOrderId→externalOrderId, Transaction.prodigiFulfillmentCost→fulfillmentCost (provider-agnostic naming). Updated all 15+ source + test files referencing old field names. resetDatabase() updated to include new ApparelListing tables."
-    },
-    {
-      "id": "US-MFTF-5.1",
-      "epic": "Epic MFTF-5: Apparel Listing Creation",
-      "title": "Apparel Listing Schema",
-      "status": "Passed",
-      "testWrittenDate": "2026-06-12",
-      "testWrittenCommit": "dfddbee",
-      "testPassedDate": "2026-06-12",
-      "testPassedCommit": "dfddbee",
-      "notes": "Schema implemented as part of MFTF schema cleanup commit (dfddbee). Models added: ApparelListing (sellerId, productTypeId, title, description, retailPrice, status, designImageUrl), ApparelListingColor (apparelListingId, productTypeColorId, isOffered), ApparelListingImage (apparelListingId, originalUrl, displayUrl, gridUrl, thumbnailUrl, isPrimary, sortOrder). Order.apparelListingId FK added. resetDatabase() in test helpers updated to include all three new tables in correct cascade order. Schema applied to both main and test DBs via prisma db push. Note: dedicated schema test file (parallel to US-MFTF-4.1) not yet written — schema is exercised transitively by MFTF-4 tests and confirmed working."
-    },
-    {
-      "id": "US-MFTF-5.2",
-      "epic": "Epic MFTF-5: Apparel Listing Creation",
-      "title": "Lifestyle Photo Upload with Corner Watermark",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-MFTF-5.3",
-      "epic": "Epic MFTF-5: Apparel Listing Creation",
-      "title": "Create Apparel Listing Form",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-MFTF-5.4",
-      "epic": "Epic MFTF-5: Apparel Listing Creation",
-      "title": "Edit Apparel Listing",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-MFTF-6.1",
-      "epic": "Epic MFTF-6: Apparel Product Page & Browse",
-      "title": "Apparel Browse Page",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-MFTF-6.2",
-      "epic": "Epic MFTF-6: Apparel Product Page & Browse",
-      "title": "Apparel Product Detail Page",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-MFTF-6.3",
-      "epic": "Epic MFTF-6: Apparel Product Page & Browse",
-      "title": "Apparel Listing in Seller Dashboard",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
-    },
-    {
-      "id": "US-MFTF-7.1",
-      "epic": "Epic MFTF-7: Apparel Checkout & Order Fulfillment",
-      "title": "Apparel Order Creation",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Blocked on MFTF-3 (abstraction layer) and CHORE-17 (T-Mill spike) for T-Mill-specific order submission details."
-    },
-    {
-      "id": "US-MFTF-7.2",
-      "epic": "Epic MFTF-7: Apparel Checkout & Order Fulfillment",
-      "title": "Apparel Order Confirmation & Shipping",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "T-Mill webhook shape TBD from CHORE-17 spike; stub in tests until known."
-    },
-    {
-      "id": "US-MFTF-8.1",
-      "epic": "Epic MFTF-8: T-Mill Mockup Generation",
-      "title": "Generate Mockup Images During Listing Setup",
-      "status": "Deferred",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Stub — acceptance criteria to be written after CHORE-17 spike."
-    },
-    {
-      "id": "US-MFTF-8.2",
-      "epic": "Epic MFTF-8: T-Mill Mockup Generation",
-      "title": "Seller Accepts or Discards Mockups",
-      "status": "Deferred",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Stub — acceptance criteria to be written after CHORE-17 spike."
-    },
-    {
-      "id": "US-MFTF-9.1",
-      "epic": "Epic MFTF-9: Seller Apparel Product Management",
-      "title": "Toggle Offered Colors on Live Listing",
-      "status": "Deferred",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Deferred until post-first-launch. Key constraint: handle gracefully if removed color has pending/paid orders."
-    },
-    {
-      "id": "US-MFTF-9.2",
-      "epic": "Epic MFTF-9: Seller Apparel Product Management",
-      "title": "Per-Listing Sales Breakdown",
-      "status": "Deferred",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Deferred until post-first-launch."
-    },
-    {
-      "id": "US-MFTF-10.1",
-      "epic": "Epic MFTF-10: Pre-Launch Checklist",
-      "title": "Provision separate production database",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Human task. Create a separate Neon branch/database for production. Update DATABASE_URL in Vercel production env vars. Verify dev environment continues to use its own database. Do not share a database between dev and production after this point."
-    },
-    {
-      "id": "US-MFTF-10.2",
-      "epic": "Epic MFTF-10: Pre-Launch Checklist",
-      "title": "Swap sandbox API keys for live keys across all services",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Human task. Supersedes/completes CHORE-4. Set live keys in Vercel production env vars for: Stripe (publishable + secret), T-Mill (Authorization header key + project param), Prodigi. Confirm test/sandbox keys remain in .env.local and Vercel preview environments only. Smoke-test each service after rotation."
-    },
-    {
-      "id": "US-MFTF-10.3",
-      "epic": "Epic MFTF-10: Pre-Launch Checklist",
-      "title": "Set up Merch for the Future as a registered business",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Human task. Register the business entity (LLC or equivalent) appropriate for the founders' situation. Obtain EIN. This is a prerequisite for opening a business bank account and completing tax/billing setup with Stripe, T-Mill, and Prodigi."
-    },
-    {
-      "id": "US-MFTF-10.4",
-      "epic": "Epic MFTF-10: Pre-Launch Checklist",
-      "title": "Open Merch for the Future bank account and business card",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Human task. Open a dedicated business checking account and obtain a business debit/credit card to use with dropshippers (T-Mill, Prodigi) and any other business expenses. Requires business registration (US-MFTF-10.3) to be complete first."
-    },
-    {
-      "id": "US-MFTF-10.5",
-      "epic": "Epic MFTF-10: Pre-Launch Checklist",
-      "title": "Add billing and payout information to Stripe, T-Mill, and Prodigi",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Human task. Stripe: complete account activation (business info, bank account for payouts, tax details). T-Mill: add payment method for order charges. Prodigi: add payment method. Use the MFTF business card/account from US-MFTF-10.4. Requires US-MFTF-10.3 and US-MFTF-10.4."
-    },
-    {
-      "id": "US-MFTF-10.6",
-      "epic": "Epic MFTF-10: Pre-Launch Checklist",
-      "title": "Order product samples and finalize store product selection",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Human task. Order samples of candidate T-Mill and Prodigi apparel products to evaluate print quality, fabric feel, and sizing. Select the product types to carry in the initial store (e.g. unisex tee, tote bag). Document selections in the admin product catalog (MFTF-4). Requires live billing setup (US-MFTF-10.5)."
-    },
-    {
-      "id": "US-MFTF-10.7",
-      "epic": "Epic MFTF-10: Pre-Launch Checklist",
-      "title": "Create 10 designs and publish listings on production",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Human task. Create at least 10 original apparel designs, photograph or shoot lifestyle photos from QA samples, and publish a listing for each on production. Requires MFTF-5 (listing creation flow) and MFTF-4 (product catalog) to be implemented first."
-    },
-    {
-      "id": "US-MFTF-10.8",
-      "epic": "Epic MFTF-10: Pre-Launch Checklist",
-      "title": "Remove under-construction page and go live",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Human task (with a small code component). Remove or disable the under-construction route guard added in CHORE-15. Confirm the homepage and /shop are publicly accessible. This is the final step — all other US-MFTF-10.x items should be complete before this one."
-    }
+ "epicOrder": {
+  "description": "Authoritative implementation sequence for epics with open stories. Claude Code works the first epic in 'sequence' that has stories not yet Passed/Dropped/Deferred, unless the handoff prompt says otherwise. Maintained only via tdd-spec-session — implementation sessions never reorder this.",
+  "sequence": [
+   {
+    "epic": "Epic MFTF-5: Apparel Listing Creation",
+    "rationale": "Listings must exist before the storefront has anything to show."
+   },
+   {
+    "epic": "Epic MFTF-6: Apparel Product Page & Browse",
+    "rationale": "Buyers need browse and product pages; the cart button ships stubbed here per US-MFTF-6.2."
+   },
+   {
+    "epic": "Epic MFTF-11: Cart",
+    "rationale": "DB-backed guest-capable cart; wires the MFTF-6.2 button and reworks print ordering (US-15.4) into add-to-cart."
+   },
+   {
+    "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
+    "rationale": "Replaces Epic MFTF-7. Multi-line-item Stripe checkout, per-provider order splitting and fan-out."
+   },
+   {
+    "epic": "Epic MFTF-10: Pre-Launch Checklist",
+    "rationale": "Production readiness; largely human tasks (business registration, live keys, samples)."
+   },
+   {
+    "epic": "Epic 5: Tax Calculation",
+    "rationale": "Reconcile against current Stripe Tax configuration around launch; some stories may already be satisfied in practice."
+   },
+   {
+    "epic": "Infrastructure",
+    "rationale": "Open chores (CHORE-1 Vercel Pro/auction crons, CHORE-2 DNS, CHORE-4 live credentials, CHORE-16 commit-hash backfill) slot in around launch as needed."
+   }
   ],
-  "commits": [
+  "deferred": [
+   "Epic MFTF-8: T-Mill Mockup Generation",
+   "Epic MFTF-9: Seller Apparel Product Management"
+  ]
+ },
+ "stories": [
+  {
+   "id": "BUG-8",
+   "epic": "Infrastructure",
+   "title": "NavDropdown obscured by listing cards on browse page",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-11",
+   "testPassedCommit": "pending",
+   "notes": "The NavDropdown wrapper div (position:relative, no z-index) created no stacking context. Listing cards on the browse page create their own stacking contexts (via CSS transform or explicit z-index) and were painting above the dropdown menu. Fixed by adding z-50 to the wrapper div, which creates a stacking context that keeps the dropdown above all page content."
+  },
+  {
+   "id": "BUG-10",
+   "epic": "Infrastructure",
+   "title": "Mobile menu toggle button shifts right on open; splash circle origin misaligned",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-11",
+   "testPassedCommit": "pending",
+   "notes": "Two related issues. (1) Button shifts right when menu opens because overflow:hidden or position:fixed scroll-lock on body caused layout reflow (scrollbar disappearance or iOS viewport resize) that moved the static-positioned button. Fixed by making the toggle button position:fixed at top:1rem / right:1.5rem (matching the header's py-4 / px-6 spacing) with a 44x44px in-flow spacer div to preserve header height. Reverted body scroll lock to simple overflow:hidden. (2) Splash circle emanated from top:1.25rem / right:1.25rem (viewport corner) instead of the button center. Fixed by updating the splash container origin to calc(1rem + 22px) / calc(1.5rem + 22px), which places it at the center of the 44px button (header padding + half button dimension)."
+  },
+  {
+   "id": "BUG-9",
+   "epic": "Infrastructure",
+   "title": "Mobile menu X button jumps position on open; circle expand animation missing",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-11",
+   "testPassedCommit": "pending",
+   "notes": "Two related issues. (1) Button position: using overflow:hidden on body causes iOS Safari to hide the URL bar and shift the visual viewport, making the static-positioned header appear to jump. Fixed with the standard iOS position:fixed scroll-lock technique: save scrollY, set body position:fixed + top:-scrollY + width:100%, restore all on close and call window.scrollTo() to preserve scroll position. (2) Animation: the previous BUG-7 double-rAF fix for the splash overlay still failed because React batches both the mount render and the splashVisible=true update into the same paint frame. Reverted to always-mounting the splash overlay inside sm:hidden (safe because sm:hidden=display:none on desktop, so no compositor-layer interference with NavDropdown). With the element always in the DOM at scale(0), the CSS transition fires correctly when isOpen changes to true."
+  },
+  {
+   "id": "BUG-7",
+   "epic": "Infrastructure",
+   "title": "Mobile menu circle-expand animation missing on open after conditional-mount fix",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-11",
+   "testPassedCommit": "pending",
+   "notes": "Regression introduced when the splash overlay was changed from always-mounted to conditionally-mounted (splashMounted state). The element now enters the DOM with isOpen already true, so the transform starts at scale(1) immediately — no prior scale(0) state to transition from. Close animation was unaffected because the element is already at scale(1) in the DOM when isOpen goes false. Fix: added splashVisible state (separate from splashMounted). On open: element mounts at scale(0), then a double requestAnimationFrame defers setSplashVisible(true) by two paint frames so the browser renders the starting state before the transition fires. The circle-expand and circle-collapse animations are both driven by splashVisible."
+  },
+  {
+   "id": "BUG-3",
+   "epic": "Infrastructure",
+   "title": "Password reset form conflicts with LastPass autofill on iOS",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-08",
+   "testPassedCommit": "pending",
+   "notes": "Reported 2026-06-08. Fixed by replacing the two-input (password + confirm) pattern with a single password input and a show/hide visibility toggle. Confirm field removed from ResetPasswordForm.tsx and the confirm validation removed from resetPasswordAction in actions/auth.ts. US-17.2 tests updated to drop confirm from all makeFormData calls; 'passwords do not match' test case removed as the code path no longer exists."
+  },
+  {
+   "id": "BUG-6",
+   "epic": "Infrastructure",
+   "title": "Sign-in hangs on loading screen after successful auth under --experimental-https on network IP",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-11",
+   "testPassedCommit": "pending",
+   "notes": "Reported 2026-06-11. Symptom: sign-in form shows 'Signing in…' indefinitely; refreshing lands on the correct dashboard (session was created server-side). Root cause: the mkcert certificate in certificates/localhost.pem covered only localhost/127.0.0.1/::1/0.0.0.0 — not 192.168.68.54. When accessing the dev server from the network at https://192.168.68.54:3000, browsers allow the initial HTML page load (user clicks through the cert warning) but silently block all subsequent JS-driven subresource requests including RSC payload fetches. After signInAction throws NEXT_REDIRECT, the client router tries to fetch the RSC payload for the destination route — that fetch is blocked, leaving useActionState pending:true forever. Fix: (1) regenerated the mkcert cert with mkcert -cert-file certificates/localhost.pem -key-file certificates/localhost-key.pem localhost 127.0.0.1 ::1 192.168.68.54; (2) updated the dev script in package.json to explicitly pass --experimental-https-key and --experimental-https-cert so Next.js uses the custom cert. Previous partial fix (direct-role redirect in signInAction to avoid the double-hop) is kept as a latency improvement."
+  },
+  {
+   "id": "BUG-5",
+   "epic": "Infrastructure",
+   "title": "Buyer dashboard 'View →' link 404s — wrong route /listings instead of /artwork",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-11",
+   "testPassedCommit": "pending",
+   "notes": "Reported 2026-06-11. Both 'View →' links on the buyer dashboard (winning bids highlight and active bids list) used href /listings/${bid.listingId}. The route is /artwork/[id] keyed by artwork ID. Fix: added artworkId to BuyerActiveBid interface and query (selected artwork.id), changed both hrefs to /artwork/${bid.artworkId}."
+  },
+  {
+   "id": "BUG-4",
+   "epic": "Infrastructure",
+   "title": "NavDropdown unclickable and sign-in hangs on network dev — mkcert cert missing 192.168.68.54 SAN",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-11",
+   "testPassedCommit": "pending",
+   "notes": "Reported 2026-06-11. NavDropdown button showed hover styles (CSS worked) but clicking gave no feedback in any browser (Chrome, Waterfox) when accessed via https://192.168.68.54:3000. Root cause: same as BUG-6 — mkcert cert did not list 192.168.68.54 as a Subject Alternative Name. Browsers load the initial HTML (user accepts the cert warning for the page) but block JS subresource fetches to an untrusted HTTPS origin. Without JS loading, React never hydrates, event handlers are never attached, and the dropdown cannot open. The 'sometimes works' behavior occurred on fresh page loads where the browser's cert exception was still active in memory. Fixed by the same cert regeneration as BUG-6. Earlier code-level fixes (conditional MobileMenu mounting, pointer-events:none on SVG, direct-role redirect in signInAction) remain as defensive improvements but were not the root cause."
+  },
+  {
+   "id": "BUG-2",
+   "epic": "Infrastructure",
+   "title": "Auth redirects can send user to http:// instead of https://",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-10",
+   "testPassedCommit": "pending",
+   "notes": "Reported 2026-06-08. Fixed 2026-06-10 by correcting environment variables (NEXTAUTH_URL and/or NEXT_PUBLIC_BASE_URL updated to https:// scheme in Vercel env vars). No code change required."
+  },
+  {
+   "id": "BUG-1",
+   "epic": "Infrastructure",
+   "title": "Fix image variant generation: tall/portrait images rotated sideways and cropped",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-03",
+   "testWrittenCommit": "a714364",
+   "testPassedDate": "2026-06-03",
+   "testPassedCommit": "a163102",
+   "notes": "Reported 2026-06-03. Portrait (tall/narrow) images come out rotated 90° in generated variants (display, grid, thumbnail). Fix 1: add .rotate() as first call in the normalizedBuffer Sharp pipeline (src/lib/artworks/variants.ts). Fix 2: use timestamped filenames for variant blobs so each generation produces a unique URL, defeating Vercel CDN and browser caching of the old rotated variants."
+  },
+  {
+   "id": "CHORE-13",
+   "epic": "Infrastructure",
+   "title": "Fix Vercel TypeScript build error on requestPasswordResetAction",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-12",
+   "testPassedCommit": "pending",
+   "notes": "useActionState requires _prev type to include all possible return types. Widened _prev from ActionState|undefined to ActionState|{success:true}|undefined."
+  },
+  {
+   "id": "CHORE-12",
+   "epic": "Infrastructure",
+   "title": "Pre-validate reset token on page load",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-12",
+   "testPassedCommit": "pending",
+   "notes": "reset-password page converted to server component that checks token validity (missing/invalid/used/expired) against the DB before rendering. Shows error immediately on page load instead of only after form submission. Form extracted to ResetPasswordForm client component."
+  },
+  {
+   "id": "CHORE-11",
+   "epic": "Infrastructure",
+   "title": "Fix input text contrast on forgot/reset password pages",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-12",
+   "testPassedCommit": "pending",
+   "notes": "Added text-stone-900 and placeholder:text-stone-400 to email and password inputs on forgot-password and reset-password pages."
+  },
+  {
+   "id": "CHORE-10",
+   "epic": "Infrastructure",
+   "title": "Fix production base URL and wire NEXT_PUBLIC_BASE_URL",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-12",
+   "testPassedCommit": "pending",
+   "notes": "email.ts fallback changed from artandsol.com to artandsol.quest. NEXT_PUBLIC_BASE_URL=https://localhost:3000 added to .env.local so email links from dev server point to localhost. .env.local.example documents the variable."
+  },
+  {
+   "id": "CHORE-9",
+   "epic": "Infrastructure",
+   "title": "Run prisma generate before dev server start",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-12",
+   "testPassedCommit": "pending",
+   "notes": "Dev script now runs prisma generate before next dev so schema changes are always reflected without a manual regenerate step. Mirrors the existing build script pattern."
+  },
+  {
+   "id": "CHORE-8",
+   "epic": "Infrastructure",
+   "title": "Write Epic 9 test suite and normalise tracker statuses",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-11",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "pending",
+   "notes": "53 tests across US-9.1–US-9.6 covering nav role logic, listings index data, createListingAction validation and success paths, updateListingAction, toggleListingStatusAction with browse visibility, and tracker JSON structure. Epic 11/12 statuses corrected from Complete to Passed with dates and commit refs."
+  },
+  {
+   "id": "US-1.1",
+   "epic": "Epic 1: Artwork Listing & Product Page",
+   "title": "Create Listing",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "2e0fc35",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "0207f37",
+   "notes": "6 tests passing. Artist, medium, dimensions, description, and image required at creation time."
+  },
+  {
+   "id": "US-1.2",
+   "epic": "Epic 1: Artwork Listing & Product Page",
+   "title": "Upload Images",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "2e0fc35",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "0207f37",
+   "notes": "9 tests passing"
+  },
+  {
+   "id": "US-1.3",
+   "epic": "Epic 1: Artwork Listing & Product Page",
+   "title": "Add Artwork Details",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "2e0fc35",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "0207f37",
+   "notes": "4 tests passing. Mobile fix: Medium+Dimensions grid changed to grid-cols-1 sm:grid-cols-2 so Dimensions row gets full width on mobile; W/H inputs get min-w-0 to prevent flex overflow. Applied to both new-listing page and EditListingForm. Year field now uses defaultValue=currentYear so stepper increments from the current year instead of jumping to min (1900)."
+  },
+  {
+   "id": "US-1.4",
+   "epic": "Epic 1: Artwork Listing & Product Page",
+   "title": "Choose Sale Type",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "2e0fc35",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "0207f37",
+   "notes": "5 tests passing"
+  },
+  {
+   "id": "US-1.5",
+   "epic": "Epic 1: Artwork Listing & Product Page",
+   "title": "Edit Listing",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "2e0fc35",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "0207f37",
+   "notes": "5 tests passing"
+  },
+  {
+   "id": "US-1.6",
+   "epic": "Epic 1: Artwork Listing & Product Page",
+   "title": "Remove Listing",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "2e0fc35",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "0207f37",
+   "notes": "5 tests passing"
+  },
+  {
+   "id": "US-2.1",
+   "epic": "Epic 2: Fixed-Price Sales",
+   "title": "Set Price",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "8a79bd5",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "c4d01aa",
+   "notes": "9 tests passing"
+  },
+  {
+   "id": "US-2.2",
+   "epic": "Epic 2: Fixed-Price Sales",
+   "title": "View Price",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "8a79bd5",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "c4d01aa",
+   "notes": "6 tests passing"
+  },
+  {
+   "id": "US-2.3",
+   "epic": "Epic 2: Fixed-Price Sales",
+   "title": "Buy Now",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "8a79bd5",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "c4d01aa",
+   "notes": "10 tests passing"
+  },
+  {
+   "id": "US-2.4",
+   "epic": "Epic 2: Fixed-Price Sales",
+   "title": "Auto-Mark as Sold",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "8a79bd5",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "c4d01aa",
+   "notes": "7 tests passing"
+  },
+  {
+   "id": "US-3.1",
+   "epic": "Epic 3: Auction Sales",
+   "title": "Configure Auction",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-3.2",
+   "epic": "Epic 3: Auction Sales",
+   "title": "Place Bid",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-3.3",
+   "epic": "Epic 3: Auction Sales",
+   "title": "View Auction Status",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-3.4",
+   "epic": "Epic 3: Auction Sales",
+   "title": "Outbid Notification",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-3.5",
+   "epic": "Epic 3: Auction Sales",
+   "title": "Auction Close",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-3.6",
+   "epic": "Epic 3: Auction Sales",
+   "title": "Reserve Price Protection",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-4.1",
+   "epic": "Epic 4: Payments",
+   "title": "Pay by Credit Card",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "c0e7a59",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "c0e7a59",
+   "notes": null
+  },
+  {
+   "id": "US-4.2",
+   "epic": "Epic 4: Payments",
+   "title": "Secure Payment Processing",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "c0e7a59",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "c0e7a59",
+   "notes": null
+  },
+  {
+   "id": "US-4.3",
+   "epic": "Epic 4: Payments",
+   "title": "Seller Payouts",
+   "status": "Deferred",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "c0e7a59",
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Deferred — single-seller model; no Stripe Connect onboarding"
+  },
+  {
+   "id": "US-4.4",
+   "epic": "Epic 4: Payments",
+   "title": "Transaction Records",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "c0e7a59",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "c0e7a59",
+   "notes": null
+  },
+  {
+   "id": "US-4.5",
+   "epic": "Epic 4: Payments",
+   "title": "Purchase Confirmation",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "c0e7a59",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "c0e7a59",
+   "notes": null
+  },
+  {
+   "id": "US-5.1",
+   "epic": "Epic 5: Tax Calculation",
+   "title": "Auto-Calculate Tax by Buyer Location",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-5.2",
+   "epic": "Epic 5: Tax Calculation",
+   "title": "Tax-Exempt Handling",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-5.3",
+   "epic": "Epic 5: Tax Calculation",
+   "title": "Seller Tax Reporting",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-5.4",
+   "epic": "Epic 5: Tax Calculation",
+   "title": "Multi-Currency Display",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-6.1",
+   "epic": "Epic 6: User Accounts & Authentication",
+   "title": "Account Creation",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "50ffb73",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "2e0fc35",
+   "notes": "12 tests passing. Web registration always assigns BUYER role; privileged roles assigned manually."
+  },
+  {
+   "id": "US-6.2",
+   "epic": "Epic 6: User Accounts & Authentication",
+   "title": "Secure Login",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "50ffb73",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "2e0fc35",
+   "notes": "7 tests passing"
+  },
+  {
+   "id": "US-6.3",
+   "epic": "Epic 6: User Accounts & Authentication",
+   "title": "Seller Onboarding",
+   "status": "Dropped",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "50ffb73",
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Dropped. Platform uses a single privileged seller account; no Stripe Connect onboarding. Code preserved in seller-onboarding.ts for future multi-seller extension."
+  },
+  {
+   "id": "US-6.4",
+   "epic": "Epic 6: User Accounts & Authentication",
+   "title": "Email Verification",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-04",
+   "testWrittenCommit": "dbd05a8",
+   "testPassedDate": "2026-06-04",
+   "testPassedCommit": "33df65e",
+   "notes": "On sign-up: show holding page, send 'You're almost done' email with single-use magic-link token (24h expiry). Clicking link opens new tab, shows verified confirmation, redirects to buyer dashboard. Expired/used tokens show error + resend option. Unverified users hitting auth pages redirected to holding page. Sets emailVerified timestamp on user record. Data migration: backfill emailVerified=createdAt for existing users on deploy. Post-merge fix: narrowed result.error type on verify-email page (string|undefined → string) to resolve Vercel TypeScript build error."
+  },
+  {
+   "id": "US-7.1",
+   "epic": "Epic 7: Browsing & Discovery",
+   "title": "Browse Artwork",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "f966f62",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "1fb638b",
+   "notes": "8 tests passing"
+  },
+  {
+   "id": "US-7.2",
+   "epic": "Epic 7: Browsing & Discovery",
+   "title": "Filter & Sort",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "f966f62",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "1fb638b",
+   "notes": "13 tests passing"
+  },
+  {
+   "id": "US-7.3",
+   "epic": "Epic 7: Browsing & Discovery",
+   "title": "Search",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "f966f62",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "1fb638b",
+   "notes": "8 tests passing"
+  },
+  {
+   "id": "US-7.4",
+   "epic": "Epic 7: Browsing & Discovery",
+   "title": "Unified Artwork Display",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "f966f62",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "1fb638b",
+   "notes": "9 tests passing"
+  },
+  {
+   "id": "US-8.1",
+   "epic": "Epic 8: Print Shop",
+   "title": "Create Print Listing",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-8.2",
+   "epic": "Epic 8: Print Shop",
+   "title": "Browse Print Options",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-8.3",
+   "epic": "Epic 8: Print Shop",
+   "title": "Purchase a Print",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-8.4",
+   "epic": "Epic 8: Print Shop",
+   "title": "Print Order Tracking",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-8.5",
+   "epic": "Epic 8: Print Shop",
+   "title": "Seller Print Revenue",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-8.6",
+   "epic": "Epic 8: Print Shop",
+   "title": "Print Quality Assurance",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-9.1",
+   "epic": "Epic 9: Seller Dashboard & Listing Management",
+   "title": "Listings Nav Link",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "9e790dc",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "9e790dc",
+   "notes": "Sellers see 'Listings' link in top nav; admins see 'Admin' link"
+  },
+  {
+   "id": "US-9.2",
+   "epic": "Epic 9: Seller Dashboard & Listing Management",
+   "title": "Seller Listings Index",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "9e790dc",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "9e790dc",
+   "notes": "Grid of all seller listings with status badge, price, sale type, and action buttons. Mobile fix: each listing row wraps to two lines — thumbnail+title on line 1, status badge+actions on line 2. Header also stacks on mobile with Add listing button left-aligned."
+  },
+  {
+   "id": "US-9.3",
+   "epic": "Epic 9: Seller Dashboard & Listing Management",
+   "title": "Create New Listing",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "9e790dc",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "9e790dc",
+   "notes": "Form to create artwork + fixed-price or auction listing; validates and redirects to edit page"
+  },
+  {
+   "id": "US-9.4",
+   "epic": "Epic 9: Seller Dashboard & Listing Management",
+   "title": "Edit Listing Details",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "9e790dc",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "9e790dc",
+   "notes": "Pre-populated edit form for title, description, medium, dimensions, year, price/reserve; locked fields on sold/active auctions"
+  },
+  {
+   "id": "US-9.5",
+   "epic": "Epic 9: Seller Dashboard & Listing Management",
+   "title": "Archive / Activate Listing",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "9e790dc",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "9e790dc",
+   "notes": "Toggle listing between Active and Archived from the listings index; sold listings cannot be toggled"
+  },
+  {
+   "id": "US-9.6",
+   "epic": "Epic 9: Seller Dashboard & Listing Management",
+   "title": "Admin Project Tracker View",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "9e790dc",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "9e790dc",
+   "notes": "Formatted tracker at /admin/tracker with per-epic progress bars, story status badges, and commit log"
+  },
+  {
+   "id": "US-10.1",
+   "epic": "Epic 10: Browse & Product Page UX",
+   "title": "Browse Gallery Layout",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "388a86f",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "bb3ab70",
+   "notes": "11 tests passing. Masonry CSS columns grid at /browse. Fixed ARCHIVED listing exclusion bug in browseArtworks(). ListingCard component links to /artwork/[id]. Pagination + filter/sort controls."
+  },
+  {
+   "id": "US-10.2",
+   "epic": "Epic 10: Browse & Product Page UX",
+   "title": "Listing Detail Page",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "388a86f",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "4103b71",
+   "notes": "15 tests passing. /artwork/[id] server-rendered page with generateMetadata(). ImageCarousel client component. Fixed-price Buy Now, auction countdown + bid placeholder (TODO US-12.1), print section placeholder (TODO US-8.2)."
+  },
+  {
+   "id": "US-11.1",
+   "epic": "Epic 11: Seller Listing Lifecycle",
+   "title": "Require Image on Listing Creation",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "a6455e4",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "a6455e4",
+   "notes": "Client-side and server-side validation; blocks publish without image",
+   "commitLog": [
     {
-      "hash": "50ffb73",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [],
-      "message": "chore: project scaffolding — Next.js, Prisma schema, test infrastructure",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "2e0fc35",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-6.1",
-        "US-6.2",
-        "US-6.3"
-      ],
-      "message": "feat(epic-6): implement US-6.1 through US-6.3 — user accounts and authentication",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "0207f37",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-1.1",
-        "US-1.2",
-        "US-1.3",
-        "US-1.4",
-        "US-1.5",
-        "US-1.6"
-      ],
-      "message": "feat(epic-1): implement US-1.1 through US-1.6 — artwork listing and product page",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "1381ba2",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [],
-      "message": "chore: migrate project tracker from xlsx to JSON, add admin dashboard",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "f966f62",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [],
-      "message": "feat: navigable site shell — homepage, nav, footer, stub pages for browse/sign-in/sign-up/sell",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "1fb638b",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-7.1",
-        "US-7.2",
-        "US-7.3",
-        "US-7.4"
-      ],
-      "message": "feat(epic-7): implement US-7.1 through US-7.4 — browsing, filtering, search, unified display",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "c4d01aa",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-2.1",
-        "US-2.2",
-        "US-2.3",
-        "US-2.4"
-      ],
-      "message": "feat(epic-2): implement US-2.1 through US-2.4 — fixed-price sales",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "0c7bb8f",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-6.1",
-        "US-6.3"
-      ],
-      "message": "refactor: lock web registration to BUYER role, drop seller onboarding (US-6.3)",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "c0e7a59",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-4.1",
-        "US-4.2",
-        "US-4.3",
-        "US-4.4",
-        "US-4.5"
-      ],
-      "message": "feat(epic-4): implement US-4.1–4.5 — payments via Stripe",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "b923730",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [],
-      "message": "feat: wire up auth flows, buyer sign-up, and test account seeds",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "02b719b",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-13.1"
-      ],
-      "message": "feat(epic-13): implement US-13.1 — admin dashboard homepage",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "8e92e98",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-13.2"
-      ],
-      "message": "feat(epic-13): implement US-13.2 — seller dashboard homepage",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "0ef37b0",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-13.3"
-      ],
-      "message": "feat(epic-13): implement US-13.3 — buyer dashboard homepage",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "8ae9a15",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [],
-      "message": "fix: resolve Vercel build and admin tracker runtime errors",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "1bb6511",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [],
-      "message": "fix: remove remaining Prisma.Decimal reference in buyer.ts",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "388a86f",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-10.1",
-        "US-10.2"
-      ],
-      "message": "test(epic-10): write failing tests for US-10.1 and US-10.2",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "bb3ab70",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-10.1"
-      ],
-      "message": "feat(epic-10): implement US-10.1 — browse gallery layout",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "4103b71",
-      "date": "2026-05-09",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-10.2"
-      ],
-      "message": "feat(epic-10): implement US-10.2 — listing detail page",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "6c8cf6e",
-      "date": "2026-05-10",
-      "description": "Post-PR improvements: artist field, Vercel Blob image upload, browse fixes, test updates"
-    },
-    {
-      "hash": "42eb5fd",
-      "date": "2026-05-10",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-15.1"
-      ],
-      "message": "feat(epic-15): implement US-15.1 — buy from listing page (fixed-price)",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "d33ea7e",
-      "date": "2026-05-11",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-15.2"
-      ],
-      "message": "feat(epic-15): implement US-15.2 — print availability toggle on OriginalListing",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "6140ab9",
-      "date": "2026-05-11",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-15.3"
-      ],
-      "message": "feat(epic-15): implement US-15.3 — prints page with filtered browse",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "482856a",
-      "date": "2026-05-11",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-15.4"
-      ],
-      "message": "feat(epic-15): implement US-15.4 — order a print from listing page",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "04e8f43",
-      "date": "2026-05-16",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-19.1",
-        "US-19.2",
-        "US-19.3",
-        "US-19.4"
-      ],
-      "message": "feat(epic-19): implement US-19.1-19.4 — artwork image lightbox & magnifier",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "c74d920",
-      "date": "2026-05-16",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-19.1",
-        "US-19.2",
-        "US-19.3",
-        "US-19.4"
-      ],
-      "message": "fix(epic-19): replace setState-in-effect with useSyncExternalStore to satisfy react-hooks/set-state-in-effect ESLint rule",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "fbec7c1",
-      "date": "2026-05-16",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-19.1",
-        "US-19.4"
-      ],
-      "message": "fix(epic-19): correct magnifier background-position formula; use natural image dimensions in carousel",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "b004d4f",
-      "date": "2026-05-16",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-19.1",
-        "US-19.4"
-      ],
-      "message": "fix(epic-19): pixel-based magnifier zoom; shrink carousel container to image width",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "a9c7871",
-      "date": "2026-05-16",
-      "author": "Jesse Caldwell",
-      "storiesAffected": [],
-      "message": "fix/misc: contrast fixes, print mockups, footer/auth cleanup, dashboard copy",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "b1d23a4",
-      "date": "2026-05-16",
-      "author": "Jesse Caldwell",
-      "storiesAffected": [],
-      "message": "fix: update default Resend from address to noreply@artandsol.quest",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "0680a9e",
-      "date": "2026-05-16",
-      "author": "Jesse Caldwell",
-      "storiesAffected": [
-        "US-20.1"
-      ],
-      "message": "chore: add Epic 20 Mobile Usability — US-20.1 Mobile Navigation",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "320eaec",
-      "date": "2026-05-17",
-      "message": "fix(lightbox): mobile controls alignment and auto-hide after 3s idle"
-    },
-    {
-      "hash": "2fe92fe",
-      "date": "2026-05-17",
-      "message": "fix(mobile-menu): hamburger X animation and link slide-in timing"
-    },
-    {
-      "hash": "c5a6303",
-      "date": "2026-05-17",
-      "message": "fix(mobile-menu): use white button background when open so icon stays dark"
-    },
-    {
-      "hash": "90ca684",
-      "date": "2026-05-17",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-20.1"
-      ],
-      "message": "feat(mobile-menu): active page indicator (underline+glow) and CSS focus ring — 28 tests pass",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "ce5757b",
-      "date": "2026-05-17",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-20.1"
-      ],
-      "message": "fix(mobile-menu): replace focus outline ring with hover-colour-match on focus-visible",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "6f38052",
-      "date": "2026-06-02",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-21.1",
-        "US-21.2"
-      ],
-      "message": "test(epic-21): write failing tests for US-21.1 and US-21.2",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "ff05ccc",
-      "date": "2026-06-02",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-21.1",
-        "US-21.2"
-      ],
-      "message": "feat(epic-21): implement US-21.1 and US-21.2 — Stripe Checkout Sessions & payment confirmation",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "12bde1a",
-      "date": "2026-06-02",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-21.1",
-        "US-21.2"
-      ],
-      "message": "fix(epic-21): wire EmbeddedCheckout client and correct Stripe ui_mode",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "8cd7eaa",
-      "date": "2026-06-02",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-21.1",
-        "US-21.2"
-      ],
-      "message": "fix(epic-21): use ui_mode=embedded_page for EmbeddedCheckout",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "971a616",
-      "date": "2026-06-02",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-21.2"
-      ],
-      "message": "feat(epic-21): reverse fulfillment flow — payment first, shipping after",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "477391d",
-      "date": "2026-06-02",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-21.2"
-      ],
-      "message": "fix(epic-21): clear stale shipping/session on order reuse in initiateBuyNowAction",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "a076a3f",
-      "date": "2026-06-02",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-21.2"
-      ],
-      "message": "fix(epic-21): show full shipping address in order confirmation",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "630e397",
-      "date": "2026-06-02",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-21.2"
-      ],
-      "message": "style(epic-21): add breathing room between confirmation sections",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "053df6c",
-      "date": "2026-06-03",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-22.1",
-        "US-22.2",
-        "US-22.3",
-        "US-22.4"
-      ],
-      "message": "test(epic-22): write failing tests for US-22.1 through US-22.4",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "90e8d9d",
-      "date": "2026-06-03",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-22.1",
-        "US-22.2",
-        "US-22.3",
-        "US-22.4"
-      ],
-      "message": "feat(epic-22): implement US-22.1 through US-22.4 — buyer order history & order detail",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "e5d53cc",
-      "date": "2026-06-03",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-22.1"
-      ],
-      "message": "fix(epic-22): wrap ternary else branch in fragment in buyer dashboard",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "7dfbaa5",
-      "date": "2026-06-03",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [],
-      "message": "chore(tracker): log BUG-1 — portrait images rotated/cropped in variant generation",
-      "trackerUpdated": true
-    },
-    {
-      "hash": "b923730",
-      "date": "2026-06-03",
-      "author": "Claude Sonnet 4.6",
-      "storiesAffected": [
-        "US-22.2"
-      ],
-      "message": "fix(epic-22): show print mockup image on order detail; fix Decimal import; natural image sizing",
-      "trackerUpdated": true
-    },
-    {
-      "filesChanged": [
-        "src/app/(main)/settings/ProfileForm.tsx",
-        "src/app/actions/account.ts",
-        "src/app/(main)/admin/settings/page.tsx",
-        "src/app/(main)/buyer/settings/page.tsx",
-        "src/app/(main)/seller/settings/page.tsx",
-        "src/app/actions/auth.ts",
-        "next.config.ts",
-        "src/components/PrintConfigForm.tsx",
-        "src/app/(main)/seller/listings/[id]/edit/EditListingForm.tsx",
-        "src/app/(main)/seller/listings/new/page.tsx",
-        "__tests__/epic-12-buyer-experience/US-12.4-buyer-account-settings.test.ts",
-        "__tests__/epic-23-nav-dropdown/US-23.1-settings-pages.test.ts"
-      ],
-      "message": "fix: profile save, sign-out routing, iOS hamburger, price input zero, auction timestamp format",
-      "trackerUpdated": true
+     "hash": "pending",
+     "message": "feat(epic-11): implement US-11.1 — require image on listing creation (tests only)"
     }
-  ],
-  "lastUpdated": "2026-06-12T07:58:28.085Z"
+   ]
+  },
+  {
+   "id": "US-11.2",
+   "epic": "Epic 11: Seller Listing Lifecycle",
+   "title": "Deactivate Listing",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "a6455e4",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "a6455e4",
+   "notes": "Extends US-9.5 with clearer naming and auction-bid guard",
+   "commitLog": [
+    {
+     "hash": "pending",
+     "message": "feat(epic-11): implement US-11.2 — deactivate listing with auction bid guard"
+    }
+   ]
+  },
+  {
+   "id": "US-11.3",
+   "epic": "Epic 11: Seller Listing Lifecycle",
+   "title": "Delete Unsold Listing",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "a6455e4",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "a6455e4",
+   "notes": "Permanent deletion with confirmation; blocked on sold listings",
+   "commitLog": [
+    {
+     "hash": "pending",
+     "message": "feat(epic-11): implement US-11.3 — delete unsold listing"
+    }
+   ]
+  },
+  {
+   "id": "US-12.1",
+   "epic": "Epic 12: Buyer Experience",
+   "title": "Place Bid on Auction (UI Flow)",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "a6455e4",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "a6455e4",
+   "notes": "UI implementation of US-3.2; inline bid form on listing detail page",
+   "commitLog": [
+    {
+     "hash": "9775114",
+     "message": "fix: allow bidding on SCHEDULED auctions, transition to ACTIVE on first bid"
+    }
+   ]
+  },
+  {
+   "id": "US-12.2",
+   "epic": "Epic 12: Buyer Experience",
+   "title": "My Bids Page",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "a6455e4",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "a6455e4",
+   "notes": "Buyer dashboard showing all auctions bid on with status indicators. Bid again / View links per status.",
+   "commitLog": [
+    {
+     "hash": "9f739e6",
+     "message": "feat(epic-12): implement US-12.2 — my bids page with full bid history"
+    }
+   ]
+  },
+  {
+   "id": "US-12.3",
+   "epic": "Epic 12: Buyer Experience",
+   "title": "Outbid Email Notification",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "a6455e4",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "a6455e4",
+   "notes": "Email delivery implementation of US-3.4; includes opt-out. HTML email with artwork image. RESEND_FROM_EMAIL env var for sender.",
+   "commitLog": [
+    {
+     "hash": "ba5c9c6",
+     "message": "feat(epic-12): implement US-12.3 — outbid email notification via Resend"
+    }
+   ]
+  },
+  {
+   "id": "US-12.4",
+   "epic": "Epic 12: Buyer Experience",
+   "title": "Buyer Account Settings",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "a6455e4",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "a6455e4",
+   "notes": "Profile, billing (Stripe), shipping addresses, notification prefs. Fixed outbidEmails toggle (formData.getAll).",
+   "commitLog": [
+    {
+     "hash": "0b5c10e",
+     "message": "feat(epic-12): implement US-12.4 — buyer account settings (profile, shipping, notifications)"
+    },
+    {
+     "hash": "4b19739",
+     "message": "fix: lazy Stripe init in portal route + pin Blob image hostname"
+    }
+   ]
+  },
+  {
+   "id": "US-13.1",
+   "epic": "Epic 13: Role-Based Dashboards",
+   "title": "Admin Dashboard (Homepage)",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "1330b55",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "02b719b",
+   "notes": "PRIORITY — implement before Epics 10-12. 14 tests passing. Tracker summary, site metrics, activity feed. Homepage redirects admin to /dashboard/admin. Mobile fix: header stacks vertically on small screens, buttons expand to fill row width."
+  },
+  {
+   "id": "US-13.2",
+   "epic": "Epic 13: Role-Based Dashboards",
+   "title": "Seller Dashboard (Homepage)",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "b1dfabf",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "8e92e98",
+   "notes": "PRIORITY — implement before Epics 10-12. 17 tests passing. Listings summary, active listings grid, activity feed, revenue snapshot. Homepage redirects seller to /dashboard/seller"
+  },
+  {
+   "id": "US-13.3",
+   "epic": "Epic 13: Role-Based Dashboards",
+   "title": "Buyer Dashboard (Homepage)",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-09",
+   "testWrittenCommit": "b48f87c",
+   "testPassedDate": "2026-05-09",
+   "testPassedCommit": "0ef37b0",
+   "notes": "PRIORITY — implement before Epics 10-12. 14 tests passing. Active bids with winning/outbid status, top bids highlight, order history. Homepage redirects buyer to /dashboard/buyer"
+  },
+  {
+   "id": "US-14.1",
+   "epic": "Epic 14: Post-Sale Fulfillment",
+   "title": "Post-Sale Fulfillment Page",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "6062d0f",
+   "notes": "Authenticated buyer-locked page at /orders/[orderId]/fulfill. Multi-step: shipping → payment → confirmation."
+  },
+  {
+   "id": "US-14.2",
+   "epic": "Epic 14: Post-Sale Fulfillment",
+   "title": "Shipping Address Confirmation",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "6062d0f",
+   "notes": "Pre-populates from default UserAddress; optional save-to-account; confirmShippingAction validates and persists."
+  },
+  {
+   "id": "US-14.3",
+   "epic": "Epic 14: Post-Sale Fulfillment",
+   "title": "Auction Win Payment Collection",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "6062d0f",
+   "notes": "closeAuction creates PENDING Order with paymentDeadline. PaymentForm (Stripe Elements) on fulfillment page. /api/payment-intent route."
+  },
+  {
+   "id": "US-14.4",
+   "epic": "Epic 14: Post-Sale Fulfillment",
+   "title": "Fulfillment Confirmation & Order Status",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "69ad9fe",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "6062d0f",
+   "notes": "Fulfillment page renders confirmation view for PAID/SHIPPED orders. Shipping + tracking info shown. sendPurchaseConfirmation updated with fulfillment link."
+  },
+  {
+   "id": "US-14.5",
+   "epic": "Epic 14: Post-Sale Fulfillment",
+   "title": "Admin Fulfillment Queue",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "6062d0f",
+   "notes": "/admin/fulfillment page. markShippedAction updates Order to SHIPPED with carrier/trackingNumber. ORDER_SHIPPED notification + email. Mobile layout fix: Carrier and Tracking number fields each full-width on their own row (space-y-3 stack instead of side-by-side flex)."
+  },
+  {
+   "id": "US-14.6",
+   "epic": "Epic 14: Post-Sale Fulfillment",
+   "title": "Payment Deadline for Auction Wins",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "6062d0f",
+   "notes": "paymentDeadline set at auction close (endAt + AUCTION_PAYMENT_WINDOW_HOURS). /api/cron/payment-deadlines sends 24h reminder and cancels expired orders."
+  },
+  {
+   "id": "US-15.1",
+   "epic": "Epic 15: Listing-Page Purchase & Print Availability",
+   "title": "Buy from Listing Page (Fixed-Price)",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "6062d0f",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "42eb5fd",
+   "notes": "9 tests passing. initiateBuyNowAction server action creates PENDING Order and redirects to /checkout/[orderId]. Buy Now button on listing detail page uses form action."
+  },
+  {
+   "id": "US-15.2",
+   "epic": "Epic 15: Listing-Page Purchase & Print Availability",
+   "title": "Print Availability Toggle on Listing",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "0081968",
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "d33ea7e",
+   "notes": "15 tests passing. PrintListing model dropped; availableForPrint/printSourceImageUrl/printProducts fields added to OriginalListing. updatePrintConfigAction validates seller ownership. All epic-7/8/10 tests updated for new schema."
+  },
+  {
+   "id": "US-15.3",
+   "epic": "Epic 15: Listing-Page Purchase & Print Availability",
+   "title": "Prints Page (Filtered Browse)",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-11",
+   "testWrittenCommit": "6140ab9",
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "6140ab9",
+   "notes": "7 tests passing. /prints/page.tsx created with browseArtworks availability:print filter. SOLD originals with print enabled appear. Pagination works. Bugfix: browse page Prints tab was not passing availability filter — saleTypeParam \"print\" fell through auction/fixed mapping to undefined."
+  },
+  {
+   "id": "US-15.4",
+   "epic": "Epic 15: Listing-Page Purchase & Print Availability",
+   "title": "Order a Print from Listing Page",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-11",
+   "testWrittenCommit": "482856a",
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "482856a",
+   "notes": "8 tests passing. createPrintOrderAction server action, PrintOptionsSelector client component, print section on detail page. fulfillPayment does not mark SOLD for PRINT orders."
+  },
+  {
+   "id": "US-15.5",
+   "epic": "Epic 15: Listing-Page Purchase & Print Availability",
+   "title": "Structured Artwork Dimensions",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-11",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "pending",
+   "notes": "Width/height/unit fields replace free-text dimensions. Validated in createListingAction and updateListingAction."
+  },
+  {
+   "id": "US-15.6",
+   "epic": "Epic 15: Listing-Page Purchase & Print Availability",
+   "title": "Print Catalog Filtered by Aspect Ratio",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-11",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "pending",
+   "notes": "filterByAspectRatio() in listing.ts filters catalog to ±10% ratio match, sorted by closeness."
+  },
+  {
+   "id": "US-15.7",
+   "epic": "Epic 15: Listing-Page Purchase & Print Availability",
+   "title": "Print Cost Estimates in Setup",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-11",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "pending",
+   "notes": "costs.json populated by fetch-prodigi-costs.ts. ~$X shown in PrintConfigForm. No runtime API calls."
+  },
+  {
+   "id": "US-16.3",
+   "epic": "Epic 16: Seller UX Improvements",
+   "title": "Admin User Role Elevation",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-11",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "pending",
+   "notes": "8 tests. updateUserRolesAction in actions/admin.ts; /admin/users page with UserRoleEditor client component. Toggle-on-click saves immediately. BUYER cannot be removed. Admin cannot remove own ADMIN role. Mobile layout fix: table-fixed with col widths (45/22/33%), email mid-truncated (first 15 chars + … + last 6) in monospace so Roles column never gets squeezed off-screen."
+  },
+  {
+   "id": "US-16.1",
+   "epic": "Epic 16: Seller UX Improvements",
+   "title": "Seller Thumbnail Links to Artwork Page",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-11",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "pending",
+   "notes": "4 tests. Thumbnail in seller listings wrapped in Link to /artwork/[artworkId]."
+  },
+  {
+   "id": "US-16.2",
+   "epic": "Epic 16: Seller UX Improvements",
+   "title": "Edit Listing Button on Artwork Page",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-11",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "pending",
+   "notes": "4 tests. getArtworkDetail exposes sellerId. Artwork page shows Edit listing button when session user is the seller."
+  },
+  {
+   "id": "US-14.7",
+   "epic": "Epic 14: Post-Sale Fulfillment",
+   "title": "Runner-Up Offer on Payment Expiry",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-10",
+   "testWrittenCommit": "89a2b82",
+   "testPassedDate": "2026-05-10",
+   "testPassedCommit": "6062d0f",
+   "notes": "7 tests passing. Runner-up gets new PENDING order + email + notification when winner payment expires. Listing archived if no other bidders."
+  },
+  {
+   "id": "US-14.8",
+   "epic": "Epic 14: Post-Sale Fulfillment",
+   "title": "Fulfillment Error Email Notification to Seller",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-10",
+   "testWrittenCommit": "649e6ce",
+   "testPassedDate": "2026-06-10",
+   "testPassedCommit": "f269950",
+   "notes": "12 tests. Error notification logic extracted into createFulfillmentOrder() wrapper in src/lib/fulfillment/createOrder.ts — any provider (Prodigi, Teemill, future) that throws automatically alerts the seller. 7 integration tests via confirmShippingAction; 5 provider-agnostic unit tests use a hand-rolled mock provider. sendFulfillmentErrorEmail walks order → originalListing → artwork → seller. Buyer always receives success response."
+  },
+  {
+   "id": "CHORE-7",
+   "epic": "Infrastructure",
+   "title": "Remove seller sign-up language from homepage",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "pending",
+   "notes": "Homepage is buyer-facing only. Removed 'Start selling' hero button, replaced '03 Sell' how-it-works step with buyer-focused 'Bid' and 'Collect' steps, and dropped the seller CTA banner."
+  },
+  {
+   "id": "CHORE-6",
+   "epic": "Infrastructure",
+   "title": "Fix print order Prodigi flow, MSW sandbox intercept, purchase confirmation email",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "pending",
+   "notes": "Three bugs fixed: (1) MSW v2 does not support RegExp URL patterns — replaced with explicit PRODIGI_BASES.flatMap() for both live and sandbox URLs so tests are intercepted correctly. (2) Print order Prodigi flow was broken: confirmShippingAction rejected PAID orders; now allows PENDING|PAID; creates Prodigi order + transitions to PROCESSING after shipping collected for PAID PRINT orders. (3) fulfillPayment() webhook guarded against calling Prodigi with empty shipping fields (shippingName check). sendPurchaseConfirmation now called from confirmShippingAction for PAID PRINT orders after Prodigi creation."
+  },
+  {
+   "id": "CHORE-5",
+   "epic": "Infrastructure",
+   "title": "Fix Vercel build: missing Link import + auth form contrast",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "pending",
+   "notes": "artwork/[id]/page.tsx was missing `import Link from 'next/link'` causing TypeScript build failure on Vercel. Auth forms (sign-in, sign-up) wrapped in bg-white card so headings, links, and buttons have an explicit white surface instead of inheriting the stone-50 body; button softened to bg-stone-800."
+  },
+  {
+   "id": "CHORE-1",
+   "epic": "Infrastructure",
+   "title": "Upgrade Vercel to Pro and restore cron schedules",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Restore close-auctions to */5 * * * * and payment-deadlines to 0 * * * * in vercel.json. Remove TODO comments in both route files."
+  },
+  {
+   "id": "CHORE-4",
+   "epic": "Infrastructure",
+   "title": "Swap sandbox credentials for live before go-live",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "In Vercel production env vars: (1) PRODIGI_API_KEY → live key from dashboard.prodigi.com; PRODIGI_API_BASE_URL → leave unset (defaults to live API). (2) STRIPE_SECRET_KEY → live sk_live_... key; NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY → live pk_live_... key; STRIPE_WEBHOOK_SECRET → re-register webhook at api.stripe.com/webhooks pointing to production domain and use the new signing secret. Verify Stripe Connect is enabled for live mode. Double-check no test_ or sandbox keys remain in Vercel settings."
+  },
+  {
+   "id": "CHORE-3",
+   "epic": "Infrastructure",
+   "title": "Prodigi sandbox environment support",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-05-11",
+   "testPassedCommit": "pending",
+   "notes": "PRODIGI_API_BASE_URL env var added. Defaults to live API when unset; set to https://api.sandbox.prodigi.com/v4.0 in .env.local with a test_ key to avoid real fulfillment in dev. Updated .env.local.example and README."
+  },
+  {
+   "id": "CHORE-2",
+   "epic": "Infrastructure",
+   "title": "Verify DNS with Resend for transactional email",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Add Resend DNS records to domain registrar, verify in Resend dashboard. Update RESEND_FROM_EMAIL env var on Vercel to use verified domain instead of onboarding@resend.dev."
+  },
+  {
+   "id": "US-17.1",
+   "epic": "Epic 17: Password Reset",
+   "title": "Request Password Reset",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-12",
+   "testWrittenCommit": "4ab9a6c",
+   "testPassedDate": "2026-05-12",
+   "testPassedCommit": "4ab9a6c",
+   "notes": "Forgot-password form → sends time-limited reset email. No account enumeration. Invalidates previous token."
+  },
+  {
+   "id": "US-17.2",
+   "epic": "Epic 17: Password Reset",
+   "title": "Set New Password via Reset Link",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-12",
+   "testWrittenCommit": "4ab9a6c",
+   "testPassedDate": "2026-05-12",
+   "testPassedCommit": "4ab9a6c",
+   "notes": "Token validation (expired/used/missing), password match + min length, marks token used, redirects to sign-in."
+  },
+  {
+   "id": "US-18.1",
+   "epic": "Epic 18: Image Upload & Processing Pipeline",
+   "title": "Accept High-Resolution Artwork Uploads",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-12",
+   "testWrittenCommit": "11534a7",
+   "testPassedDate": "2026-05-12",
+   "testPassedCommit": "521cf77",
+   "notes": "Up to 70 MB via signed URL. JPEG/PNG/TIFF/WebP. Progress indicator. Client-side size and format validation. Bugfix: ActionResult imageId made optional so delete/setPrimary actions type-check correctly; ImageUploader guards the undefined case. Bugfix: new-listing page shows image placeholder for formats browsers cannot decode natively (e.g. TIFF); onError fallback prevents broken thumbnail. Bugfix: seller listings page used raw url instead of thumbnailUrl/gridUrl fallback chain, causing TIFF originals to fail to render."
+  },
+  {
+   "id": "US-18.2",
+   "epic": "Epic 18: Image Upload & Processing Pipeline",
+   "title": "Automatic Image Variant Generation",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-12",
+   "testWrittenCommit": "11534a7",
+   "testPassedDate": "2026-05-12",
+   "testPassedCommit": "521cf77",
+   "notes": "Three variants: display (watermarked, 2400px max, JPEG 85), grid (800px max, JPEG 75), thumbnail (400×400 crop, JPEG 70). Stored in CDN, URLs on ArtworkImage. Blocking UX; form submit disabled until all images processed. Watermark: 'Art & Sol' diagonal, SVG sized to match output. Tests updated for two-pass sharp flow and brand watermark text. Bugfix: new-listing page hydration mismatch — Date.now() moved to stable useState initialisers; suppressHydrationWarning added to submit button for React 19 PE-driven disabled mismatch. Bugfix: TIFF variant generation — added sRGB normalisation and alpha flattening pass so CMYK/multi-channel TIFFs encode to JPEG correctly."
+  },
+  {
+   "id": "US-18.3",
+   "epic": "Epic 18: Image Upload & Processing Pipeline",
+   "title": "Seller Can Regenerate Image Variants",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-03",
+   "testWrittenCommit": "b8e69f5",
+   "testPassedDate": "2026-06-03",
+   "testPassedCommit": "7727427",
+   "notes": "Regenerate button (↺) on each image card in listing edit page. Calls regenerateVariantsAction server action which re-runs generateVariants for the given imageId. Auth-guarded (returns {error} not redirect), seller-ownership-checked; works for SOLD listings. EditListingForm images type updated to include displayUrl so ImageUploader does not re-queue already-processed images. BUG-2 fix included: deleteImageAction guards against deleting last image; ✕ button hidden in UI when only one image remains."
+  },
+  {
+   "id": "US-19.1",
+   "epic": "Epic 19: Artwork Image Lightbox & Magnifier",
+   "title": "Open Image Lightbox from Artwork Detail Page",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-16",
+   "testWrittenCommit": "7392ac7",
+   "testPassedDate": "2026-05-16",
+   "testPassedCommit": "04e8f43",
+   "notes": "Click image → full-screen lightbox with display variant. Darkened backdrop. Backdrop click closes. cursor-zoom-in on thumbnail."
+  },
+  {
+   "id": "US-19.2",
+   "epic": "Epic 19: Artwork Image Lightbox & Magnifier",
+   "title": "Carousel Navigation Inside Lightbox",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-16",
+   "testWrittenCommit": "7392ac7",
+   "testPassedDate": "2026-05-16",
+   "testPassedCommit": "04e8f43",
+   "notes": "Arrow buttons, keyboard left/right, swipe on touch. Wraps. Index indicator (n / total). Hidden when single image."
+  },
+  {
+   "id": "US-19.3",
+   "epic": "Epic 19: Artwork Image Lightbox & Magnifier",
+   "title": "Close Lightbox",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-16",
+   "testWrittenCommit": "7392ac7",
+   "testPassedDate": "2026-05-16",
+   "testPassedCommit": "04e8f43",
+   "notes": "× button top-right, Escape key, backdrop click. Body scroll locked while open; scroll position restored on close."
+  },
+  {
+   "id": "US-19.4",
+   "epic": "Epic 19: Artwork Image Lightbox & Magnifier",
+   "title": "Magnifier Lens on Hover in Lightbox",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-16",
+   "testWrittenCommit": "7392ac7",
+   "testPassedDate": "2026-05-16",
+   "testPassedCommit": "04e8f43",
+   "notes": "Circular lens follows cursor, 2–3× zoom, uses display variant for sharpness. Hidden on touch devices. Disappears on mouse leave. Distinct border."
+  },
+  {
+   "id": "US-20.1",
+   "epic": "Epic 20: Mobile Usability",
+   "title": "Mobile Navigation",
+   "status": "Passed",
+   "testWrittenDate": "2026-05-17",
+   "testWrittenCommit": "17b0077",
+   "testPassedDate": "2026-05-17",
+   "testPassedCommit": "17b0077",
+   "notes": "Animated hamburger mobile nav (SVG bars→X, circular splash overlay, staggered items). Tab trap, Escape key, scroll lock. Active page underline+glow indicator (data-active). CSS focus ring on keyboard nav. 28 tests."
+  },
+  {
+   "id": "US-21.1",
+   "epic": "Epic 21: Stripe Checkout Sessions Migration & Payment UX",
+   "title": "Migrate Payment Collection to Stripe Checkout Sessions",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-02",
+   "testWrittenCommit": "6f38052",
+   "testPassedDate": "2026-06-02",
+   "testPassedCommit": "ff05ccc",
+   "notes": "14 tests passing. createCheckoutSession added to stripe.ts (ui_mode: embedded); stripeSessionId field added to Order schema + migrated; /api/checkout-session route (401/400/200); webhook handles checkout.session.completed via fulfillPaymentBySession; MSW handlers for POST+GET /v1/checkout/sessions."
+  },
+  {
+   "id": "US-21.2",
+   "epic": "Epic 21: Stripe Checkout Sessions Migration & Payment UX",
+   "title": "Show Order Confirmation Immediately After Payment",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-02",
+   "testWrittenCommit": "6f38052",
+   "testPassedDate": "2026-06-02",
+   "testPassedCommit": "ff05ccc",
+   "notes": "5 tests passing. fulfillPaymentBySession verifies Stripe session payment_status before marking PAID; resolveSessionFulfillment called on fulfill page load when ?session_id present — eliminates webhook race condition. Both are idempotent."
+  },
+  {
+   "id": "US-22.1",
+   "epic": "Epic 22: Buyer Order History & Order Detail",
+   "title": "Buyer Orders Page",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-03",
+   "testWrittenCommit": "053df6c",
+   "testPassedDate": "2026-06-03",
+   "testPassedCommit": "90e8d9d",
+   "notes": "8 tests. getBuyerOrders() sorted newest-first, listingType, artwork/thumbnailUrl, null artwork for orphan prints. /buyer/orders page, dashboard order rows linked, Orders in nav."
+  },
+  {
+   "id": "US-22.2",
+   "epic": "Epic 22: Buyer Order History & Order Detail",
+   "title": "Order Detail Page",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-03",
+   "testWrittenCommit": "053df6c",
+   "testPassedDate": "2026-06-03",
+   "testPassedCommit": "90e8d9d",
+   "notes": "11 tests. getOrderDetail() buyer-locked, full fields, shipping, tracking, seller email via artwork→seller, null artwork for orphan prints. /buyer/orders/[orderId] page with CancelOrderButton and ContactSupportModal client islands."
+  },
+  {
+   "id": "US-22.3",
+   "epic": "Epic 22: Buyer Order History & Order Detail",
+   "title": "Cancel Pending Order",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-03",
+   "testWrittenCommit": "053df6c",
+   "testPassedDate": "2026-06-03",
+   "testPassedCommit": "90e8d9d",
+   "notes": "8 tests. cancelOrderAction: cancels PENDING, rejects PAID/SHIPPED/PROCESSING/CANCELLED, Unauthorized for no-session or wrong buyer. cancelOrderAction in src/app/actions/order.ts."
+  },
+  {
+   "id": "US-22.4",
+   "epic": "Epic 22: Buyer Order History & Order Detail",
+   "title": "Contact Support About an Order",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-03",
+   "testWrittenCommit": "053df6c",
+   "testPassedDate": "2026-06-03",
+   "testPassedCommit": "90e8d9d",
+   "notes": "11 tests. contactSupportAction: Resend called, to=seller email, subject has Order #, message verbatim in body, blank/whitespace rejected, Unauthorized guards, Resend 500 returns error. sendSupportRequestEmail() added to email.ts."
+  },
+  {
+   "id": "US-23.1",
+   "epic": "Epic 23: Desktop Nav User Dropdown",
+   "title": "User Dropdown Menu in Desktop Nav",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-05",
+   "testWrittenCommit": "522818c",
+   "testPassedDate": "2026-06-05",
+   "testPassedCommit": "32bbc27",
+   "notes": "44 tests. NavDropdown client component: toggle open/close, Escape+focus return, click-outside, role-dependent menu items (buyer/seller/admin), active page highlight, signed-out renders nothing. Nav.tsx wired up — flat inline role links removed from desktop nav, mobile menu unaffected. Admin dropdown includes /admin/tracker (labelled Tracker), /admin/users, /admin/fulfillment. Settings link routes by role (/buyer/settings, /seller/settings, /admin/settings). Seller settings page (Profile + bidReceivedEmails/saleCompletedEmails notifications). Admin settings page (Profile only). updateProfileAction revalidates role-specific path. updateSellerNotificationPrefsAction added. Obsolete 'Creating privileged accounts' callout removed from /admin/tracker page."
+  },
+  {
+   "id": "US-23.2",
+   "epic": "Epic 23: Desktop Nav User Dropdown",
+   "title": "Restructured Mobile Menu with Role-Aware Sections",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-05",
+   "testWrittenCommit": "4d05644",
+   "testPassedDate": "2026-06-05",
+   "testPassedCommit": "41c2f92",
+   "notes": "74 tests (48 new US-23.2 + 26 migrated US-20.1). MobileMenu drops flat `links` prop; now takes `roles: string[]`. Nav.tsx no longer pre-builds mobileLinks. Layout: Browse/Auctions/Prints always at top; signed-in users get name then HR (75vw wide) as section divider, then Dashboard (role href) + role links (BUYER: My Bids+Orders, SELLER: Listings, ADMIN: Admin+Users+Fulfillment) + Settings (role href) + Sign Out; signed-out gets Sign In + Sign Up. Active page highlight, overlay animation, Escape/tab-trap, scroll lock all preserved."
+  },
+  {
+   "id": "MFTF-1.1",
+   "epic": "Epic MFTF-1: MerchForTheFuture Migration",
+   "title": "Migrate transactional email from Resend to MailerSend",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-06",
+   "testWrittenCommit": "4c568c6",
+   "testPassedDate": "2026-06-06",
+   "testPassedCommit": "4c568c6",
+   "notes": "Replaced Resend fetch helper with MailerSend in src/lib/payments/email.ts. Updated MSW intercept URLs and to-field assertions in US-12.3 and US-22.4 tests to match MailerSend request shape ({ to: [{ email }] }). Fixed stale Art & Sol brand copy in verification and password reset emails. 800/800 tests passing. Also fixed global MSW handler in __tests__/mocks/handlers.ts (was still intercepting api.resend.com, letting real MailerSend calls through during test runs)."
+  },
+  {
+   "id": "MFTF-1.2",
+   "epic": "Epic MFTF-1: MerchForTheFuture Migration",
+   "title": "Replace all Art & Sol brand references with Merch for the Future",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-06",
+   "testWrittenCommit": "ce4a95c",
+   "testPassedDate": "2026-06-06",
+   "testPassedCommit": "pending",
+   "notes": "Updated Nav.tsx logo, Footer.tsx copyright, variants.ts watermark SVG text, and US-18.2 watermark assertion. 800/800 tests passing."
+  },
+  {
+   "id": "MFTF-1.3",
+   "epic": "Epic MFTF-1: MerchForTheFuture Migration",
+   "title": "Update homepage with mission statement and brand copy",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-06",
+   "testPassedCommit": "pending",
+   "notes": "Replaced Art & Sol art-marketplace hero copy with MerchForTheFuture brand copy. Added mission statement section. Updated categories (Apparel/Prints/Originals) and how-it-works steps to match the apparel domain. Revised hero: big h1 is now \"We are living up to our name!\", subtitle is coming-soon copy, shop button removed. Removed How-it-works and Shop-by-type sections. Removed Nav from homepage via (main) route group. Excluded scripts/ from tsconfig. Hero section made full-viewport, text centered, all sizes doubled. H1 reduced from 8xl/9xl to 7xl/8xl. Moved api/ back out of (main) route group — tests import routes by @/app/api path which broke when nested. Staged (main) route group file renames (were committed as mv but not git-added)."
+  },
+  {
+   "id": "CHORE-14",
+   "epic": "Infrastructure",
+   "title": "Make MailerSend errors visible in server logs",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-07",
+   "testPassedCommit": "pending",
+   "notes": "mailersend() helper was fire-and-forget — returned raw fetch Response so .catch() in callers never fired on 4xx/5xx. Fixed: mailersend() now awaits fetch, throws Error('MailerSend {status}: {body}') on non-ok responses. sendSupportRequestEmail() updated to remove now-redundant manual res.ok check. Root cause of delivery failure identified as MailerSend trial account unique-recipient limit (#MS42225) — not a code issue."
+  },
+  {
+   "id": "CHORE-15",
+   "epic": "Infrastructure",
+   "title": "Separate under-construction page from homepage routing",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-07",
+   "testPassedCommit": "pending",
+   "notes": "Created /coming-soon page (src/app/coming-soon/page.tsx) outside (main) route group — no nav, no footer. Homepage (/) is now a pure redirect dispatcher: authenticated users go to their role dashboard, unauthenticated users go to /coming-soon. Footer moved from root layout.tsx into (main)/layout.tsx so it only renders on main-site pages, not on /coming-soon."
+  },
+  {
+   "id": "CHORE-16",
+   "epic": "Infrastructure",
+   "title": "Backfill pending commit hashes from git log",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "The following stories have testWrittenCommit or testPassedCommit set to \"pending\" and need real hashes backfilled from git log. Run: git log --oneline --all and match commits to story IDs by message. Stories: CHORE-13, CHORE-12, CHORE-11, CHORE-10, CHORE-9, CHORE-8, US-14.1, US-14.2, US-14.3, US-14.5, US-14.6, US-15.5, US-15.6, US-15.7, US-16.3, US-16.1, US-16.2, CHORE-7, CHORE-6, CHORE-5, CHORE-3, MFTF-1.2, MFTF-1.3, CHORE-14, CHORE-15"
+  },
+  {
+   "id": "CHORE-17",
+   "epic": "Infrastructure",
+   "title": "T-Mill API discovery spike",
+   "status": "Passed",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": "2026-06-10",
+   "testPassedCommit": "pending",
+   "notes": "Spike complete. API key obtained 2026-06-10 after 2FA issue was resolved with Teemill support. Findings: (1) Two APIs exist — Custom Product API (omnis/v3, creates Teemill-hosted storefront listing, NOT what we want) and Orders API (api.teemill.com/v1, correct target for MFTF-7). (2) Orders API is two-step: POST /orders returns available shipping options, then POST /orders/{id}/confirm selects method. (3) No sandbox environment — use MSW for automated tests. (4) Public product catalog endpoint (omnis/v3/product/options) returns 18 product types with colors and image URLs; used by MFTF-4 admin picker. (5) Colors identified by plain name strings (\"White\", \"Navy Blue\", etc). (6) Webhook payload still undocumented — stub in tests until confirmed from live integration. Full findings in /docs/teemill-api-notes.md."
+  },
+  {
+   "id": "US-MFTF-3.1",
+   "epic": "Epic MFTF-3: Fulfillment Abstraction Layer",
+   "title": "Define Fulfillment Provider Interface",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-07",
+   "testWrittenCommit": "ec85b07",
+   "testPassedDate": "2026-06-07",
+   "testPassedCommit": "dcac6eb",
+   "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.1-interface.test.ts. Validates: FULFILLMENT_STATUSES constant (6 values), mock provider satisfies interface shape (name, createOrder, getOrderStatus), getFulfillmentProvider factory exists and returns providers with correct shape for PRINT and APPAREL listing types."
+  },
+  {
+   "id": "US-MFTF-3.2",
+   "epic": "Epic MFTF-3: Fulfillment Abstraction Layer",
+   "title": "Refactor Prodigi Behind the Interface",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-07",
+   "testWrittenCommit": "ec85b07",
+   "testPassedDate": "2026-06-07",
+   "testPassedCommit": "dcac6eb",
+   "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.2-prodigi-provider.test.ts. Validates: provider name, factory routing, correct Prodigi request shape (shippingMethod, recipient, items), FulfillmentOrderResult fields, canonical status mapping (InProgress→PROCESSING, Complete+shipments→SHIPPED, Cancelled→CANCELLED, unknown→ERROR), error on non-ok response. Includes regression test: createPrintOrder still POSTs to Prodigi and sets prodigiOrderId."
+  },
+  {
+   "id": "US-MFTF-3.3",
+   "epic": "Epic MFTF-3: Fulfillment Abstraction Layer",
+   "title": "Stub T-Mill Provider",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-07",
+   "testWrittenCommit": "ec85b07",
+   "testPassedDate": "2026-06-07",
+   "testPassedCommit": "dcac6eb",
+   "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.3-teemill-stub.test.ts. Validates: createOrder and getOrderStatus both throw with 'TeemillFulfillmentProvider' and 'not yet implemented' in message, no HTTP calls made before throwing, getFulfillmentProvider('APPAREL') returns TeemillFulfillmentProvider instance."
+  },
+  {
+   "id": "US-MFTF-4.1",
+   "epic": "Epic MFTF-4: Platform Product Catalog",
+   "title": "Product Type Schema",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-10",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-06-10",
+   "testPassedCommit": "pending",
+   "notes": "14 tests. ProductType, ProductTypeColor, ProductTypeSizeOption models added to schema. FulfillmentProviderType enum (TEEMILL|PRODIGI). Seed file prisma/seed-product-catalog.ts creates 3 product types (Unisex Tee via T-Mill, Tote Bag via T-Mill, Art Print via Prodigi) with colors and sizes. resetDatabase() in test helpers updated to include new tables. Both main and test DBs pushed."
+  },
+  {
+   "id": "US-MFTF-4.2",
+   "epic": "Epic MFTF-4: Platform Product Catalog",
+   "title": "Admin Product Catalog Page",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-11",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-06-11",
+   "testPassedCommit": "pending",
+   "notes": "8 tests. getAdminProductCatalog() in src/lib/admin/product-catalog.ts returns all types (active+inactive) with activeColorCount/activeSizeCount, ordered by name. Page at /admin/products guards non-admin with redirect. Named export AdminProductsPage for testability."
+  },
+  {
+   "id": "US-MFTF-4.3",
+   "epic": "Epic MFTF-4: Platform Product Catalog",
+   "title": "Create and Edit Product Type",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-11",
+   "testWrittenCommit": "pending",
+   "testPassedDate": "2026-06-11",
+   "testPassedCommit": "pending",
+   "notes": "28 tests. 6 server actions in src/app/actions/admin/product-catalog.ts: createProductTypeAction, updateProductTypeAction, addProductTypeColorAction, toggleProductTypeColorAction, addProductTypeSizeAction, toggleProductTypeSizeAction. All auth-guarded (ADMIN only). Validation: required name/SKU, unique name, activation requires >=1 active color + size. Pages at /admin/products/new and /admin/products/[id]. — Enhancement (2026-06-11): Added Teemill product grid picker to /admin/products/new. Client component TeemillProductPicker fetches /api/teemill/catalog (route handler with 1h revalidation), displays a 2-col grid of all 18 Teemill products with per-card color carousel. Selecting a product collapses grid to single-product summary showing all color thumbnails. createProductTypeAction extended to parse teemillColorsJson hidden field and bulk-create ProductTypeColor records (backward compatible). Prodigi path shows manual SKU instructions. — UI revision (2026-06-11): Product detail page (/admin/products/[id]) redesigned: hero image from Teemill catalog; colors shown as read-only thumbnail grid (images fetched from Teemill, matched by color name); sizes section removed entirely (all provider sizes always available); activation guard updated to require at least one color (not active color, since toggling was removed). — Provider design audit + schema hardening (2026-06-11): (1) ProductTypeColor.colorHex made nullable — Teemill has no hex values; was storing empty string. (2) ProductTypeColor.colorImageUrl added — persists provider color photo URLs so pages no longer re-fetch Teemill API on every render. (3) ProductType.blankImageUrl added — admin-uploaded product blank photo for Prodigi products. (4) Blob upload route now accepts ADMIN role. (5) BlankImageUploader client component added. (6) Detail page shows BlankImageUploader for Prodigi; Teemill shows read-only API image. (7) Catalog list prefers stored colorImageUrl, falls back to Teemill API only when needed. Audit flagged 6 open design issues: provider routing by listingType not fulfillmentProvider, Order model has Prodigi-specific field names, isActive on colors/sizes is dead, OriginalListing.printProducts should FK to ProductType. These are deferred. — Schema cleanup (2026-06-12): Removed ProductTypeColor.colorHex (vestigial; superceded by colorImageUrl), removed ProductTypeColor.isActive and ProductTypeSizeOption.isActive (all provider colors/sizes always available — design decision). Renamed Order.prodigiSku→externalSku, Order.prodigiOrderId→externalOrderId, Transaction.prodigiFulfillmentCost→fulfillmentCost (provider-agnostic naming). Updated all 15+ source + test files referencing old field names. resetDatabase() updated to include new ApparelListing tables."
+  },
+  {
+   "id": "US-MFTF-5.1",
+   "epic": "Epic MFTF-5: Apparel Listing Creation",
+   "title": "Apparel Listing Schema",
+   "status": "Passed",
+   "testWrittenDate": "2026-06-12",
+   "testWrittenCommit": "dfddbee",
+   "testPassedDate": "2026-06-12",
+   "testPassedCommit": "dfddbee",
+   "notes": "Schema implemented as part of MFTF schema cleanup commit (dfddbee). Models added: ApparelListing (sellerId, productTypeId, title, description, retailPrice, status, designImageUrl), ApparelListingColor (apparelListingId, productTypeColorId, isOffered), ApparelListingImage (apparelListingId, originalUrl, displayUrl, gridUrl, thumbnailUrl, isPrimary, sortOrder). Order.apparelListingId FK added. resetDatabase() in test helpers updated to include all three new tables in correct cascade order. Schema applied to both main and test DBs via prisma db push. Note: dedicated schema test file (parallel to US-MFTF-4.1) not yet written — schema is exercised transitively by MFTF-4 tests and confirmed working."
+  },
+  {
+   "id": "US-MFTF-5.2",
+   "epic": "Epic MFTF-5: Apparel Listing Creation",
+   "title": "Lifestyle Photo Upload with Corner Watermark",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-MFTF-5.3",
+   "epic": "Epic MFTF-5: Apparel Listing Creation",
+   "title": "Create Apparel Listing Form",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-MFTF-5.4",
+   "epic": "Epic MFTF-5: Apparel Listing Creation",
+   "title": "Edit Apparel Listing",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-MFTF-6.1",
+   "epic": "Epic MFTF-6: Apparel Product Page & Browse",
+   "title": "Apparel Browse Page",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-MFTF-6.2",
+   "epic": "Epic MFTF-6: Apparel Product Page & Browse",
+   "title": "Apparel Product Detail Page",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-MFTF-6.3",
+   "epic": "Epic MFTF-6: Apparel Product Page & Browse",
+   "title": "Apparel Listing in Seller Dashboard",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": null
+  },
+  {
+   "id": "US-MFTF-7.1",
+   "epic": "Epic MFTF-7: Apparel Checkout & Order Fulfillment",
+   "title": "Apparel Order Creation",
+   "status": "Dropped",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Dropped 2026-06-12 before implementation. Single-item apparel checkout superseded by the multi-item cart model. Successors: US-MFTF-12.3 (revalidation & shipping), US-MFTF-12.4 (Stripe multi-line-item session), US-MFTF-12.5 (fulfillment fan-out)."
+  },
+  {
+   "id": "US-MFTF-7.2",
+   "epic": "Epic MFTF-7: Apparel Checkout & Order Fulfillment",
+   "title": "Apparel Order Confirmation & Shipping",
+   "status": "Dropped",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Dropped 2026-06-12 before implementation. Superseded by US-MFTF-12.6 (buyer order view with per-shipment status, tracking, and shipping emails)."
+  },
+  {
+   "id": "US-MFTF-11.1",
+   "epic": "Epic MFTF-11: Cart",
+   "title": "Cart & CartItem Schema",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null
+  },
+  {
+   "id": "US-MFTF-11.2",
+   "epic": "Epic MFTF-11: Cart",
+   "title": "Add Apparel to Cart",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null
+  },
+  {
+   "id": "US-MFTF-11.3",
+   "epic": "Epic MFTF-11: Cart",
+   "title": "Add Print to Cart",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Modifies behavior of Passed story US-15.4 (print order flow becomes add-to-cart); update its test file in the same commit."
+  },
+  {
+   "id": "US-MFTF-11.4",
+   "epic": "Epic MFTF-11: Cart",
+   "title": "Cart Page",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null
+  },
+  {
+   "id": "US-MFTF-11.5",
+   "epic": "Epic MFTF-11: Cart",
+   "title": "Guest Cart Merge on Authentication",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null
+  },
+  {
+   "id": "US-MFTF-11.6",
+   "epic": "Epic MFTF-11: Cart",
+   "title": "Guest Cart Cleanup Cron",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null
+  },
+  {
+   "id": "US-MFTF-12.1",
+   "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
+   "title": "FulfillmentProvider Abstract Base Class",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Structural refactor of code from Passed stories US-MFTF-3.1–3.3 (interface → abstract base class); their tests must pass unchanged."
+  },
+  {
+   "id": "US-MFTF-12.2",
+   "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
+   "title": "Multi-Item Order Schema",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null
+  },
+  {
+   "id": "US-MFTF-12.3",
+   "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
+   "title": "Checkout Creation: Cart Revalidation & Per-Provider Shipping",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null
+  },
+  {
+   "id": "US-MFTF-12.4",
+   "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
+   "title": "Multi-Line-Item Stripe Checkout Session",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null
+  },
+  {
+   "id": "US-MFTF-12.5",
+   "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
+   "title": "Post-Payment Fulfillment Fan-Out",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null
+  },
+  {
+   "id": "US-MFTF-12.6",
+   "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
+   "title": "Buyer Order View with Per-Shipment Status",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null
+  },
+  {
+   "id": "US-MFTF-8.1",
+   "epic": "Epic MFTF-8: T-Mill Mockup Generation",
+   "title": "Generate Mockup Images During Listing Setup",
+   "status": "Deferred",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Stub — acceptance criteria to be written after CHORE-17 spike."
+  },
+  {
+   "id": "US-MFTF-8.2",
+   "epic": "Epic MFTF-8: T-Mill Mockup Generation",
+   "title": "Seller Accepts or Discards Mockups",
+   "status": "Deferred",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Stub — acceptance criteria to be written after CHORE-17 spike."
+  },
+  {
+   "id": "US-MFTF-9.1",
+   "epic": "Epic MFTF-9: Seller Apparel Product Management",
+   "title": "Toggle Offered Colors on Live Listing",
+   "status": "Deferred",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Deferred until post-first-launch. Key constraint: handle gracefully if removed color has pending/paid orders."
+  },
+  {
+   "id": "US-MFTF-9.2",
+   "epic": "Epic MFTF-9: Seller Apparel Product Management",
+   "title": "Per-Listing Sales Breakdown",
+   "status": "Deferred",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Deferred until post-first-launch."
+  },
+  {
+   "id": "US-MFTF-10.1",
+   "epic": "Epic MFTF-10: Pre-Launch Checklist",
+   "title": "Provision separate production database",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Human task. Create a separate Neon branch/database for production. Update DATABASE_URL in Vercel production env vars. Verify dev environment continues to use its own database. Do not share a database between dev and production after this point."
+  },
+  {
+   "id": "US-MFTF-10.2",
+   "epic": "Epic MFTF-10: Pre-Launch Checklist",
+   "title": "Swap sandbox API keys for live keys across all services",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Human task. Supersedes/completes CHORE-4. Set live keys in Vercel production env vars for: Stripe (publishable + secret), T-Mill (Authorization header key + project param), Prodigi. Confirm test/sandbox keys remain in .env.local and Vercel preview environments only. Smoke-test each service after rotation."
+  },
+  {
+   "id": "US-MFTF-10.3",
+   "epic": "Epic MFTF-10: Pre-Launch Checklist",
+   "title": "Set up Merch for the Future as a registered business",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Human task. Register the business entity (LLC or equivalent) appropriate for the founders' situation. Obtain EIN. This is a prerequisite for opening a business bank account and completing tax/billing setup with Stripe, T-Mill, and Prodigi."
+  },
+  {
+   "id": "US-MFTF-10.4",
+   "epic": "Epic MFTF-10: Pre-Launch Checklist",
+   "title": "Open Merch for the Future bank account and business card",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Human task. Open a dedicated business checking account and obtain a business debit/credit card to use with dropshippers (T-Mill, Prodigi) and any other business expenses. Requires business registration (US-MFTF-10.3) to be complete first."
+  },
+  {
+   "id": "US-MFTF-10.5",
+   "epic": "Epic MFTF-10: Pre-Launch Checklist",
+   "title": "Add billing and payout information to Stripe, T-Mill, and Prodigi",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Human task. Stripe: complete account activation (business info, bank account for payouts, tax details). T-Mill: add payment method for order charges. Prodigi: add payment method. Use the MFTF business card/account from US-MFTF-10.4. Requires US-MFTF-10.3 and US-MFTF-10.4."
+  },
+  {
+   "id": "US-MFTF-10.6",
+   "epic": "Epic MFTF-10: Pre-Launch Checklist",
+   "title": "Order product samples and finalize store product selection",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Human task. Order samples of candidate T-Mill and Prodigi apparel products to evaluate print quality, fabric feel, and sizing. Select the product types to carry in the initial store (e.g. unisex tee, tote bag). Document selections in the admin product catalog (MFTF-4). Requires live billing setup (US-MFTF-10.5)."
+  },
+  {
+   "id": "US-MFTF-10.7",
+   "epic": "Epic MFTF-10: Pre-Launch Checklist",
+   "title": "Create 10 designs and publish listings on production",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Human task. Create at least 10 original apparel designs, photograph or shoot lifestyle photos from QA samples, and publish a listing for each on production. Requires MFTF-5 (listing creation flow) and MFTF-4 (product catalog) to be implemented first."
+  },
+  {
+   "id": "US-MFTF-10.8",
+   "epic": "Epic MFTF-10: Pre-Launch Checklist",
+   "title": "Remove under-construction page and go live",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Human task (with a small code component). Remove or disable the under-construction route guard added in CHORE-15. Confirm the homepage and /shop are publicly accessible. This is the final step — all other US-MFTF-10.x items should be complete before this one."
+  }
+ ],
+ "commits": [
+  {
+   "hash": "50ffb73",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [],
+   "message": "chore: project scaffolding — Next.js, Prisma schema, test infrastructure",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "2e0fc35",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-6.1",
+    "US-6.2",
+    "US-6.3"
+   ],
+   "message": "feat(epic-6): implement US-6.1 through US-6.3 — user accounts and authentication",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "0207f37",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-1.1",
+    "US-1.2",
+    "US-1.3",
+    "US-1.4",
+    "US-1.5",
+    "US-1.6"
+   ],
+   "message": "feat(epic-1): implement US-1.1 through US-1.6 — artwork listing and product page",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "1381ba2",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [],
+   "message": "chore: migrate project tracker from xlsx to JSON, add admin dashboard",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "f966f62",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [],
+   "message": "feat: navigable site shell — homepage, nav, footer, stub pages for browse/sign-in/sign-up/sell",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "1fb638b",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-7.1",
+    "US-7.2",
+    "US-7.3",
+    "US-7.4"
+   ],
+   "message": "feat(epic-7): implement US-7.1 through US-7.4 — browsing, filtering, search, unified display",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "c4d01aa",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-2.1",
+    "US-2.2",
+    "US-2.3",
+    "US-2.4"
+   ],
+   "message": "feat(epic-2): implement US-2.1 through US-2.4 — fixed-price sales",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "0c7bb8f",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-6.1",
+    "US-6.3"
+   ],
+   "message": "refactor: lock web registration to BUYER role, drop seller onboarding (US-6.3)",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "c0e7a59",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-4.1",
+    "US-4.2",
+    "US-4.3",
+    "US-4.4",
+    "US-4.5"
+   ],
+   "message": "feat(epic-4): implement US-4.1–4.5 — payments via Stripe",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "b923730",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [],
+   "message": "feat: wire up auth flows, buyer sign-up, and test account seeds",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "02b719b",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-13.1"
+   ],
+   "message": "feat(epic-13): implement US-13.1 — admin dashboard homepage",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "8e92e98",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-13.2"
+   ],
+   "message": "feat(epic-13): implement US-13.2 — seller dashboard homepage",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "0ef37b0",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-13.3"
+   ],
+   "message": "feat(epic-13): implement US-13.3 — buyer dashboard homepage",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "8ae9a15",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [],
+   "message": "fix: resolve Vercel build and admin tracker runtime errors",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "1bb6511",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [],
+   "message": "fix: remove remaining Prisma.Decimal reference in buyer.ts",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "388a86f",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-10.1",
+    "US-10.2"
+   ],
+   "message": "test(epic-10): write failing tests for US-10.1 and US-10.2",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "bb3ab70",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-10.1"
+   ],
+   "message": "feat(epic-10): implement US-10.1 — browse gallery layout",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "4103b71",
+   "date": "2026-05-09",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-10.2"
+   ],
+   "message": "feat(epic-10): implement US-10.2 — listing detail page",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "6c8cf6e",
+   "date": "2026-05-10",
+   "description": "Post-PR improvements: artist field, Vercel Blob image upload, browse fixes, test updates"
+  },
+  {
+   "hash": "42eb5fd",
+   "date": "2026-05-10",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-15.1"
+   ],
+   "message": "feat(epic-15): implement US-15.1 — buy from listing page (fixed-price)",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "d33ea7e",
+   "date": "2026-05-11",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-15.2"
+   ],
+   "message": "feat(epic-15): implement US-15.2 — print availability toggle on OriginalListing",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "6140ab9",
+   "date": "2026-05-11",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-15.3"
+   ],
+   "message": "feat(epic-15): implement US-15.3 — prints page with filtered browse",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "482856a",
+   "date": "2026-05-11",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-15.4"
+   ],
+   "message": "feat(epic-15): implement US-15.4 — order a print from listing page",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "04e8f43",
+   "date": "2026-05-16",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-19.1",
+    "US-19.2",
+    "US-19.3",
+    "US-19.4"
+   ],
+   "message": "feat(epic-19): implement US-19.1-19.4 — artwork image lightbox & magnifier",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "c74d920",
+   "date": "2026-05-16",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-19.1",
+    "US-19.2",
+    "US-19.3",
+    "US-19.4"
+   ],
+   "message": "fix(epic-19): replace setState-in-effect with useSyncExternalStore to satisfy react-hooks/set-state-in-effect ESLint rule",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "fbec7c1",
+   "date": "2026-05-16",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-19.1",
+    "US-19.4"
+   ],
+   "message": "fix(epic-19): correct magnifier background-position formula; use natural image dimensions in carousel",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "b004d4f",
+   "date": "2026-05-16",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-19.1",
+    "US-19.4"
+   ],
+   "message": "fix(epic-19): pixel-based magnifier zoom; shrink carousel container to image width",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "a9c7871",
+   "date": "2026-05-16",
+   "author": "Jesse Caldwell",
+   "storiesAffected": [],
+   "message": "fix/misc: contrast fixes, print mockups, footer/auth cleanup, dashboard copy",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "b1d23a4",
+   "date": "2026-05-16",
+   "author": "Jesse Caldwell",
+   "storiesAffected": [],
+   "message": "fix: update default Resend from address to noreply@artandsol.quest",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "0680a9e",
+   "date": "2026-05-16",
+   "author": "Jesse Caldwell",
+   "storiesAffected": [
+    "US-20.1"
+   ],
+   "message": "chore: add Epic 20 Mobile Usability — US-20.1 Mobile Navigation",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "320eaec",
+   "date": "2026-05-17",
+   "message": "fix(lightbox): mobile controls alignment and auto-hide after 3s idle"
+  },
+  {
+   "hash": "2fe92fe",
+   "date": "2026-05-17",
+   "message": "fix(mobile-menu): hamburger X animation and link slide-in timing"
+  },
+  {
+   "hash": "c5a6303",
+   "date": "2026-05-17",
+   "message": "fix(mobile-menu): use white button background when open so icon stays dark"
+  },
+  {
+   "hash": "90ca684",
+   "date": "2026-05-17",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-20.1"
+   ],
+   "message": "feat(mobile-menu): active page indicator (underline+glow) and CSS focus ring — 28 tests pass",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "ce5757b",
+   "date": "2026-05-17",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-20.1"
+   ],
+   "message": "fix(mobile-menu): replace focus outline ring with hover-colour-match on focus-visible",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "6f38052",
+   "date": "2026-06-02",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-21.1",
+    "US-21.2"
+   ],
+   "message": "test(epic-21): write failing tests for US-21.1 and US-21.2",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "ff05ccc",
+   "date": "2026-06-02",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-21.1",
+    "US-21.2"
+   ],
+   "message": "feat(epic-21): implement US-21.1 and US-21.2 — Stripe Checkout Sessions & payment confirmation",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "12bde1a",
+   "date": "2026-06-02",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-21.1",
+    "US-21.2"
+   ],
+   "message": "fix(epic-21): wire EmbeddedCheckout client and correct Stripe ui_mode",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "8cd7eaa",
+   "date": "2026-06-02",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-21.1",
+    "US-21.2"
+   ],
+   "message": "fix(epic-21): use ui_mode=embedded_page for EmbeddedCheckout",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "971a616",
+   "date": "2026-06-02",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-21.2"
+   ],
+   "message": "feat(epic-21): reverse fulfillment flow — payment first, shipping after",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "477391d",
+   "date": "2026-06-02",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-21.2"
+   ],
+   "message": "fix(epic-21): clear stale shipping/session on order reuse in initiateBuyNowAction",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "a076a3f",
+   "date": "2026-06-02",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-21.2"
+   ],
+   "message": "fix(epic-21): show full shipping address in order confirmation",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "630e397",
+   "date": "2026-06-02",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-21.2"
+   ],
+   "message": "style(epic-21): add breathing room between confirmation sections",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "053df6c",
+   "date": "2026-06-03",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-22.1",
+    "US-22.2",
+    "US-22.3",
+    "US-22.4"
+   ],
+   "message": "test(epic-22): write failing tests for US-22.1 through US-22.4",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "90e8d9d",
+   "date": "2026-06-03",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-22.1",
+    "US-22.2",
+    "US-22.3",
+    "US-22.4"
+   ],
+   "message": "feat(epic-22): implement US-22.1 through US-22.4 — buyer order history & order detail",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "e5d53cc",
+   "date": "2026-06-03",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-22.1"
+   ],
+   "message": "fix(epic-22): wrap ternary else branch in fragment in buyer dashboard",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "7dfbaa5",
+   "date": "2026-06-03",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [],
+   "message": "chore(tracker): log BUG-1 — portrait images rotated/cropped in variant generation",
+   "trackerUpdated": true
+  },
+  {
+   "hash": "b923730",
+   "date": "2026-06-03",
+   "author": "Claude Sonnet 4.6",
+   "storiesAffected": [
+    "US-22.2"
+   ],
+   "message": "fix(epic-22): show print mockup image on order detail; fix Decimal import; natural image sizing",
+   "trackerUpdated": true
+  },
+  {
+   "filesChanged": [
+    "src/app/(main)/settings/ProfileForm.tsx",
+    "src/app/actions/account.ts",
+    "src/app/(main)/admin/settings/page.tsx",
+    "src/app/(main)/buyer/settings/page.tsx",
+    "src/app/(main)/seller/settings/page.tsx",
+    "src/app/actions/auth.ts",
+    "next.config.ts",
+    "src/components/PrintConfigForm.tsx",
+    "src/app/(main)/seller/listings/[id]/edit/EditListingForm.tsx",
+    "src/app/(main)/seller/listings/new/page.tsx",
+    "__tests__/epic-12-buyer-experience/US-12.4-buyer-account-settings.test.ts",
+    "__tests__/epic-23-nav-dropdown/US-23.1-settings-pages.test.ts"
+   ],
+   "message": "fix: profile save, sign-out routing, iOS hamburger, price input zero, auction timestamp format",
+   "trackerUpdated": true
+  }
+ ],
+ "lastUpdated": "2026-06-12T00:00:00.000Z"
 }

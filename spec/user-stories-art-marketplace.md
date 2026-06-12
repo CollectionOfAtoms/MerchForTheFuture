@@ -1421,12 +1421,23 @@ When working through each epic:
 3. Update `project-tracker.json`: set each story's status to "Test Written," fill in the test written date and commit hash.
 4. Implement the code to make each test pass, one at a time.
 5. After all tests in the epic pass, refactor.
-6. Run the full test suite to confirm no regressions.
+6. Run the full test suite **once, before pushing the first PR for the epic**, to confirm no regressions. See "Test Suite Scope Policy" below for what to run during subsequent PR iterations.
 7. Update `project-tracker.json`: set each passing story's status to "Passed," fill in the test passed date and commit hash. Add a row to the commits array.
 8. Commit with a message referencing the epic and story IDs (e.g., "feat(epic-3): implement US-3.1 through US-3.6 — auction sales"). The tracker file MUST be included in the commit.
 9. Move to the next epic.
 
 **Critical: Every commit must include an update to `project-tracker.json`.** Commits without a tracker update should be rejected. See the Project Tracker section below for git hook enforcement.
+
+### Test Suite Scope Policy
+
+_Added 2026-06-12. The full suite now takes several minutes; running it on every iteration slows development without adding signal._
+
+- **Before the first PR push for an epic:** run the **full test suite** once and confirm green. This is the regression gate for the epic's initial implementation.
+- **During PR review iterations** (feedback, bugfixes, the back-and-forth of resolving errors): run **only the epic's test directory** (e.g. `npx vitest run __tests__/mftf-11-cart/`) plus any test files belonging to stories the change directly touches (e.g. US-15.4's file when MFTF-11.3 modifies it). Do not run the full suite on every iteration.
+- **Before merge (human QA gate):** every PR description must end with a QA checklist containing at minimum:
+  - `- [ ] Full test suite run locally and green (human — required before merge)`
+
+  The human developer runs the full suite and checks this box before merging. Claude Code creates the checklist but never checks this box itself.
 
 ---
 
@@ -1434,7 +1445,7 @@ When working through each epic:
 
 ### File: `project-tracker.json`
 
-This JSON file lives in the project root and is the single source of truth for project progress. It contains two top-level arrays:
+This JSON file lives in the project root and is the single source of truth for project progress. It contains three top-level keys (`stories`, `commits`, `epicOrder`) plus `lastUpdated`:
 
 **stories** — One object per user story (US-1.1 through US-12.4). Fields:
 - id, epic, title
@@ -1445,6 +1456,8 @@ This JSON file lives in the project root and is the single source of truth for p
 
 **commits** — One object per commit. Fields:
 - hash (short), date, author, storiesAffected (array of story IDs), message, trackerUpdated (always true)
+
+**epicOrder** — The authoritative implementation sequence. `epicOrder.sequence` is an ordered array of `{ epic, rationale }` objects (epic strings match the `epic` field on stories exactly); `epicOrder.deferred` lists epics intentionally parked. Claude Code works the first epic in `sequence` that has stories not yet `Passed`/`Dropped`/`Deferred`, unless the handoff prompt says otherwise. Sequencing changes happen only in `tdd-spec-session` sessions — implementation sessions never reorder it.
 
 ### Git Hook: Enforce Tracker Updates
 
@@ -1796,13 +1809,15 @@ _**Dependency:** Requires MFTF-5 (apparel listing schema and data) and MFTF-2 sp
 
 ---
 
-## Epic MFTF-7: Apparel Checkout & Order Fulfillment
+## Epic MFTF-7: Apparel Checkout & Order Fulfillment ❌ REPLACED
+
+> **Replaced 2026-06-12** by Epic MFTF-11 (Cart) and Epic MFTF-12 (Multi-Provider Checkout & Fulfillment), before implementation began. Single-item apparel checkout was superseded by the multi-item cart checkout model. US-MFTF-7.1 and US-MFTF-7.2 are **Dropped** in the tracker. Stories retained below for history only — do not implement.
 
 _Buyer selects color and size, checks out via Stripe, order is submitted to T-Mill via the fulfillment abstraction layer. Reuses the existing Stripe Checkout Sessions flow (Epic 21). T-Mill order creation slots in where Prodigi currently handles print orders._
 
 _**Dependency:** Requires MFTF-3 (abstraction layer), MFTF-5 (apparel listing schema), and MFTF-2 spike (T-Mill order submission shape). Stories are specifiable now at the interface level; T-Mill-specific implementation details will be filled in after the spike._
 
-### US-MFTF-7.1 — Apparel Order Creation
+### US-MFTF-7.1 — Apparel Order Creation _(Dropped — superseded by US-MFTF-12.3/12.4/12.5)_
 
 **As a** buyer,
 **I want** to purchase an apparel item in my chosen color and size,
@@ -1825,7 +1840,7 @@ _**Dependency:** Requires MFTF-3 (abstraction layer), MFTF-5 (apparel listing sc
 
 ---
 
-### US-MFTF-7.2 — Apparel Order Confirmation & Shipping
+### US-MFTF-7.2 — Apparel Order Confirmation & Shipping _(Dropped — superseded by US-MFTF-12.6)_
 
 **As a** buyer who has paid for an apparel order,
 **I want** to see a confirmation and receive shipping updates,
@@ -1844,6 +1859,279 @@ _**Dependency:** Requires MFTF-3 (abstraction layer), MFTF-5 (apparel listing sc
 - Integration test: simulate T-Mill webhook payload, assert Order status → SHIPPED and tracking stored
 - Email test: MSW intercepts MailerSend, assert shipping email sent with tracking number
 - T-Mill webhook shape: stub based on spike findings; update test when real shape is known
+
+---
+
+## Epic MFTF-11: Cart
+
+_DB-backed shopping cart for guests and authenticated buyers, covering apparel and fine-art prints. Physical originals remain direct buy-now only (1-of-1 items create reservation/concurrency problems in a cart for negligible UX gain). Cart line items are polymorphic over an `itemKind` rather than forcing prints into the listing model — prints remain parameterized purchases off the artwork listing (preserving the US-15.3/15.4/15.6 dynamic-catalog UX), while apparel items reference apparel listings directly._
+
+_**Persistence model:** Guest carts are DB rows keyed by an anonymous token stored in an httpOnly cookie. Authenticated carts are keyed by user. On login or signup, the guest cart merges into the user cart. A daily cleanup cron (Vercel Hobby-compatible — this cron must remain daily-tolerant, unlike the sub-daily auction crons tracked in CHORE-1) removes abandoned guest carts._
+
+_**Staleness rule:** No holds, no reservations. The cart is re-validated server-side at checkout creation (MFTF-12); current price always wins; stale items are flagged and removed with a message._
+
+_**Dependency:** Requires MFTF-5 (apparel listings exist) and MFTF-6 (product detail page with stubbed cart button). US-MFTF-11.3 modifies the behavior of the Passed story US-15.4._
+
+### US-MFTF-11.1 — Cart & CartItem Schema
+
+**As a** platform,
+**I want** `Cart` and `CartItem` models that support both guest and authenticated carts with polymorphic line items,
+**so that** apparel and prints can share one cart without reworking the listing model.
+
+**Acceptance Criteria:**
+- [ ] `Cart` model in Prisma schema with fields: `id`, `userId` (nullable FK to User, unique), `guestToken` (nullable String, unique), `createdAt`, `updatedAt` — exactly one of `userId` / `guestToken` must be non-null (enforced at application layer, matching the US-MFTF-5.1 pattern)
+- [ ] `CartItemKind` enum: `APPAREL | PRINT`
+- [ ] `CartItem` model: `id`, `cartId` (FK, cascade delete), `itemKind` (`CartItemKind`), `apparelListingId` (nullable FK to `ApparelListing`), `listingId` (nullable FK to the artwork `Listing`, used for prints), `selection` (Json), `quantity` (Int, default 1, min 1 at application layer), `addedAt` — exactly one of `apparelListingId` / `listingId` non-null, matching `itemKind`
+- [ ] `selection` shape by kind: `APPAREL` → `{ colorId, sizeLabel }`; `PRINT` → `{ prodigiSku, attributes }` — validated by a per-kind validator module (`src/lib/cart/validators.ts`)
+- [ ] `Cart.updatedAt` is touched on every item add, edit, or removal (drives cleanup staleness in US-MFTF-11.6)
+- [ ] Schema applied via `prisma db push`
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-11-cart/US-MFTF-11.1-cart-schema.test.ts`
+- Integration tests: create guest cart and user cart, add one apparel and one print item, query back with relations, assert field round-trip
+- Unit tests: per-kind selection validators reject malformed payloads (missing colorId, unknown keys)
+
+---
+
+### US-MFTF-11.2 — Add Apparel to Cart
+
+**As a** buyer,
+**I want** to add an apparel item in my chosen color and size to my cart from the product detail page,
+**so that** I can keep shopping and purchase multiple items in one checkout.
+
+**Acceptance Criteria:**
+- [ ] The "Add to cart" button stubbed in US-MFTF-6.2 is wired to `addToCartAction`; it remains disabled until both a color and size are selected
+- [ ] `addToCartAction` validates: listing is ACTIVE, `colorId` is offered on this listing, `sizeLabel` is an active size for the product type
+- [ ] Works for unauthenticated users: if no cart exists, a guest cart is created and its `guestToken` set in an httpOnly, secure cookie; authenticated users get a find-or-create user cart
+- [ ] Adding an identical selection (same listing, color, size) increments the existing `CartItem.quantity` instead of creating a duplicate row
+- [ ] A cart icon with a badge count appears in the site navigation (desktop and mobile); the badge shows the total item quantity across the cart and updates after a successful add without a full page reload
+- [ ] On success the buyer receives non-blocking confirmation (e.g. toast or badge animation) and remains on the product page
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-11-cart/US-MFTF-11.2-add-apparel-to-cart.test.ts`
+- Unit tests: inactive listing, color not offered, invalid size each return validation errors
+- Integration tests: guest add creates Cart + CartItem and returns token; duplicate add increments quantity; authenticated add attaches to user cart
+- Component tests: badge renders count, updates after add; button disabled until color + size selected (extends US-MFTF-6.2 tests)
+
+---
+
+### US-MFTF-11.3 — Add Print to Cart
+
+**As a** buyer,
+**I want** to add a print (in my chosen format and size) to my cart from the artwork page,
+**so that** prints and apparel can be purchased together in one checkout.
+
+**Acceptance Criteria:**
+- [ ] The print ordering flow on the artwork listing page (US-15.4) ends in "Add to cart" instead of proceeding directly to a single-item checkout; the direct-order path is removed
+- [ ] `addToCartAction` (PRINT kind) validates: artwork listing is active, print availability is enabled for the listing (US-15.2 toggle), and the selected Prodigi SKU/attributes are valid for the artwork's aspect ratio
+- [ ] `selection` stores the Prodigi SKU and chosen attributes plus a `quotedUnitPrice` snapshot for cart display only — the authoritative price is re-quoted at checkout creation (MFTF-12)
+- [ ] Identical print selections (same artwork, SKU, attributes) increment quantity rather than duplicating
+- [ ] Guest and authenticated behavior identical to US-MFTF-11.2
+- [ ] Existing US-15.4 tests are updated to assert the new add-to-cart outcome; all other Epic 15 tests continue to pass
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-11-cart/US-MFTF-11.3-add-print-to-cart.test.ts`
+- **Touches Passed story US-15.4** — its test file is modified in the same commit; flag in tracker notes
+- Unit tests: print availability off, SKU invalid for aspect ratio
+- Integration test: add print to guest cart, assert selection payload round-trips with quoted price snapshot
+- MSW: intercept Prodigi quote call used for the display snapshot
+
+---
+
+### US-MFTF-11.4 — Cart Page
+
+**As a** buyer,
+**I want** to view and edit the contents of my cart,
+**so that** I can adjust quantities and remove items before checking out.
+
+**Acceptance Criteria:**
+- [ ] Page at `/cart`, accessible to guests and authenticated buyers, server-rendered from the visitor's cart (guest token cookie or user)
+- [ ] Each line item shows: thumbnail (apparel primary lifestyle grid variant; artwork grid variant for prints), title, kind badge ("Apparel" / "Print"), selection summary (color + size, or print format/size), unit price, quantity stepper, line total, and a remove control
+- [ ] Quantity changes and removals persist via server actions (`updateCartItemAction`, `removeCartItemAction`) with ownership validation (cart must belong to the requesting guest token or user)
+- [ ] Subtotal displayed; a note states that shipping and tax are calculated at checkout
+- [ ] Empty-cart state shows links to `/shop` and `/browse`
+- [ ] "Proceed to checkout" button navigates to `/checkout` (delivered in MFTF-12; a placeholder route returning 404-safe "coming soon" is acceptable until then)
+- [ ] Nav badge count stays in sync after edits and removals
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-11-cart/US-MFTF-11.4-cart-page.test.ts`
+- Integration tests: update quantity persists; remove deletes row; ownership guard rejects foreign cart manipulation
+- Component tests: line item renders kind badge and selection summary; stepper min is 1; empty state renders links
+
+---
+
+### US-MFTF-11.5 — Guest Cart Merge on Authentication
+
+**As a** buyer who built a cart before signing in,
+**I want** my cart contents to survive login or account creation,
+**so that** I don't lose my selections when I authenticate to check out.
+
+**Acceptance Criteria:**
+- [ ] On successful login or signup, if a guest cart cookie is present and the guest cart has items, its items are merged into the user's cart (creating one if none exists)
+- [ ] Merge semantics: union of items; rows with identical (`itemKind`, listing reference, `selection`) have quantities summed
+- [ ] After merge, the guest cart row is deleted and the guest token cookie is cleared
+- [ ] Merge is idempotent — replaying the merge (e.g. double-submit of the auth callback) does not duplicate items
+- [ ] Works for both flows: existing-user login and new account creation
+- [ ] Nav badge reflects the merged total after authentication
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-11-cart/US-MFTF-11.5-guest-cart-merge.test.ts`
+- Integration tests: merge into empty user cart; merge with overlapping items sums quantities; guest cart deleted afterward; replay is a no-op
+- Auth mocking per project convention (vi.mock of NextAuth session); test the merge function directly plus the auth-callback wiring
+
+---
+
+### US-MFTF-11.6 — Guest Cart Cleanup Cron
+
+**As a** platform,
+**I want** abandoned guest carts to be deleted automatically,
+**so that** the carts table does not grow unboundedly with anonymous rows.
+
+**Acceptance Criteria:**
+- [ ] An API route at `/api/cron/cleanup-carts` deletes guest carts (rows with `guestToken` set) whose `updatedAt` is older than 30 days, cascading their items
+- [ ] User carts (`userId` set) are never deleted by the cron
+- [ ] Route is protected: requests must carry the `CRON_SECRET` bearer token; unauthorized requests receive 401
+- [ ] `vercel.json` schedules the route once daily — **this cron must remain Hobby-compatible (daily or slower)**; do not add sub-daily schedules here (sub-daily crons are the CHORE-1 auction concern and require Pro)
+- [ ] Route responds within the 10s serverless limit (single bulk delete query, no per-row loops)
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-11-cart/US-MFTF-11.6-cart-cleanup-cron.test.ts`
+- Integration tests: seed guest carts at 29 and 31 days stale plus a stale-looking user cart; run handler; assert only the 31-day guest cart is removed
+- API tests: 401 without secret; 200 with secret
+
+---
+
+## Epic MFTF-12: Multi-Provider Checkout & Fulfillment
+
+_**Replaces Epic MFTF-7** (US-MFTF-7.1 and US-MFTF-7.2 are Dropped). Single-item apparel checkout was superseded before implementation: building it knowing it would immediately be rebuilt for multi-item carts is wasted TDD effort. This epic delivers checkout for the whole cart — one embedded Stripe Checkout session, one buyer-facing order — split behind the scenes into per-provider fulfillment orders routed through the fulfillment abstraction layer._
+
+_**Architecture:** `FulfillmentProvider` becomes an abstract base class (not an interface) so every current and future provider — including a possible future self-fulfillment provider where the founders ship their own products — is forced to implement the full workflow. Order splitting groups cart line items by the provider backing each item's product, quotes shipping per provider, and dispatches each group through its provider after payment._
+
+_**Dependency:** Requires MFTF-11 (cart). US-MFTF-12.1 refactors code delivered by Passed stories US-MFTF-3.1–3.3. Existing single-item flows (original artwork buy-now, auction wins, Epic 14) are untouched._
+
+### US-MFTF-12.1 — FulfillmentProvider Abstract Base Class
+
+**As a** platform,
+**I want** `FulfillmentProvider` converted from an interface to an abstract base class with a shared fulfillment template method,
+**so that** every provider implementation — current and future — is structurally forced to implement the complete workflow.
+
+**Acceptance Criteria:**
+- [ ] `FulfillmentProvider` in `src/lib/fulfillment/` is an abstract class; all methods previously on the interface become abstract methods, plus abstract `quoteShipping(items, address)` introduced for checkout
+- [ ] A concrete template method `fulfill(fulfillmentOrder)` on the base class orchestrates the shared flow (validate → create provider order → confirm) and is the only entry point order-processing code calls
+- [ ] `TeemillFulfillmentProvider` and `ProdigiFulfillmentProvider` extend the base class; the provider registry/factory returns base-class-typed instances and is otherwise unchanged
+- [ ] A provider subclass omitting any abstract method fails TypeScript compilation (verified by a type-level test fixture)
+- [ ] All existing MFTF-3 tests pass unchanged — this is a structural refactor with no behavior change
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-12-checkout-fulfillment/US-MFTF-12.1-provider-abstract-class.test.ts`
+- **Touches Passed stories US-MFTF-3.1, 3.2, 3.3** — run their test files in the same session and flag in tracker notes
+- Type-level test: `@ts-expect-error` fixture class missing an abstract method
+- Unit test: `fulfill()` calls the abstract steps in order (spy on a test subclass)
+
+---
+
+### US-MFTF-12.2 — Multi-Item Order Schema
+
+**As a** platform,
+**I want** `OrderItem` and `FulfillmentOrder` models,
+**so that** one buyer-facing order can contain multiple items split across multiple fulfillment providers.
+
+**Acceptance Criteria:**
+- [ ] `OrderItem` model: `id`, `orderId` (FK), `itemKind` (reusing `CartItemKind`), `apparelListingId` / `listingId` (nullable FKs, exactly one non-null), `selection` (Json), `quantity`, `unitPrice` (Decimal, captured at checkout creation), `fulfillmentOrderId` (nullable FK)
+- [ ] `FulfillmentOrder` model: `id`, `orderId` (FK), `provider` (String — registry key), `providerOrderId` (nullable), `status` enum (`PENDING | SUBMITTED | CONFIRMED | SHIPPED | FAILED`), `shippingMethod`, `shippingCost` (Decimal), `trackingNumber` (nullable), `carrier` (nullable), `createdAt`, `updatedAt`
+- [ ] Existing `Order` single-FK fields (`originalListingId`, `apparelListingId`) are retained; legacy flows (original buy-now, auction wins) continue to use them; cart checkouts create `OrderItem` rows instead and leave the single FKs null
+- [ ] An application-layer invariant documents that an `Order` has either a single-listing FK or `OrderItem` rows, never both
+- [ ] Schema applied via `prisma db push`; all existing Order-related tests pass unchanged
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-12-checkout-fulfillment/US-MFTF-12.2-multi-item-order-schema.test.ts`
+- Integration tests: create an Order with two OrderItems split across two FulfillmentOrders, query back with relations
+- Regression: run Epic 14 / Epic 22 test files to confirm legacy order shape unaffected
+
+---
+
+### US-MFTF-12.3 — Checkout Creation: Cart Revalidation & Per-Provider Shipping
+
+**As a** buyer,
+**I want** my cart re-validated and shipping quoted when I start checkout,
+**so that** I pay current prices and real shipping costs, and stale items are surfaced instead of silently failing.
+
+**Acceptance Criteria:**
+- [ ] `/checkout` requires authentication; unauthenticated buyers are redirected to login with a return-to parameter, and the guest cart survives via the US-MFTF-11.5 merge
+- [ ] `createCheckoutAction` re-validates every cart item server-side: apparel — listing ACTIVE, color still offered, size still active, current `retailPrice`; print — artwork listing active, print availability still enabled, fresh Prodigi quote
+- [ ] Invalid or stale items are removed from the cart and reported back with human-readable reasons (e.g. "Solar Punk Bee tee in Moss is no longer available"); if anything was removed or any price changed, checkout pauses and the buyer must re-confirm before a Stripe session is created
+- [ ] Valid items are grouped by fulfillment provider (`ProductType.fulfillmentProvider` for apparel; Prodigi for prints); each group's shipping is quoted via that provider's `quoteShipping()` (Teemill: step 1 of the two-step Orders API; Prodigi: quote endpoint), using the default/standard method
+- [ ] Provider quotes are fetched in parallel (10s Vercel function limit)
+- [ ] Checkout summary returned to the client shows line items at current prices, one shipping line per shipment group (provider names not exposed — "Shipment 1", "Shipment 2"), and the order total before tax
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-12-checkout-fulfillment/US-MFTF-12.3-checkout-revalidation-shipping.test.ts`
+- Unit tests: price drift detected; deactivated listing removed with reason; color withdrawn removed with reason
+- Integration test: mixed cart (apparel + print) groups into two shipments with summed shipping
+- MSW: Teemill `POST /orders` (shipping methods response per `/docs/teemill-api-notes.md`), Prodigi quote endpoint
+
+---
+
+### US-MFTF-12.4 — Multi-Line-Item Stripe Checkout Session
+
+**As a** buyer,
+**I want** to pay for my whole cart in one embedded Stripe checkout,
+**so that** a multi-item, multi-shipment purchase is a single payment.
+
+**Acceptance Criteria:**
+- [ ] After re-confirmation (US-MFTF-12.3), one embedded Stripe Checkout session is created containing one Stripe line item per cart item (title, quantity, unit amount) plus one shipping line item per shipment group
+- [ ] Stripe Tax is enabled on the session (consistent with existing checkout configuration)
+- [ ] One `Order` (status `PENDING`) is created with `OrderItem` rows (capturing `unitPrice`) and `FulfillmentOrder` rows (status `PENDING`, with quoted `shippingMethod` / `shippingCost`) before the session is returned
+- [ ] On Stripe webhook `checkout.session.completed`, the existing `fulfillPaymentBySession` path marks the Order `PAID` and empties the buyer's cart
+- [ ] If the session expires or is abandoned, the `PENDING` Order remains inert and the cart is untouched
+- [ ] Existing single-item checkout flows (original buy-now, auction win payment) continue to work unchanged
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-12-checkout-fulfillment/US-MFTF-12.4-stripe-multi-line-checkout.test.ts`
+- MSW: Stripe session creation — assert line-item payload shape (items + shipping lines)
+- Integration tests: Order/OrderItem/FulfillmentOrder rows created before session; webhook marks PAID and clears cart
+- Regression: Epic 21 tests pass unchanged
+
+---
+
+### US-MFTF-12.5 — Post-Payment Fulfillment Fan-Out
+
+**As a** platform,
+**I want** each shipment group dispatched through its fulfillment provider after payment,
+**so that** a mixed order is fulfilled by the right suppliers automatically, with failures isolated per shipment.
+
+**Acceptance Criteria:**
+- [ ] When an Order transitions to `PAID`, each of its `FulfillmentOrder` rows is dispatched through `provider.fulfill()` (the US-MFTF-12.1 template method): Teemill — `POST /orders` then `POST /orders/{id}/confirm`; Prodigi — existing order creation path behind the abstraction
+- [ ] On success, the `FulfillmentOrder` stores `providerOrderId` and moves to `CONFIRMED`
+- [ ] A failure in one shipment does not block the others: the failed `FulfillmentOrder` moves to `FAILED` with the error recorded in its notes, sibling shipments proceed independently
+- [ ] `FAILED` fulfillment orders surface in the admin fulfillment queue (Epic 14 / US-14.5 page) with a retry action that re-runs `fulfill()` for that shipment only
+- [ ] Dispatch is idempotent per `FulfillmentOrder` — re-processing a webhook does not create duplicate provider orders
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-12-checkout-fulfillment/US-MFTF-12.5-fulfillment-fanout.test.ts`
+- MSW: Teemill two-step happy path; Teemill 500 on confirm (assert FAILED + sibling Prodigi shipment CONFIRMED)
+- Integration tests: retry transitions FAILED → CONFIRMED; replayed dispatch is a no-op when providerOrderId already set
+
+---
+
+### US-MFTF-12.6 — Buyer Order View with Per-Shipment Status
+
+**As a** buyer,
+**I want** my multi-item order shown as one order with per-shipment progress and tracking,
+**so that** I understand that my items may arrive separately without ever seeing supplier internals.
+
+**Acceptance Criteria:**
+- [ ] The post-payment confirmation page and the order detail page (Epic 22) display the order's items grouped by shipment ("Shipment 1 of 2"), each with its own status badge derived from the `FulfillmentOrder` status — provider/dropshipper names are never exposed to the buyer
+- [ ] Each shipment shows estimated dispatch copy while `CONFIRMED` and tracking number + carrier once `SHIPPED`
+- [ ] When a provider webhook reports shipment (Teemill webhook payload stubbed per `/docs/teemill-api-notes.md` until live shape confirmed; Prodigi via existing webhook path), the corresponding `FulfillmentOrder` moves to `SHIPPED` with tracking stored
+- [ ] A shipping confirmation email (MailerSend, existing transactional pattern) is sent per shipment when it transitions to `SHIPPED`, listing only that shipment's items and tracking link
+- [ ] Order history (`/buyer/orders`) shows one row per Order with an aggregate status ("Processing" until all shipments shipped, then "Shipped")
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-12-checkout-fulfillment/US-MFTF-12.6-order-per-shipment-status.test.ts`
+- Component tests: shipment grouping renders without provider names; aggregate status logic
+- Integration tests: simulate Teemill webhook → one shipment SHIPPED, order remains "Processing" until second shipment ships
+- Email tests: MSW intercepts MailerSend per shipment; assert two emails for a two-shipment order
 
 ---
 

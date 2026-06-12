@@ -61,6 +61,10 @@ export default function TeemillProductPicker({ defaultItemCode }: Props) {
     }));
   }
 
+  function jumpTo(p: TeemillProduct, idx: number) {
+    setCarouselIdx((prev) => ({ ...prev, [p.item_code]: idx }));
+  }
+
   function pick(p: TeemillProduct) {
     setSelected(p);
     setShowGrid(false);
@@ -106,28 +110,54 @@ export default function TeemillProductPicker({ defaultItemCode }: Props) {
 
   if (!showGrid && selected) {
     const entries = colorEntries(selected);
+    const activeIdx = carouselIdx[selected.item_code] ?? 0;
+    const [activeColorName, activeImageUrl] = entries[activeIdx] ?? entries[0];
+
     return (
       <div>
         {hiddenInputs}
         <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5">
           <p className="text-xs font-mono text-stone-400 mb-0.5">{selected.item_code}</p>
           <p className="font-semibold text-stone-900 mb-4">{selected.name}</p>
-          <div className="flex flex-wrap gap-2">
-            {entries.map(([colorName, imageUrl]) => (
-              <div key={colorName} className="group relative">
+
+          {/* Hero image */}
+          <div className="aspect-square w-full max-w-xs mx-auto overflow-hidden rounded-xl bg-stone-200 mb-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={activeImageUrl}
+              alt={`${selected.name} — ${activeColorName}`}
+              className="h-full w-full object-cover"
+            />
+          </div>
+
+          {/* Active color name */}
+          <p className="text-center text-sm font-medium text-stone-700 mb-3">{activeColorName}</p>
+
+          {/* Thumbnail strip */}
+          <div className="flex flex-wrap justify-center gap-2">
+            {entries.map(([colorName, imageUrl], idx) => (
+              <button
+                key={colorName}
+                type="button"
+                title={colorName}
+                onClick={() => jumpTo(selected, idx)}
+                className={`flex-none overflow-hidden rounded-lg border-2 bg-stone-200 transition-all ${
+                  idx === activeIdx
+                    ? "border-cerulean shadow-sm scale-105"
+                    : "border-transparent hover:border-stone-300"
+                }`}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageUrl}
                   alt={colorName}
-                  className="h-12 w-12 rounded-lg object-cover border border-stone-200"
+                  className="h-14 w-14 object-cover"
                 />
-                <span className="pointer-events-none absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-stone-800 px-1.5 py-0.5 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
-                  {colorName}
-                </span>
-              </div>
+              </button>
             ))}
           </div>
-          <p className="mt-6 text-xs text-stone-400">
+
+          <p className="mt-4 text-xs text-stone-400">
             {entries.length} color{entries.length !== 1 ? "s" : ""} — all available to sellers by default
           </p>
         </div>

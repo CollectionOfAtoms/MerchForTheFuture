@@ -58,7 +58,7 @@ the admin is responsible for shipping and entering tracking information.
 | Dependency | Why chosen | Constraints it creates |
 |---|---|---|
 | Next.js (App Router) | Chosen for personal familiarity and fast Vercel setup; works well for SSR + server actions | App Router conventions differ significantly from Pages Router; read Next.js docs before writing routing or data-fetching code |
-| Vercel | Fast deployment pipeline, native Next.js support, integrated Blob storage | Hobby plan: no cron jobs, 10s max serverless function timeout, limited concurrent builds |
+| Vercel | Fast deployment pipeline, native Next.js support, integrated Blob storage | Hobby plan: cron jobs limited to daily-or-slower schedules (sub-daily crons — e.g. auction closing — require Pro; see CHORE-1), 10s max serverless function timeout, limited concurrent builds |
 | Neon PostgreSQL | Evaluated as a good fit for serverless/auction workloads; supports branching for test environments | Connection pooling required in serverless context; test suite uses a separate Neon branch (DATABASE_URL_TEST) |
 | Prisma ORM | Selected by Claude Code as the idiomatic ORM for this stack | Generated client lives at src/generated/prisma — import from @/generated/prisma/client, not the default path. Use `prisma db push` not `prisma migrate dev` due to existing schema drift on Order.stripeSessionId |
 | NextAuth.js | Chosen for convenience with Next.js; JWT sessions | Auth is mocked in tests via vi.mock() — do not use real sessions in test context |
@@ -117,18 +117,20 @@ these without an explicit decision to revise them here first.
 
 | Question | Status | Notes |
 |---|---|---|
-| Should the storefront support a shopping cart? | Open | Currently one item per checkout session. Multi-item checkout would significantly improve UX for buyers wanting multiple products. Needs scoping as an epic. |
+| Should the storefront support a shopping cart? | Resolved | Scoped 2026-06-12 as Epic MFTF-11 (Cart) and Epic MFTF-12 (Multi-Provider Checkout & Fulfillment), replacing Epic MFTF-7. See the Cart & Checkout Model section. |
 | Which dropshippers will be integrated beyond Prodigi? | Open | Printify, Printful, and T-Mill are candidates. T-Mill noted for strong sourcing standards. Integration depends on cotton standard verification and API evaluation. |
 | Will Prodigi be retained for apparel, or only for fine-art prints? | Open | Prodigi's apparel print quality needs real-world evaluation before committing to it as the primary apparel vendor. |
 | Multi-dropshipper fulfillment abstraction layer | Deferred | Required before a second dropshipper is integrated. Should be scoped as its own epic at that time. |
 | Webhook support for physical-original shipment tracking | Deferred | Currently the admin manually enters tracking numbers. Webhook-based automation is desirable but not yet scoped. |
 | Will additional sellers ever be onboarded? | Deferred | The role architecture supports it, but there are no concrete plans. Revisit if business model expands. |
-| Cart feature scope and UX | Deferred | Flagged as a likely early epic. Not yet designed. |
+| Cart feature scope and UX | Resolved | Designed 2026-06-12. DB-backed guest-capable cart; apparel + prints; originals remain buy-now. Epics MFTF-11/MFTF-12. |
 | Apparel retail pricing model | Open | Two options: (1) seller sets fixed dollar price, margins vary by product; (2) seller sets markup over dropshipper base cost, price floats automatically. Needs research before implementation. Defer until after MFTF-7 ships. |
 | Unified browse page (apparel + prints side by side) | Deferred | Conceivable as a catch-all browse page but not the intended primary buyer experience. Revisit after apparel browse (/shop) and fine-art browse (/browse) are both live. |
 | T-Mill API integration details | Resolved | CHORE-17 spike complete. API key obtained 2026-06-10. Orders API (api.teemill.com/v1) confirmed as fulfillment target; two-step flow (POST /orders → POST /orders/{id}/confirm). Public catalog API (omnis/v3/product/options) used in MFTF-4 admin picker. No sandbox — MSW required for tests. Webhook payload shape still unconfirmed from live integration; stub in tests. See /docs/teemill-api-notes.md. |
 | Per-color lifestyle photography | Deferred | Currently one set of lifestyle photos per listing covers all colorways. Per-color photos possible in future if QA sampling process scales. |
 | Buyer reviews with photos | Deferred | Mentioned as a future direction. No scope yet. |
+| Self-fulfillment provider (founders ship own products through the same pipeline) | Deferred | Nonzero chance of integrating the founders as a fulfillment provider one day. The FulfillmentProvider abstract base class (MFTF-12.1) and per-line-item order splitting are designed to make this a new subclass, not a rework. |
+| Cart abandonment email | Deferred | Out of MVP cart scope (MFTF-11). Revisit post-launch. |
 
 ---
 
@@ -140,6 +142,7 @@ these without an explicit decision to revise them here first.
 | 2026-06-07 | Added Apparel Product Model, Watermark Modes, Dropshipper Strategy sections; updated Open Questions with pricing model, unified browse, T-Mill API, per-color photos, buyer reviews | MFTF-3 through MFTF-9 |
 | 2026-06-07 | Updated Dropshipper Strategy with T-Mill Orders API findings (MFTF-2 partial spike); updated T-Mill API open question status | MFTF-2 |
 | 2026-06-12 | Updated Technology table: T-Mill row updated to reflect MFTF-4 catalog integration; Printify/Printful split into separate row. Updated Open Questions: T-Mill API status resolved (CHORE-17 complete, API key obtained). Noted Teemill webhook payload remains unconfirmed from live integration. | MFTF-4, CHORE-17 |
+| 2026-06-12 | Added Cart & Checkout Model section. Resolved cart open questions (scoped as MFTF-11/MFTF-12, replacing MFTF-7). Updated Dropshipper Strategy: FulfillmentProvider becomes an abstract base class; per-line-item order splitting. Corrected Vercel constraint (Hobby allows daily crons; sub-daily requires Pro). Added deferred rows: self-fulfillment provider, cart abandonment email. | MFTF-11, MFTF-12 |
 ---
 
 ## Apparel Product Model
@@ -185,7 +188,23 @@ _Added 2026-06-07._
 
 **Prodigi is retained for fine-art prints and evaluated for apparel.** Prodigi has some 100% cotton apparel options that have not been ruled out. The integration remains in place; apparel suitability pending real-world evaluation.
 
-**All dropshippers sit behind a shared fulfillment abstraction layer** (`src/lib/fulfillment/`). Adding a new dropshipper requires implementing `FulfillmentProvider` and registering it in the factory — no changes to order processing logic.
+**All dropshippers sit behind a shared fulfillment abstraction layer** (`src/lib/fulfillment/`). As of MFTF-12, `FulfillmentProvider` is an **abstract base class** (not an interface): a shared `fulfill()` template method orchestrates the workflow, and every provider — current dropshippers and a possible future self-fulfillment provider — must implement the full set of abstract methods to compile. Adding a provider means subclassing and registering in the factory — no changes to order processing logic. Multi-item orders are split per provider: each cart line item is routed through its own provider's fulfillment pathway.
 
 **The dropshipper backing a product type is an admin-level configuration**, invisible to sellers and buyers. Sellers see "Unisex Tee"; the platform routes the order to T-Mill or Prodigi based on the `ProductType.fulfillmentProvider` field.
+
+---
+
+## Cart & Checkout Model
+
+_Added 2026-06-12. Documents decisions made during the MFTF-11/MFTF-12 spec session. Replaces the single-item-per-checkout-session model (Epic MFTF-7, dropped)._
+
+**Cart contents: apparel and prints only.** Physical originals remain direct buy-now — 1-of-1 items in a cart create reservation/concurrency problems for negligible UX gain. Auction wins are excluded; they keep their Epic 14 payment-deadline flow.
+
+**Prints do not become listings.** Prints remain parameterized purchases off the artwork listing (dynamic Prodigi catalog filtered by aspect ratio, per US-15.3/15.4/15.6). Cart line items are polymorphic instead: a `CartItem` references a listing plus an `itemKind` (`APPAREL` | `PRINT`) and a structured `selection` payload, validated per kind. Adding a future item kind (e.g. self-fulfilled goods) is a new kind + validator + provider subclass, not a schema rework.
+
+**DB-backed, guest-capable cart.** Guest carts are DB rows keyed by an anonymous token in an httpOnly cookie; on login or signup the guest cart merges into the user cart (union, quantities summed on identical selections). A daily cleanup cron removes guest carts inactive 30+ days — this cron must remain Hobby-compatible (daily-or-slower) and is unrelated to the sub-daily auction crons in CHORE-1.
+
+**No holds, no reservations.** The cart is re-validated server-side at checkout creation: current price always wins, stale items are removed with human-readable reasons, and the buyer re-confirms before payment if anything changed. Print prices are re-quoted from Prodigi at checkout; cart display prices are snapshots only.
+
+**One payment, split fulfillment.** A single embedded Stripe Checkout session (with Stripe Tax) covers the whole cart. One buyer-facing `Order` holds `OrderItem` rows and is split into per-provider `FulfillmentOrder` rows. After payment, each shipment group is dispatched through its provider's `fulfill()` independently — one shipment failing never blocks the others, and failures surface in the admin fulfillment queue with per-shipment retry. Buyers see "Shipment 1 of 2" with per-shipment tracking; dropshipper names are never exposed.
 
