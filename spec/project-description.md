@@ -63,7 +63,8 @@ the admin is responsible for shipping and entering tracking information.
 | Prisma ORM | Selected by Claude Code as the idiomatic ORM for this stack | Generated client lives at src/generated/prisma — import from @/generated/prisma/client, not the default path. Use `prisma db push` not `prisma migrate dev` due to existing schema drift on Order.stripeSessionId |
 | NextAuth.js | Chosen for convenience with Next.js; JWT sessions | Auth is mocked in tests via vi.mock() — do not use real sessions in test context |
 | Prodigi | Inherited from Art & Sol codebase; chosen originally for open API (no Shopify dependency) and fine-art print quality | Product catalog limited to Prodigi's offerings; print quality for apparel is still being evaluated relative to alternatives |
-| Printify / Printful / T-Mill | Target future integrations for apparel, particularly 100% cotton options | Not yet integrated; fulfillment abstraction layer will be needed when a second dropshipper is added |
+| Teemill | Primary apparel dropshipper; GOTS-certified 100% organic cotton catalog | Integrated at the product catalog layer (MFTF-4): public catalog API used for admin product picker; Orders API (api.teemill.com/v1) is the fulfillment target for MFTF-7; no sandbox — use MSW for tests |
+| Printify / Printful | Possible future apparel dropshippers | Not evaluated; would require cotton-standard verification before integration |
 | MailerSend | Free tier available at current scale | Intercepted in tests via MSW at https://api.mailersend.com/v1/email — do not make real API calls in tests |
 | Vercel Blob | Native integration with Vercel hosting | Used for image upload pipeline (three processed variants + watermark); requires BLOB_READ_WRITE_TOKEN |
 | Stripe Checkout (embedded) | Standard for payments; embedded mode chosen for UX control | Checkout flow has specific UX constraints from embedded mode; Stripe Tax is configured |
@@ -125,7 +126,7 @@ these without an explicit decision to revise them here first.
 | Cart feature scope and UX | Deferred | Flagged as a likely early epic. Not yet designed. |
 | Apparel retail pricing model | Open | Two options: (1) seller sets fixed dollar price, margins vary by product; (2) seller sets markup over dropshipper base cost, price floats automatically. Needs research before implementation. Defer until after MFTF-7 ships. |
 | Unified browse page (apparel + prints side by side) | Deferred | Conceivable as a catch-all browse page but not the intended primary buyer experience. Revisit after apparel browse (/shop) and fine-art browse (/browse) are both live. |
-| T-Mill API integration details | Partially resolved | MFTF-2 spike partially complete from public sources (blocked on 2FA for live access). Key findings: Orders API at api.teemill.com/v1 is the correct integration target (not the Custom Product API). Two-step order flow (create then confirm with shipping method). No sandbox found. Colors are plain name strings. Webhook payload and size catalog require live access. See /docs/teemill-api-notes.md. |
+| T-Mill API integration details | Resolved | CHORE-17 spike complete. API key obtained 2026-06-10. Orders API (api.teemill.com/v1) confirmed as fulfillment target; two-step flow (POST /orders → POST /orders/{id}/confirm). Public catalog API (omnis/v3/product/options) used in MFTF-4 admin picker. No sandbox — MSW required for tests. Webhook payload shape still unconfirmed from live integration; stub in tests. See /docs/teemill-api-notes.md. |
 | Per-color lifestyle photography | Deferred | Currently one set of lifestyle photos per listing covers all colorways. Per-color photos possible in future if QA sampling process scales. |
 | Buyer reviews with photos | Deferred | Mentioned as a future direction. No scope yet. |
 
@@ -138,6 +139,7 @@ these without an explicit decision to revise them here first.
 | 2026-06-07 | Initial document created | — |
 | 2026-06-07 | Added Apparel Product Model, Watermark Modes, Dropshipper Strategy sections; updated Open Questions with pricing model, unified browse, T-Mill API, per-color photos, buyer reviews | MFTF-3 through MFTF-9 |
 | 2026-06-07 | Updated Dropshipper Strategy with T-Mill Orders API findings (MFTF-2 partial spike); updated T-Mill API open question status | MFTF-2 |
+| 2026-06-12 | Updated Technology table: T-Mill row updated to reflect MFTF-4 catalog integration; Printify/Printful split into separate row. Updated Open Questions: T-Mill API status resolved (CHORE-17 complete, API key obtained). Noted Teemill webhook payload remains unconfirmed from live integration. | MFTF-4, CHORE-17 |
 ---
 
 ## Apparel Product Model
