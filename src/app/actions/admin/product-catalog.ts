@@ -84,12 +84,8 @@ export async function updateProductTypeAction(id: string, fd: FormData): Promise
   if (nameConflict) return { error: `A product type named "${name}" already exists` };
 
   if (isActive && !existing.isActive) {
-    const [activeColors, activeSizes] = await Promise.all([
-      prisma.productTypeColor.count({ where: { productTypeId: id, isActive: true } }),
-      prisma.productTypeSizeOption.count({ where: { productTypeId: id, isActive: true } }),
-    ]);
-    if (activeColors === 0) return { error: "At least one active color is required before activating a product type" };
-    if (activeSizes === 0) return { error: "At least one active size is required before activating a product type" };
+    const colorCount = await prisma.productTypeColor.count({ where: { productTypeId: id } });
+    if (colorCount === 0) return { error: "At least one color is required before activating a product type" };
   }
 
   const pt = await prisma.productType.update({

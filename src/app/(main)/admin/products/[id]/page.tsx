@@ -1,16 +1,29 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import {
-  updateProductTypeAction,
-  addProductTypeColorAction,
-  toggleProductTypeColorAction,
-  addProductTypeSizeAction,
-  toggleProductTypeSizeAction,
-} from "@/app/actions/admin/product-catalog";
+import { updateProductTypeAction } from "@/app/actions/admin/product-catalog";
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+interface TeemillProduct {
+  item_code: string;
+  name: string;
+  colours: Record<string, string>; // color name → image URL
+}
+
+async function fetchTeemillCatalog(): Promise<TeemillProduct[]> {
+  try {
+    const res = await fetch("https://teemill.com/omnis/v3/product/options", {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.data ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export default async function EditProductTypePage({ params }: Props) {
@@ -23,145 +36,195 @@ export default async function EditProductTypePage({ params }: Props) {
 
   const pt = await prisma.productType.findUnique({
     where: { id },
-    include: {
-      colors: { orderBy: { colorName: "asc" } },
-      sizes:  { orderBy: { sortOrder: "asc" } },
-    },
+    include: { colors: { orderBy: { colorName: "asc" } } },
   });
   if (!pt) notFound();
 
+  // For Teemill products pull the catalog so we can show images
+  let teemillProduct: TeemillProduct | null = null;
+  if (pt.fulfillmentProvider === "TEEMILL") {
+    const catalog = await fetchTeemillCatalog();
+    teemillProduct = catalog.find((p) => p.item_code === pt.providerSkuBase) ?? null;
+  }
+
+  // Build a color-name → imageUrl map from the Teemill catalog entry
+  const colorImageMap: Record<string, string> = teemillProduct
+    ? teemillProduct.colours
+    : {};
+
+  // Hero image: first color's image, or null
+  const heroImageUrl = teemillProduct
+    ? Object.values(teemillProduct.colours)[0] ?? null
+    : null;
+
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12 space-y-10">
+    <div className="mx-auto max-w-4xl px-6 py-12 space-y-10">
+
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-stone-900">Edit: {pt.name}</h1>
-        <a href="/admin/products" className="text-sm text-stone-500 hover:text-stone-800">← Back to catalog</a>
+        <div>
+          <h1 className="text-2xl font-semibold text-stone-900">{pt.name}</h1>
+          <p className="mt-1 text-sm text-stone-400 font-mono">{pt.providerSkuBase}</p>
+        </div>
+        <a href="/admin/products" className="text-sm text-stone-500 hover:text-stone-800">
+          ← Back to catalog
+        </a>
       </div>
 
-      {/* ── Main fields ── */}
-      <section className="rounded-2xl border border-stone-200 bg-white shadow-sm p-8">
-        <h2 className="text-base font-semibold text-stone-800 mb-6">Product details</h2>
-        <form
-          action={async (fd) => {
-            "use server";
-            const result = await updateProductTypeAction(id, fd);
-            if ("id" in result) redirect(`/admin/products/${result.id}`);
-          }}
-          className="space-y-5"
-        >
-          <Field label="Name" name="name" defaultValue={pt.name} required />
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Description</label>
-            <textarea name="description" defaultValue={pt.description ?? ""} rows={2}
-              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Fulfillment provider</label>
-            <select name="fulfillmentProvider" defaultValue={pt.fulfillmentProvider}
-              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900">
-              <option value="TEEMILL">T-Mill</option>
-              <option value="PRODIGI">Prodigi</option>
-            </select>
-          </div>
-          <Field label="Provider SKU base" name="providerSkuBase" defaultValue={pt.providerSkuBase} required />
-          <div className="flex items-center gap-3">
-            <input type="checkbox" name="isActive" id="isActive" value="true" defaultChecked={pt.isActive} className="h-4 w-4 rounded border-stone-300" />
-            <label htmlFor="isActive" className="text-sm font-medium text-stone-700">Active</label>
-            <input type="hidden" name="isActive" value="false" />
-          </div>
-          <button type="submit" className="rounded-full bg-stone-900 px-6 py-2 text-sm font-medium text-white hover:bg-stone-700 transition-colors">
-            Save changes
-          </button>
-        </form>
-      </section>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.4fr]">
 
-      {/* ── Colors ── */}
-      <section className="rounded-2xl border border-stone-200 bg-white shadow-sm p-8">
-        <h2 className="text-base font-semibold text-stone-800 mb-4">Colors</h2>
-        <div className="space-y-2 mb-6">
-          {pt.colors.map((c) => (
-            <div key={c.id} className={`flex items-center gap-3 text-sm ${c.isActive ? "" : "opacity-40"}`}>
-              <span className="inline-block h-4 w-4 rounded-full border border-stone-200" style={{ background: c.colorHex }} />
-              <span className="flex-1">{c.colorName}</span>
-              <span className="text-stone-400 font-mono text-xs">{c.providerColorCode}</span>
-              <form action={async () => {
-                "use server";
-                await toggleProductTypeColorAction(c.id, !c.isActive);
-                redirect(`/admin/products/${id}`);
-              }}>
-                <button type="submit" className="text-xs text-stone-500 hover:text-stone-800">
-                  {c.isActive ? "Deactivate" : "Activate"}
-                </button>
-              </form>
+        {/* Left: hero image */}
+        <div className="space-y-4">
+          {heroImageUrl ? (
+            <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 aspect-square">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={heroImageUrl}
+                alt={pt.name}
+                className="h-full w-full object-cover"
+              />
             </div>
-          ))}
-        </div>
-        <form
-          action={async (fd) => {
-            "use server";
-            await addProductTypeColorAction(id, fd);
-            redirect(`/admin/products/${id}`);
-          }}
-          className="flex gap-2 flex-wrap"
-        >
-          <input name="colorName" required placeholder="Name" className="rounded-xl border border-stone-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 w-32" />
-          <input name="colorHex" required placeholder="#FFFFFF" className="rounded-xl border border-stone-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 w-28" />
-          <input name="providerColorCode" required placeholder="Provider code" className="rounded-xl border border-stone-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 w-36" />
-          <button type="submit" className="rounded-full border border-stone-300 px-4 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50">
-            Add color
-          </button>
-        </form>
-      </section>
-
-      {/* ── Sizes ── */}
-      <section className="rounded-2xl border border-stone-200 bg-white shadow-sm p-8">
-        <h2 className="text-base font-semibold text-stone-800 mb-4">Sizes</h2>
-        <div className="space-y-2 mb-6">
-          {pt.sizes.map((s) => (
-            <div key={s.id} className={`flex items-center gap-3 text-sm ${s.isActive ? "" : "opacity-40"}`}>
-              <span className="w-12 font-medium">{s.sizeLabel}</span>
-              <span className="text-stone-400 font-mono text-xs flex-1">{s.providerSizeCode}</span>
-              <span className="text-stone-400 text-xs">order: {s.sortOrder}</span>
-              <form action={async () => {
-                "use server";
-                await toggleProductTypeSizeAction(s.id, !s.isActive);
-                redirect(`/admin/products/${id}`);
-              }}>
-                <button type="submit" className="text-xs text-stone-500 hover:text-stone-800">
-                  {s.isActive ? "Deactivate" : "Activate"}
-                </button>
-              </form>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 aspect-square flex items-center justify-center text-sm text-stone-400">
+              No image available
             </div>
-          ))}
-        </div>
-        <form
-          action={async (fd) => {
-            "use server";
-            await addProductTypeSizeAction(id, fd);
-            redirect(`/admin/products/${id}`);
-          }}
-          className="flex gap-2 flex-wrap"
-        >
-          <input name="sizeLabel" required placeholder="Label (e.g. M)" className="rounded-xl border border-stone-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 w-28" />
-          <input name="providerSizeCode" required placeholder="Provider code" className="rounded-xl border border-stone-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 w-32" />
-          <input name="sortOrder" type="number" placeholder="Sort" defaultValue={pt.sizes.length + 1}
-            className="rounded-xl border border-stone-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900 w-20" />
-          <button type="submit" className="rounded-full border border-stone-300 px-4 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50">
-            Add size
-          </button>
-        </form>
-      </section>
-    </div>
-  );
-}
+          )}
 
-function Field({ label, name, defaultValue, required }: { label: string; name: string; defaultValue?: string; required?: boolean }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-stone-700 mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <input name={name} required={required} defaultValue={defaultValue}
-        className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900" />
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              pt.isActive
+                ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                : "bg-stone-100 text-stone-500 ring-1 ring-stone-200"
+            }`}>
+              {pt.isActive ? "Active" : "Inactive"}
+            </span>
+            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-cerulean/10 text-cerulean ring-1 ring-cerulean/20">
+              {pt.fulfillmentProvider === "TEEMILL" ? "T-Mill" : "Prodigi"}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: details + colors */}
+        <div className="space-y-8">
+
+          {/* Details form */}
+          <section className="rounded-2xl border border-stone-200 bg-white shadow-sm p-7">
+            <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wider mb-5">
+              Product details
+            </h2>
+            <form
+              action={async (fd) => {
+                "use server";
+                const result = await updateProductTypeAction(id, fd);
+                if ("id" in result) redirect(`/admin/products/${result.id}`);
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">
+                  Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  name="name"
+                  required
+                  defaultValue={pt.name}
+                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  defaultValue={pt.description ?? ""}
+                  rows={2}
+                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
+                />
+              </div>
+
+              {/* Hidden — provider and SKU are set at creation; not editable here */}
+              <input type="hidden" name="fulfillmentProvider" value={pt.fulfillmentProvider} />
+              <input type="hidden" name="providerSkuBase" value={pt.providerSkuBase} />
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  name="isActive"
+                  id="isActive"
+                  value="true"
+                  defaultChecked={pt.isActive}
+                  className="h-4 w-4 rounded border-stone-300"
+                />
+                <label htmlFor="isActive" className="text-sm font-medium text-stone-700">
+                  Active
+                </label>
+                <input type="hidden" name="isActive" value="false" />
+              </div>
+
+              <button
+                type="submit"
+                className="rounded-full bg-stone-900 px-6 py-2 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
+              >
+                Save changes
+              </button>
+            </form>
+          </section>
+
+          {/* Colors — read-only, sourced from the provider */}
+          <section className="rounded-2xl border border-stone-200 bg-white shadow-sm p-7">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wider">
+                Colors
+              </h2>
+              <span className="text-xs text-stone-400">
+                {pt.colors.length} available · all offered to sellers
+              </span>
+            </div>
+
+            {pt.colors.length === 0 ? (
+              <p className="text-sm text-stone-400">
+                No colors synced. Re-create this product type to pull colors from the provider.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {pt.colors.map((c) => {
+                  const imgUrl = colorImageMap[c.colorName] ?? null;
+                  return (
+                    <div key={c.id} className="group relative">
+                      {imgUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={imgUrl}
+                          alt={c.colorName}
+                          className="h-12 w-12 rounded-lg object-cover border border-stone-200"
+                        />
+                      ) : (
+                        <div
+                          className="h-12 w-12 rounded-lg border border-stone-200 bg-stone-100 flex items-center justify-center text-xs text-stone-400"
+                          title={c.colorName}
+                        >
+                          {c.colorName.slice(0, 2)}
+                        </div>
+                      )}
+                      <span className="pointer-events-none absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-stone-800 px-1.5 py-0.5 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 z-10">
+                        {c.colorName}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="mt-8 text-xs text-stone-400">
+              Colors are determined by the fulfillment provider and cannot be restricted here.
+              Sellers choose which colors to offer when creating a listing.
+            </p>
+          </section>
+
+        </div>
+      </div>
     </div>
   );
 }
