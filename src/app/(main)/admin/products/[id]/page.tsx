@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { updateProductTypeAction } from "@/app/actions/admin/product-catalog";
+import BlankImageUploader from "@/components/admin/BlankImageUploader";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -40,24 +41,34 @@ export default async function EditProductTypePage({ params }: Props) {
   });
   if (!pt) notFound();
 
-  // For Teemill products pull the catalog so we can show images
-  let teemillProduct: TeemillProduct | null = null;
-  if (pt.fulfillmentProvider === "TEEMILL") {
+  const isTeemill = pt.fulfillmentProvider === "TEEMILL";
+
+  // For Teemill: fetch catalog so we can supplement any colors missing a stored imageUrl
+  let teemillApiColors: Record<string, string> = {};
+  if (isTeemill) {
     const catalog = await fetchTeemillCatalog();
-    teemillProduct = catalog.find((p) => p.item_code === pt.providerSkuBase) ?? null;
+    const match = catalog.find((p) => p.item_code === pt.providerSkuBase);
+    teemillApiColors = match?.colours ?? {};
   }
 
-  // Build a color-name → imageUrl map from the Teemill catalog entry
-  const colorImageMap: Record<string, string> = teemillProduct
-    ? teemillProduct.colours
-    : {};
+  // Resolve the color image URL: prefer the stored colorImageUrl, fall back to the API
+  function resolveColorImage(colorName: string, storedUrl: string | null): string | null {
+    return storedUrl ?? teemillApiColors[colorName] ?? null;
+  }
 
-  // Hero image: prefer a non-gray color so the shirt is visible against the background
+  // Hero image:
+  //   Teemill — pick first non-gray/non-white from stored or API
+  //   Prodigi  — use the admin-uploaded blankImageUrl
   const heroImageUrl = (() => {
-    if (!teemillProduct) return null;
-    const entries = Object.entries(teemillProduct.colours);
-    const nonGray = entries.find(([name]) => !/gr[ae]y|white/i.test(name));
-    return (nonGray ?? entries[0])?.[1] ?? null;
+    if (!isTeemill) return pt.blankImageUrl ?? null;
+    const entries = pt.colors.map((c) => ({
+      name: c.colorName,
+      url: resolveColorImage(c.colorName, c.colorImageUrl),
+    }));
+    const nonNeutral = entries.find(
+      ({ name, url }) => url && !/gr[ae]y|white/i.test(name),
+    );
+    return nonNeutral?.url ?? entries[0]?.url ?? null;
   })();
 
   return (
@@ -76,21 +87,25 @@ export default async function EditProductTypePage({ params }: Props) {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.4fr]">
 
-        {/* Left: hero image */}
+        {/* Left: hero image (read-only for Teemill; uploadable for Prodigi) */}
         <div className="space-y-4">
-          {heroImageUrl ? (
-            <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-200 aspect-square">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={heroImageUrl}
-                alt={pt.name}
-                className="h-full w-full object-cover"
-              />
-            </div>
+          {isTeemill ? (
+            heroImageUrl ? (
+              <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-200 aspect-square">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={heroImageUrl} alt={pt.name} className="h-full w-full object-cover" />
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 aspect-square flex items-center justify-center text-sm text-stone-400">
+                No image available
+              </div>
+            )
           ) : (
-            <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 aspect-square flex items-center justify-center text-sm text-stone-400">
-              No image available
-            </div>
+            /* Prodigi — admin uploads a product blank */
+            <BlankImageUploader
+              productTypeId={pt.id}
+              currentImageUrl={pt.blankImageUrl ?? null}
+            />
           )}
 
           <div className="flex items-center gap-2">
@@ -102,9 +117,15 @@ export default async function EditProductTypePage({ params }: Props) {
               {pt.isActive ? "Active" : "Inactive"}
             </span>
             <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-cerulean/10 text-cerulean ring-1 ring-cerulean/20">
-              {pt.fulfillmentProvider === "TEEMILL" ? "T-Mill" : "Prodigi"}
+              {isTeemill ? "T-Mill" : "Prodigi"}
             </span>
           </div>
+
+          {isTeemill && (
+            <p className="text-xs text-stone-400">
+              Image sourced from the T-Mill product catalog.
+            </p>
+          )}
         </div>
 
         {/* Right: details + colors */}
@@ -175,7 +196,7 @@ export default async function EditProductTypePage({ params }: Props) {
             </form>
           </section>
 
-          {/* Colors — read-only, sourced from the provider */}
+          {/* Colors — read-only thumbnails */}
           <section className="rounded-2xl border border-stone-200 bg-white shadow-sm p-7">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wider">
@@ -193,15 +214,15 @@ export default async function EditProductTypePage({ params }: Props) {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {pt.colors.map((c) => {
-                  const imgUrl = colorImageMap[c.colorName] ?? null;
+                  const imgUrl = resolveColorImage(c.colorName, c.colorImageUrl);
                   return (
-                    <div key={c.id} className="group relative">
+                    <div key={c.id} className="group relative pb-1">
                       {imgUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={imgUrl}
                           alt={c.colorName}
-                          className="h-12 w-12 rounded-lg object-cover border border-stone-200"
+                          className="h-12 w-12 rounded-lg object-cover border border-stone-200 bg-stone-200"
                         />
                       ) : (
                         <div
@@ -211,7 +232,7 @@ export default async function EditProductTypePage({ params }: Props) {
                           {c.colorName.slice(0, 2)}
                         </div>
                       )}
-                      <span className="pointer-events-none absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-stone-800 px-1.5 py-0.5 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 z-10">
+                      <span className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-stone-800 px-1.5 py-0.5 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 z-10">
                         {c.colorName}
                       </span>
                     </div>

@@ -333,6 +333,8 @@ model ProductType {
   fulfillmentProvider FulfillmentProviderType
   providerSkuBase     String
   isActive            Boolean                @default(true)
+  /// Admin-uploaded product blank photo (used for Prodigi products; Teemill products use API-sourced images)
+  blankImageUrl       String?
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
 
@@ -346,8 +348,10 @@ model ProductTypeColor {
   id                String      @id @default(cuid())
   productTypeId     String
   colorName         String
-  colorHex          String
+  colorHex          String?     // nullable — Teemill does not provide hex values
   providerColorCode String
+  /// Provider-sourced color photo URL (populated from Teemill catalog; may be null for Prodigi)
+  colorImageUrl     String?
   isActive          Boolean     @default(true)
 
   productType ProductType @relation(fields: [productTypeId], references: [id], onDelete: Cascade)

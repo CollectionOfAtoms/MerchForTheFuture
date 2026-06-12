@@ -46,8 +46,9 @@ export async function createProductTypeAction(fd: FormData): Promise<ActionResul
           data: colors.map((c) => ({
             productTypeId: pt.id,
             colorName: c.name,
-            colorHex: "",
+            colorHex: null,
             providerColorCode: c.name,
+            colorImageUrl: c.imageUrl || null,
           })),
         });
       }
@@ -167,4 +168,25 @@ export async function toggleProductTypeSizeAction(sizeId: string, isActive: bool
 
   revalidatePath(`/admin/products/${size.productTypeId}`);
   return { id: size.id };
+}
+
+// ─── updateProductTypeBlankImageAction ───────────────────────────────────────
+
+/** Save (or clear) the admin-uploaded blank image for a product type. */
+export async function updateProductTypeBlankImageAction(
+  id: string,
+  blankImageUrl: string | null,
+): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { error: "Unauthorized" };
+
+  const existing = await prisma.productType.findUnique({ where: { id } });
+  if (!existing) return { error: "Product type not found" };
+
+  const pt = await prisma.productType.update({
+    where: { id },
+    data: { blankImageUrl },
+  });
+
+  revalidatePath(`/admin/products/${id}`);
+  return { id: pt.id };
 }

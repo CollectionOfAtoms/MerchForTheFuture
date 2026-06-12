@@ -3,20 +3,15 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getAdminProductCatalog } from "@/lib/admin/product-catalog";
 
-interface TeemillProduct {
-  item_code: string;
-  colours: Record<string, string>;
-}
-
-async function fetchTeemillImageMap(): Promise<Record<string, string>> {
+/** Teemill API fallback: only called if stored colorImageUrls are absent. */
+async function fetchTeemillApiImageMap(): Promise<Record<string, string>> {
   try {
     const res = await fetch("https://teemill.com/omnis/v3/product/options", {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return {};
     const data = await res.json();
-    const products: TeemillProduct[] = data.data ?? [];
-    // item_code → first non-gray/non-white image URL
+    const products: { item_code: string; colours: Record<string, string> }[] = data.data ?? [];
     const map: Record<string, string> = {};
     for (const p of products) {
       const entries = Object.entries(p.colours);
@@ -35,10 +30,18 @@ export async function AdminProductsPage() {
   if (!user?.id) redirect("/sign-in");
   if (!user.roles?.includes("ADMIN")) redirect("/");
 
-  const [products, teemillImageMap] = await Promise.all([
-    getAdminProductCatalog(),
-    fetchTeemillImageMap(),
-  ]);
+  const products = await getAdminProductCatalog();
+
+  // Only hit the Teemill API if at least one product is missing stored color images
+  const needsApiFallback = products.some(
+    (p) => p.fulfillmentProvider === "TEEMILL" && !p.firstColorImageUrl,
+  );
+  const teemillApiMap = needsApiFallback ? await fetchTeemillApiImageMap() : {};
+
+  function resolveThumbnail(pt: typeof products[number]): string | null {
+    if (pt.fulfillmentProvider === "PRODIGI") return pt.blankImageUrl ?? null;
+    return pt.firstColorImageUrl ?? teemillApiMap[pt.providerSkuBase] ?? null;
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-12">
@@ -70,10 +73,7 @@ export async function AdminProductsPage() {
       ) : (
         <ul className="space-y-3">
           {products.map((pt) => {
-            const thumbUrl =
-              pt.fulfillmentProvider === "TEEMILL"
-                ? teemillImageMap[pt.providerSkuBase] ?? null
-                : null;
+            const thumbUrl = resolveThumbnail(pt);
 
             return (
               <li key={pt.id}>
