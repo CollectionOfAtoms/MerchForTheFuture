@@ -38,11 +38,11 @@ export async function getOrderTracking(orderId: string): Promise<OrderTracking> 
 
 export async function syncProdigiOrderStatus(orderId: string): Promise<void> {
   const order = await prisma.order.findUnique({ where: { id: orderId } });
-  if (!order || !order.prodigiOrderId) return;
+  if (!order || !order.externalOrderId) return;
 
   const apiKey = process.env.PRODIGI_API_KEY ?? "test_key";
   const base = process.env.PRODIGI_API_BASE_URL ?? "https://api.prodigi.com/v4.0";
-  const response = await fetch(`${base}/orders/${order.prodigiOrderId}`, {
+  const response = await fetch(`${base}/orders/${order.externalOrderId}`, {
     headers: { "X-API-Key": apiKey },
   });
 

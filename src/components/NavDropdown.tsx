@@ -76,7 +76,7 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
   }
 
   return (
-    <div className="relative hidden sm:block">
+    <div className="relative hidden sm:block z-50">
       <button
         ref={triggerRef}
         type="button"
@@ -86,7 +86,8 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
         className="flex items-center gap-1 text-sm text-blue-slate hover:text-cerulean transition-colors max-w-[160px]"
       >
         <span className="truncate">{label}</span>
-        {/* Chevron-down */}
+        {/* Chevron-down — pointer-events:none prevents the SVG's transform
+            compositor layer from intercepting clicks in Firefox/Waterfox. */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="14"
@@ -102,6 +103,7 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
             flexShrink: 0,
             transform: open ? "rotate(180deg)" : "rotate(0deg)",
             transition: "transform 0.2s ease",
+            pointerEvents: "none",
           }}
         >
           <polyline points="6 9 12 15 18 9" />
@@ -112,7 +114,7 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
         <div
           ref={menuRef}
           role="menu"
-          className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-tuscan-sun/30 bg-white py-1 shadow-lg"
+          className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-tuscan-sun/30 bg-white py-1 shadow-lg max-h-[min(28rem,80vh)] overflow-y-auto"
         >
           <MenuItem href={dashboardHref} active={isActive(dashboardHref)}>
             Dashboard
@@ -133,6 +135,12 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
           {isSeller && (
             <MenuItem href="/seller/listings" active={isActive("/seller/listings")}>
               Listings
+            </MenuItem>
+          )}
+
+          {isAdmin && (
+            <MenuItem href="/admin/products" active={isActive("/admin/products")}>
+              Products
             </MenuItem>
           )}
 

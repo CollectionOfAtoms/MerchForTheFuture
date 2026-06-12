@@ -47,7 +47,7 @@ async function runFulfillment(orderId: string, chargeRef: string): Promise<void>
     const listing = await prisma.originalListing.findUnique({
       where: { id: order.originalListingId },
     });
-    if (listing?.printSourceImageUrl && order.prodigiSku && order.shippingName) {
+    if (listing?.printSourceImageUrl && order.externalSku && order.shippingName) {
       try {
         const apiKey = process.env.PRODIGI_API_KEY ?? "test_key";
         const base = process.env.PRODIGI_API_BASE_URL ?? "https://api.prodigi.com/v4.0";
@@ -68,7 +68,7 @@ async function runFulfillment(orderId: string, chargeRef: string): Promise<void>
             },
             items: [
               {
-                sku: order.prodigiSku,
+                sku: order.externalSku,
                 copies: order.quantity,
                 sizing: "fillPrintArea",
                 assets: [{ printArea: "default", url: listing.printSourceImageUrl }],
@@ -79,7 +79,7 @@ async function runFulfillment(orderId: string, chargeRef: string): Promise<void>
         const data = (await response.json()) as { order?: { id: string } };
         await prisma.order.update({
           where: { id: order.id },
-          data: { status: "PROCESSING", prodigiOrderId: data.order?.id ?? null },
+          data: { status: "PROCESSING", externalOrderId: data.order?.id ?? null },
         });
       } catch (err) {
         console.error("[webhook] Prodigi order creation failed:", err);

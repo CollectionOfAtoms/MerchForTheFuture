@@ -44,7 +44,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
     }
   }, [isOpen, close]);
 
-  // Cleanup timer on unmount
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => { if (linksTimerRef.current) clearTimeout(linksTimerRef.current); };
   }, []);
@@ -151,6 +151,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
         ...(isBuyer  ? [navLink("/buyer/bids",         "My Bids"),    navLink("/buyer/orders",      "Orders")]      : []),
         ...(isSeller ? [navLink("/seller/listings",     "Listings")]                                                 : []),
         ...(isAdmin  ? [
+          navLink("/admin/products",   "Products"),
           navLink("/admin/tracker",    "Tracker"),
           navLink("/admin/users",      "Users"),
           navLink("/admin/fulfillment","Fulfillment"),
@@ -221,17 +222,24 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
         }
       `}</style>
 
-      {/* Splash overlay — a large circle that scales from the button position */}
+      {/* Splash overlay — always in the DOM (inside sm:hidden so it can't
+          interfere with desktop layouts). isOpen drives the CSS transition
+          directly; no conditional mounting needed. */}
+      {/*
+        Splash origin is pinned to the button's center:
+          top  = header py-4 (1rem) + half button height (22px)
+          right = header px-6 (1.5rem) + half button width (22px)
+      */}
       <div
         aria-hidden="true"
         style={{
           position: "fixed",
-          top: "1.25rem",
-          right: "1.25rem",
+          top: "calc(1rem + 22px)",
+          right: "calc(1.5rem + 22px)",
           width: 1,
           height: 1,
           zIndex: 40,
-          pointerEvents: isOpen ? "auto" : "none",
+          pointerEvents: "none",
         }}
       >
         <div
@@ -248,48 +256,59 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
             transition: isOpen
               ? "transform .42s cubic-bezier(0.755, 0.050, 0.855, 0.060)"
               : "transform .42s cubic-bezier(0.145, 0.885, 0.355, 1.000)",
-            willChange: "transform",
+            pointerEvents: "none",
           }}
         />
       </div>
 
-      {/* Menu items */}
-      <ul
-        ref={menuRef}
-        id="mobile-menu"
-        hidden={!isOpen}
-        aria-label="Mobile navigation"
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 50,
-          display: isOpen ? "flex" : "none",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "0.25rem",
-          listStyle: "none",
-          margin: 0,
-          padding: 0,
-        }}
-      >
-        {allItems.map(({ key, node }, i) => (
-          <li
-            key={key}
-            style={
-              showLinks
-                ? {
-                    animation: `mb-slide-in 0.32s cubic-bezier(0.000, 0.995, 0.990, 1.000) ${i * 0.055}s both`,
-                  }
-                : { opacity: 0 }
-            }
-          >
-            {node}
-          </li>
-        ))}
-      </ul>
+      {/* Menu items — unmounted when closed */}
+      {isOpen && (
+        <ul
+          ref={menuRef}
+          id="mobile-menu"
+          aria-label="Mobile navigation"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "safe center",
+            gap: "0.25rem",
+            listStyle: "none",
+            margin: 0,
+            /* top padding clears the fixed close button; bottom gives breathing room */
+            paddingTop: "5rem",
+            paddingBottom: "2rem",
+            overflowY: "auto",
+          }}
+        >
+          {allItems.map(({ key, node }, i) => (
+            <li
+              key={key}
+              style={
+                showLinks
+                  ? {
+                      animation: `mb-slide-in 0.32s cubic-bezier(0.000, 0.995, 0.990, 1.000) ${i * 0.055}s both`,
+                    }
+                  : { opacity: 0 }
+              }
+            >
+              {node}
+            </li>
+          ))}
+        </ul>
+      )}
 
-      {/* Hamburger toggle button */}
+      {/*
+        The toggle button is position:fixed so it never shifts when the
+        scroll lock or any viewport change alters the page layout.
+        top/right mirror the header's py-4 (1rem) / px-6 (1.5rem) so
+        the button sits in the same visual spot it would occupy in flow.
+        A 44×44 px spacer div remains in-flow to preserve the header height.
+      */}
+      <div aria-hidden="true" style={{ width: 44, height: 44, flexShrink: 0 }} />
       <button
         ref={toggleRef}
         type="button"
@@ -297,8 +316,14 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
         aria-controls="mobile-menu"
         aria-label="Toggle menu"
         onClick={handleToggle}
-        className="relative z-50 rounded-full p-2 transition-colors hover:bg-tuscan-sun/20"
-        style={{ backgroundColor: isOpen ? "white" : undefined }}
+        className="rounded-full p-2 transition-colors hover:bg-tuscan-sun/20"
+        style={{
+          position: "fixed",
+          top: "1rem",
+          right: "1.5rem",
+          zIndex: 50,
+          backgroundColor: isOpen ? "white" : undefined,
+        }}
       >
         {/*
           SVG viewBox is 0 0 50 50, center at (25, 25).

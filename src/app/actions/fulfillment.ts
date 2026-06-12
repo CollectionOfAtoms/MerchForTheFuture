@@ -72,14 +72,14 @@ export async function confirmShippingAction(orderId: string, formData: FormData)
 
   // For print orders that are already PAID, shipping was collected after payment —
   // create the fulfillment order now that we have a valid address.
-  if (order.status === "PAID" && order.listingType === "PRINT" && order.originalListingId && order.prodigiSku) {
+  if (order.status === "PAID" && order.listingType === "PRINT" && order.originalListingId && order.externalSku) {
     const listing = await prisma.originalListing.findUnique({ where: { id: order.originalListingId } });
     if (listing?.printSourceImageUrl) {
       const provider = getFulfillmentProvider("PRINT");
       try {
         const result = await createFulfillmentOrder(orderId, provider, {
           listingRef: order.originalListingId,
-          colorVariantId: order.prodigiSku,
+          colorVariantId: order.externalSku,
           size: order.printSize ?? "",
           quantity: order.quantity,
           buyerName: name,
@@ -96,7 +96,7 @@ export async function confirmShippingAction(orderId: string, formData: FormData)
         });
         await prisma.order.update({
           where: { id: orderId },
-          data: { status: "PROCESSING", prodigiOrderId: result.externalOrderId },
+          data: { status: "PROCESSING", externalOrderId: result.externalOrderId },
         });
       } catch {
         // createFulfillmentOrder already logged and emailed the seller.

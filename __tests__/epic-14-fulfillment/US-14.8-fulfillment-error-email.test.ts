@@ -70,7 +70,7 @@ describe("US-14.8 — Fulfillment Error Email Notification", () => {
         buyerId,
         listingType: "PRINT",
         originalListingId: listing.id,
-        prodigiSku: "GLOBAL-FAP-16X24",
+        externalSku: "GLOBAL-FAP-16X24",
         printSize: "16x24",
         quantity: 1,
         subtotal: 50,

@@ -43,7 +43,7 @@ export async function createPrintOrder(input: CreatePrintOrderInput): Promise<Or
 
   const subtotal = product.price * quantity;
 
-  let prodigiOrderId: string | null = null;
+  let externalOrderId: string | null = null;
   if (shipping && listing.printSourceImageUrl) {
     const provider = new ProdigiFulfillmentProvider();
     try {
@@ -56,7 +56,7 @@ export async function createPrintOrder(input: CreatePrintOrderInput): Promise<Or
         sourceImageUrl: listing.printSourceImageUrl,
         shippingAddress: shipping,
       });
-      prodigiOrderId = result.externalOrderId;
+      externalOrderId = result.externalOrderId;
     } catch (err) {
       console.error("[createPrintOrder] Prodigi order creation failed:", err);
     }
@@ -67,13 +67,13 @@ export async function createPrintOrder(input: CreatePrintOrderInput): Promise<Or
       buyerId,
       listingType: "PRINT",
       originalListingId,
-      prodigiSku: sku,
+      externalSku: sku,
       printSize: size,
       quantity,
       subtotal,
       taxAmount: 0,
       totalAmount: subtotal,
-      prodigiOrderId,
+      externalOrderId,
       ...(shipping && {
         shippingName: shipping.name,
         shippingLine1: shipping.line1,
@@ -82,7 +82,7 @@ export async function createPrintOrder(input: CreatePrintOrderInput): Promise<Or
         shippingPostal: shipping.postal,
         shippingCountry: shipping.country,
       }),
-      status: prodigiOrderId ? "PROCESSING" : "PENDING",
+      status: externalOrderId ? "PROCESSING" : "PENDING",
     },
   });
 }

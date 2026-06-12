@@ -74,7 +74,7 @@ describe("US-15.4 — Order a Print from Listing Page", () => {
     });
     expect(order.listingType).toBe("PRINT");
     expect(order.originalListingId).toBe(listingId);
-    expect(order.prodigiSku).toBe("GLOBAL-FAP-16x12");
+    expect(order.externalSku).toBe("GLOBAL-FAP-16x12");
     expect(Number(order.subtotal)).toBe(45);
     expect(order.status).toBe("PENDING");
   });
@@ -96,7 +96,7 @@ describe("US-15.4 — Order a Print from Listing Page", () => {
       },
     });
     expect(order.status).toBe("PROCESSING");
-    expect(order.prodigiOrderId).toBeTruthy();
+    expect(order.externalOrderId).toBeTruthy();
   });
 
   it("rejects invalid SKU not in listing printProducts", async () => {
@@ -143,7 +143,7 @@ describe("US-15.4 — Order a Print from Listing Page", () => {
         buyerId,
         listingType: "PRINT",
         originalListingId: listingId,
-        prodigiSku: "GLOBAL-FAP-16x12",
+        externalSku: "GLOBAL-FAP-16x12",
         subtotal: 45,
         taxAmount: 0,
         totalAmount: 45,
@@ -165,7 +165,7 @@ describe("US-15.4 — Order a Print from Listing Page", () => {
         buyerId,
         listingType: "PRINT",
         originalListingId: listingId,
-        prodigiSku: "GLOBAL-FAP-16x12",
+        externalSku: "GLOBAL-FAP-16x12",
         subtotal: 45,
         taxAmount: 0,
         totalAmount: 45,

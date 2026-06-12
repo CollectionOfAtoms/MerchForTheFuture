@@ -79,6 +79,7 @@ export async function getBuyerAllBids(userId: string): Promise<BuyerBid[]> {
 
 export interface BuyerActiveBid {
   auctionId: string;
+  artworkId: string;
   listingId: string;
   artwork: { title: string; images: { url: string }[] };
   myHighestBid: Decimal;
@@ -107,6 +108,7 @@ export async function getBuyerActiveBids(userId: string): Promise<BuyerActiveBid
         include: {
           artwork: {
             select: {
+              id: true,
               title: true,
               images: { where: { isPrimary: true }, take: 1, select: { url: true } },
             },
@@ -118,6 +120,7 @@ export async function getBuyerActiveBids(userId: string): Promise<BuyerActiveBid
 
   return auctions.map((auction) => ({
     auctionId: auction.id,
+    artworkId: auction.originalListing.artwork.id,
     listingId: auction.originalListingId,
     artwork: auction.originalListing.artwork,
     myHighestBid: bidMaxByAuction.get(auction.id) ?? (0 as unknown as Decimal),
