@@ -1,8 +1,8 @@
 # Teemill API Discovery Notes
 
-**Status:** Partially complete — API key access blocked pending 2FA support resolution.  
-**Last updated:** 2026-06-07  
-**Unblocked by:** Teemill support resolving 2FA, then generating an API key at https://teemill.com/api
+**Status:** Unblocked — API key obtained 2026-06-10. Spike can proceed against live API.  
+**Last updated:** 2026-06-10  
+**Unblocked by:** Teemill support resolved 2FA issue; API key generated at https://teemill.com/api
 
 ---
 
