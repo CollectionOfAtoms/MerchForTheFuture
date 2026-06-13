@@ -3,6 +3,7 @@
 import { useActionState, useMemo, useRef, useState, useTransition } from "react";
 import { upload } from "@vercel/blob/client";
 import { createApparelListingAction } from "@/app/actions/apparel";
+import { DesignFilePreview } from "@/components/seller/DesignFilePreview";
 import type { ApparelProductTypeOption } from "@/lib/apparel/listings";
 
 const FIELD =
@@ -206,12 +207,12 @@ export default function NewApparelListingForm({
             The clean artwork sent to the printer. PNG, SVG, or TIFF · max 70 MB · never shown to buyers.
           </p>
           {designUrl ? (
-            <div className="flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
-              <span className="text-sm text-emerald-700">✓ Design uploaded</span>
+            <div className="flex items-center gap-4">
+              <DesignFilePreview key={designUrl} url={designUrl} />
               <button
                 type="button"
                 onClick={() => setDesignUrl("")}
-                className="ml-auto text-xs text-stone-500 hover:text-stone-800"
+                className="text-xs text-stone-500 hover:text-stone-800"
               >
                 Replace
               </button>

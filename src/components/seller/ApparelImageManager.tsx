@@ -9,6 +9,7 @@ import {
   setApparelPrimaryImageAction,
   replaceApparelDesignAction,
 } from "@/app/actions/apparel";
+import { DesignFilePreview } from "@/components/seller/DesignFilePreview";
 
 type ProcessingState = "idle" | "uploading" | "processing" | "done" | "error";
 
@@ -184,10 +185,16 @@ export default function ApparelImageManager({
         <p className="text-xs text-stone-400">
           The clean artwork sent to the printer — never shown to buyers. Replacing it does not affect your photos.
         </p>
-        <div className="flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
-          <span className="text-sm text-stone-600">{design ? "✓ Design on file" : "No design file"}</span>
+        <div className="flex items-center gap-4">
+          {design ? (
+            <DesignFilePreview key={design} url={design} />
+          ) : (
+            <div className="flex aspect-square w-32 shrink-0 items-center justify-center rounded-xl border border-dashed border-stone-300 bg-stone-50 text-xs text-stone-400">
+              No design file
+            </div>
+          )}
           <label
-            className={`ml-auto cursor-pointer text-xs text-stone-600 hover:text-stone-900 ${
+            className={`cursor-pointer text-xs text-stone-600 hover:text-stone-900 ${
               designUploading ? "opacity-50 pointer-events-none" : ""
             }`}
           >

@@ -40,7 +40,7 @@ async function seedArtworkListing(
 
 async function seedApparelListing(
   sellerId: string,
-  { createdAt, status = "ACTIVE", primaryThumb = "https://img/ls-thumb.jpg" }: { createdAt?: Date; status?: "ACTIVE" | "ARCHIVED" | "SOLD"; primaryThumb?: string | null } = {},
+  { createdAt, status = "ACTIVE", primaryThumb = "https://img/ls-thumb.jpg", withImage = true, designImageUrl = "https://blob/design.png" }: { createdAt?: Date; status?: "ACTIVE" | "ARCHIVED" | "SOLD"; primaryThumb?: string | null; withImage?: boolean; designImageUrl?: string | null } = {},
 ) {
   const pt = await prisma.productType.create({
     data: { name: `Unisex Tee ${crypto.randomUUID()}`, fulfillmentProvider: "TEEMILL", providerSkuBase: "RNA1" },
@@ -52,11 +52,11 @@ async function seedApparelListing(
       title: "Solar Punk Bee",
       retailPrice: 28,
       status,
-      designImageUrl: "https://blob/design.png",
+      designImageUrl,
       ...(createdAt ? { createdAt } : {}),
-      images: {
-        create: [{ originalUrl: "https://img/ls.jpg", thumbnailUrl: primaryThumb, isPrimary: true, sortOrder: 0 }],
-      },
+      ...(withImage
+        ? { images: { create: [{ originalUrl: "https://img/ls.jpg", thumbnailUrl: primaryThumb, isPrimary: true, sortOrder: 0 }] } }
+        : {}),
     },
   });
   return { pt, listing };
@@ -133,5 +133,12 @@ describe("getSellerListings — unified seller listings index", () => {
     const [row] = await getSellerListings(seller.id);
     // thumbnailUrl was null, so it should fall back to the gridUrl/originalUrl chain.
     expect(row.thumbnailUrl).toBe("https://img/ls.jpg");
+  });
+
+  it("uses the design image as the thumbnail when there are no lifestyle photos", async () => {
+    const seller = await seedSeller();
+    await seedApparelListing(seller.id, { withImage: false, designImageUrl: "https://blob/clean-design.png" });
+    const [row] = await getSellerListings(seller.id);
+    expect(row.thumbnailUrl).toBe("https://blob/clean-design.png");
   });
 });

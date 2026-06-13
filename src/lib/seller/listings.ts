@@ -88,7 +88,9 @@ export async function getSellerListings(sellerId: string): Promise<SellerListing
         kind: "APPAREL",
         id: l.id,
         title: l.title,
-        thumbnailUrl: img?.thumbnailUrl ?? img?.gridUrl ?? img?.originalUrl ?? null,
+        // Lifestyle photo if present; otherwise fall back to the (seller-only)
+        // design image so the row is never blank.
+        thumbnailUrl: img?.thumbnailUrl ?? img?.gridUrl ?? img?.originalUrl ?? l.designImageUrl ?? null,
         status: l.status,
         createdAt: l.createdAt,
         productTypeName: l.productType.name,
