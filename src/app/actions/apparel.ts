@@ -158,7 +158,7 @@ export async function updateApparelListingAction(
     return { error: "At least one color must remain offered." };
   }
 
-  const validColorIds = new Set(listing.productType.colors.map((c) => c.id));
+  const validColorIds = new Set(listing.productType?.colors.map((c) => c.id) ?? []);
   if (!offeredColorIds.every((id) => validColorIds.has(id))) {
     return { error: "Invalid color selection." };
   }

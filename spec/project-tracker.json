@@ -1609,12 +1609,12 @@
       "id": "US-MFTF-13.3",
       "epic": "Epic MFTF-13: Referenced Apparel Listings (Teemill Product Ref)",
       "title": "Create Referenced Listing (Paste Teemill Ref)",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Seller pastes Teemill ref \u2192 ingest \u2192 preview (colours+hex, sizes, mockups, GBP base shown as founder margin context). Seller opacity intentionally DROPPED in referenced mode (Teemill named openly). Fixed USD retailPrice (min $1). Optional lifestyle photos via corner-watermark pipeline; cached Teemill mockups used as images when none uploaded. Margin hint is display-only, NO live FX call. Step 1 must instruct that the design is created on Teemill FIRST (outbound link to Teemill designer, new tab) + a how-to-find-the-ref blurb; no assumption of seller pre-knowledge. Unresolvable ref re-surfaces that guidance."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-13",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-13",
+      "testPassedCommit": "pending",
+      "notes": "20 tests passing (US-MFTF-13.3-create-referenced-listing.test.ts: 15 node action/integration; US-MFTF-13.3-create-referenced-listing-form.test.tsx: 6 jsdom component, via // @vitest-environment jsdom docblock). src/app/actions/referenced-apparel.ts: resolveTeemillRefAction(ref) (auth-guarded; ingest \u2192 preview {title, providerBaseCurrency, providerBasePrice, colors[name+hex], sizes, mockups, orderableCount}; errors returned so the form re-surfaces guidance) and createReferencedListingAction (auth; validates title, retail\u2265$1, ref resolves, \u22651 orderable variant; creates ApparelListing sourcingMode=REFERENCED with productTypeId/designImageUrl null + providerKey/providerProductRef, no ApparelListingColor rows, no design upload; applyTeemillSnapshot caches variants+base price; redirects to edit). src/lib/apparel/referenced.ts: pure read-shape helpers referencedListingImages (lifestyle photos else distinct Teemill mockups), referencedListingColors, referencedListingSizes. Component NewReferencedListingForm: Step 1 'create on Teemill first' guidance + outbound designer link (new tab, rel=noopener) + how-to-find-the-ref blurb + Resolve\u2192preview (swatches w/ hex, sizes, mockups, 'your cost, GBP'); Teemill named openly; margin hint is display-only with an illustrative rate (NO network FX). Page /seller/apparel/new-referenced + '+ Referenced listing' link on the seller index. MFTF-13 schema-touch of the early-shipped 6.3 slice: getSellerListings now renders REFERENCED rows (productType nullable \u2014 provider label 'Teemill', mockup thumbnail fallback, sourcingMode on the row); designed-mode readers (getApparelListingForEdit, updateApparelListingAction) made null-safe for the now-nullable productType. Regression: mftf-5 (53) + mftf-6 (39) green; tsc clean on src/. RESIDUAL: uses the same verified MSW catalog stub as 13.2 (one-product live-confirm flag carries through)."
     },
     {
       "id": "US-MFTF-13.4",

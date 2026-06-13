@@ -43,23 +43,27 @@ function mockupFor(colour: string): string {
   return `https://images.podos.io/mock-${colour.toLowerCase().replace(/\s+/g, "")}.jpg`;
 }
 
+export const POWERED_BY_PLANTS_VARIANT_IDS = VARIANT_SPECS.map((s) => s.id);
+
 export interface BuildOptions {
   enabled?: boolean;
   /** Override the GBP base price reported on every variant. */
   basePrice?: number;
   /** Per-variant stock overrides keyed by variant id (e.g. drop one to 0). */
   stockOverrides?: Record<string, number>;
+  /** Force every variant to this stock level (e.g. 0 = nothing orderable). */
+  forceStock?: number;
   /** Variant ids to omit entirely (simulate a variant vanishing from the catalog). */
   omit?: string[];
 }
 
 /** Build the `/catalog/products` JSON body for the Powered By Plants product. */
 export function buildPoweredByPlantsCatalog(opts: BuildOptions = {}) {
-  const { enabled = true, basePrice = 21, stockOverrides = {}, omit = [] } = opts;
+  const { enabled = true, basePrice = 21, stockOverrides = {}, forceStock, omit = [] } = opts;
   const specs = VARIANT_SPECS.filter((s) => !omit.includes(s.id));
 
   const variants = specs.map((s) => {
-    const stock = stockOverrides[s.id] ?? s.stock;
+    const stock = forceStock ?? stockOverrides[s.id] ?? s.stock;
     return {
       id: s.id,
       ref: variantRefFor(s.id),

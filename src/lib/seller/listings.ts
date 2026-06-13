@@ -27,6 +27,9 @@ export type SellerListingRow =
       thumbnailUrl: string | null;
       status: string;
       createdAt: Date;
+      sourcingMode: "DESIGNED" | "REFERENCED";
+      // Designed: the curated product-type name. Referenced: a provider label
+      // (Teemill is named openly in referenced mode — no seller opacity here).
       productTypeName: string;
       retailPrice: number;
     };
@@ -61,9 +64,19 @@ export async function getSellerListings(sellerId: string): Promise<SellerListing
           take: 1,
           select: { originalUrl: true, thumbnailUrl: true, gridUrl: true },
         },
+        // Referenced listings have no lifestyle photo until one is uploaded; fall
+        // back to a cached Teemill mockup so the row is never blank.
+        referencedVariants: {
+          where: { mockupUrl: { not: null } },
+          take: 1,
+          select: { mockupUrl: true },
+        },
       },
     }),
   ]);
+
+  const providerLabel = (providerKey: string | null): string =>
+    providerKey ? providerKey.charAt(0).toUpperCase() + providerKey.slice(1) : "Apparel";
 
   const rows: SellerListingRow[] = [
     ...artworkListings.map((l): SellerListingRow => {
@@ -84,16 +97,20 @@ export async function getSellerListings(sellerId: string): Promise<SellerListing
     }),
     ...apparelListings.map((l): SellerListingRow => {
       const img = l.images[0];
+      const mockup = l.referencedVariants[0]?.mockupUrl ?? null;
       return {
         kind: "APPAREL",
         id: l.id,
         title: l.title,
-        // Lifestyle photo if present; otherwise fall back to the (seller-only)
-        // design image so the row is never blank.
-        thumbnailUrl: img?.thumbnailUrl ?? img?.gridUrl ?? img?.originalUrl ?? l.designImageUrl ?? null,
+        // Lifestyle photo if present; otherwise fall back to a cached Teemill
+        // mockup (referenced) or the seller-only design image (designed) so the
+        // row is never blank.
+        thumbnailUrl:
+          img?.thumbnailUrl ?? img?.gridUrl ?? img?.originalUrl ?? mockup ?? l.designImageUrl ?? null,
         status: l.status,
         createdAt: l.createdAt,
-        productTypeName: l.productType.name,
+        sourcingMode: l.sourcingMode,
+        productTypeName: l.productType?.name ?? providerLabel(l.providerKey),
         retailPrice: Number(l.retailPrice),
       };
     }),

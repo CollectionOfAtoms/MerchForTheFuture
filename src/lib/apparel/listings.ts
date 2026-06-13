@@ -75,12 +75,14 @@ export async function getApparelListingForEdit(listingId: string) {
     retailPrice: Number(listing.retailPrice),
     status: listing.status,
     designImageUrl: listing.designImageUrl,
+    // Designed listings always have a product type; referenced listings (handled
+    // by the 13.4 edit path) do not, so guard for null to stay type-safe.
     productType: {
-      id: listing.productType.id,
-      name: listing.productType.name,
-      sizes: listing.productType.sizes.map((s) => ({ id: s.id, sizeLabel: s.sizeLabel })),
+      id: listing.productType?.id ?? "",
+      name: listing.productType?.name ?? "",
+      sizes: (listing.productType?.sizes ?? []).map((s) => ({ id: s.id, sizeLabel: s.sizeLabel })),
     },
-    colors: listing.productType.colors.map((c) => ({
+    colors: (listing.productType?.colors ?? []).map((c) => ({
       productTypeColorId: c.id,
       colorName: c.colorName,
       colorImageUrl: c.colorImageUrl,
