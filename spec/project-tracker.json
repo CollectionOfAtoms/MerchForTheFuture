@@ -1581,7 +1581,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": null
+      "notes": "Status intentionally Not Started: MFTF-6 comes after MFTF-13 in epicOrder. However, one slice was shipped EARLY during MFTF-5 verification \u2014 apparel listings were not visible in the seller feed, which made it hard to verify MFTF-5 work, so the seller-index was extended to show apparel. Shipped early (do not rebuild): src/lib/seller/listings.ts getSellerListings (unified, kind-discriminated row list); the rewritten /seller/listings index (artwork + apparel); apparel archive/activate + delete; design preview. Still open for this story: dashboard count summary (overlaps US-MFTF-13.x referenced-listing counts) and badge refinements. Dependency: MFTF-13 will revisit this slice \u2014 getSellerListings must render REFERENCED listings, and US-MFTF-13.1 makes productTypeId/designImageUrl nullable + adds sourcingMode. Do not mark Passed until the remaining scope is built against the post-MFTF-13 schema."
     },
     {
       "id": "US-MFTF-13.1",
