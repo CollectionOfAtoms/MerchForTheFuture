@@ -38,6 +38,17 @@
  },
  "stories": [
   {
+   "id": "BUG-11",
+   "epic": "Infrastructure",
+   "title": "Mobile: nav bar scrolls away while the fixed hamburger stays pinned — they detach",
+   "status": "Not Started",
+   "testWrittenDate": null,
+   "testWrittenCommit": null,
+   "testPassedDate": null,
+   "testPassedCommit": null,
+   "notes": "Reported 2026-06-13. On mobile, scrolling down scrolls the <header> (src/components/Nav.tsx ~line 17 — `border-b border-tuscan-sun/40 bg-tuscan-sun`, currently static: no sticky/fixed) off the top of the page, but the hamburger toggle button is position:fixed at top:1rem / right:1.5rem (src/components/MobileMenu.tsx ~line 321, introduced by the BUG-10 fix) so it stays pinned in the top-right corner. The icon visibly detaches from the now-absent nav bar. Desired behavior: the nav bar should remain visible as the user scrolls (sticky header) so the hamburger stays tethered to it. CAUTION when fixing: the button was made position:fixed specifically to stop it shifting when the menu opens (BUG-10) and to survive the iOS position:fixed scroll-lock reflow (BUG-9). A fix likely makes the <header> sticky (top-0) with a z-index above page/listing-card stacking contexts (cf. the BUG-8 z-50 dropdown fix) and re-tethers the button to it; it MUST be verified on iOS Safari against the BUG-9/BUG-10 scroll-lock and shift-on-open regressions before closing."
+  },
+  {
    "id": "BUG-8",
    "epic": "Infrastructure",
    "title": "NavDropdown obscured by listing cards on browse page",
