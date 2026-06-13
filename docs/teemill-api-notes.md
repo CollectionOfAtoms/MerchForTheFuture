@@ -19,6 +19,43 @@ The Orders API is the correct integration target for MFTF. It lets us run our ow
 
 ---
 
+## Live API Verification (2026-06-12)
+
+_Verified against the **live** Orders API using the project's own credentials (read-only `GET /catalog/products`). Supersedes the `UNVERIFIED` guesses further down wherever they conflict._
+
+### Auth — confirmed
+- The **`project` parameter is NOT the public key.** It is the JWT `sub` claim on `TEEMILL_API_KEY` — for this account, `merchforthefuture-451391`. Pass it as `?project={sub}`. (Using the public key returned `404`.)
+- Header is the raw API key: `Authorization: {TEEMILL_API_KEY}` — no `Bearer` prefix. Returned `200 OK`.
+- Working call: `GET https://api.teemill.com/v1/catalog/products?project=merchforthefuture-451391` → `{ "products": [ … ] }`.
+
+### `/catalog/products` lists *your* products, fully enumerated
+The endpoint returns products that exist **in your project** (built via the Teemill site or the Custom Product API), each with every variant. The live test product **"Powered By Plants"** returned:
+
+- **Product:** `id`, `ref`, `title`, `description` (HTML), `slug`, `enabled: true`, blank `sku` (`DIY-BLANK-9592969`), `attributes`, `images`, `variants`, plus a long tail of storefront/integration fields we can ignore (`shopifyId`, `seoMetadata`, `metafields`, `staticCollections`, …).
+- **Attributes:** `Colour` = Denim Blue / Brown / Evergreen; `Size` = XS, S, M, L, XL, XXL.
+- **15 variants** (3 colours × up to 6 sizes; not every combination stocked). Each variant carries:
+  - `ref` — **the orderable variantRef**: `https://api.teemill.com/v1/catalog/variants/{uuid}` (note `/catalog/variants/`, correcting the `/v1/variants/` guess below).
+  - `attributes` — `Size`, and `Colour` with a **hex** thumbnail (`{ "type": "color", "value": "#23312d" }`). Colours now carry hex, not just names.
+  - `retailPrice` / `price` — `{ "amount": 21, "currencyCode": "GBP" }`. **Prices are GBP.**
+  - `stock` — `{ "level": 73, "locations": [{ "country": "GB", "level": 73 }] }`. Live per-warehouse stock.
+  - `applications[]` — the print spec: `technology: "dtg"`, `placement: "front"` (a **named zone, not x/y coordinates**), `src` = the design PNG (`images.podos.io/…`), `mockup: null`. Confirms Teemill owns placement; no coordinates are exposed in the Orders catalog.
+  - `images[]` — rendered mockups, see below.
+
+### Mockups ARE available via API
+Both `product.images[]` and each `variant.images[]` carry rendered mockup URLs (`images.podos.io/…`), each tagged with `variantIds` linking the photo to its colour variant. Teemill generates and serves per-colour mockups. **We do not upload or generate mockups** for Teemill products — we read `images[].src`.
+
+### What this resolves / changes
+- **Open Q#1 (catalog shape):** answered — documented above.
+- **Open Q#5 (programmatic mockups):** answered — **yes**. This largely **removes the need for MFTF-8** for Teemill products.
+- **Open Q#6 (sizes per product):** answered — sizes are in the Orders catalog (variant attributes), not only in `/omnis/v3/product/options`.
+- **3-colour free-tier cap:** confirmed live (the product maxed at exactly 3 colours).
+- **Currency:** Teemill bases cost in **GBP** while the store is USD/Stripe — an FX/margin input to the open "apparel retail pricing model" question.
+
+### Design implication (for a spec session — not decided here)
+A Teemill custom design only becomes orderable once the product exists in the project, after which the catalog exposes design, colours, sizes, mockups, stock and base price by **product ref**. This points toward a "reference a Teemill product ref" listing model for Teemill — distinct from the Prodigi "send a design file to a chosen blank" model that MFTF-4/5 currently implement. That divergence is a spec-level decision; see the kickoff prompt handed to the design session.
+
+---
+
 ## Authentication
 
 Both APIs use the same API key mechanism:
@@ -73,7 +110,7 @@ Creates and submits an order.
   },
   "items": [
     {
-      "variantRef": "/v1/variants/{uuid}",
+      "variantRef": "https://api.teemill.com/v1/catalog/variants/{uuid}",
       "quantity": 1
     }
   ]
@@ -82,7 +119,7 @@ Creates and submits an order.
 
 **Key fields:**
 - `country`: ISO 2-letter code
-- `variantRef`: a relative URL path referencing a specific product variant (UUID obtained from `/catalog/products`)
+- `variantRef`: the variant's `ref` from `/catalog/products` — an absolute URL of the form `https://api.teemill.com/v1/catalog/variants/{uuid}` (verified live 2026-06-12; earlier `/v1/variants/{uuid}` guess was wrong)
 
 **Responses:**
 - `201 Created` — returns order data as JSON
@@ -196,6 +233,8 @@ Until confirmed, MFTF-7.2 tests should use polling (`GET /orders/{ref}`) as the 
 ---
 
 ## Mockup Generation (MFTF-8)
+
+> **Update 2026-06-12 (live-verified):** This section is largely **moot for Teemill**. The Orders `/catalog/products` response already returns rendered per-colour mockups in `product.images[]` and `variant.images[]` (`images.podos.io`), linked to variants via `variantIds`. No compositing or upload needed — read `images[].src`. The compositing-from-placement-coordinates approach below is unnecessary for Teemill products; MFTF-8 should be re-evaluated (likely dropped) in the spec session. The notes below are retained as historical context.
 
 Teemill markets an "AI T-shirt Mockup Generator" at https://teemill.com/t-shirt-mock-up-generator/ but this appears to be a **browser-based UI tool**, not a programmatic API endpoint.
 
