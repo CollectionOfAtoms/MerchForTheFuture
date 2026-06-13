@@ -11,89 +11,154 @@ export interface VariantUrls {
   thumbnailUrl: string;
 }
 
-export async function generateVariants(imageId: string): Promise<VariantUrls | null> {
+/**
+ * Watermark style applied to the display variant.
+ * - `diagonal`: aggressive full-image overlay for fine-art originals and prints.
+ * - `corner`: small brand mark in the bottom-right corner for apparel lifestyle
+ *   photos — brand identification without degrading the marketing value.
+ */
+export type WatermarkStyle = "diagonal" | "corner";
+
+interface VariantBuffers {
+  displayBuffer: Buffer;
+  gridBuffer: Buffer;
+  thumbnailBuffer: Buffer;
+}
+
+/**
+ * Pure image-processing step shared by every variant generator. Produces the
+ * three JPEG variant buffers from a source image buffer. The display variant is
+ * watermarked according to `watermarkStyle`; grid and thumbnail are never
+ * watermarked. The sharp call sequence here is relied upon by the US-18.2 tests.
+ */
+async function buildVariantBuffers(
+  imageBuffer: Buffer,
+  watermarkStyle: WatermarkStyle,
+): Promise<VariantBuffers> {
+  // Normalise to sRGB + flatten alpha so all three variants can be JPEG-encoded.
+  // This handles CMYK TIFFs (common in print-ready files) and TIFFs with alpha.
+  const normalizedBuffer = await sharp(imageBuffer)
+    .rotate()
+    .toColorspace("srgb")
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
+    .toBuffer();
+
+  // Display variant — watermarked, max 2400px long edge, JPEG 85
+  // Resize first so we know the exact output dimensions, then build a
+  // matching SVG (sharp requires the overlay to be ≤ the base image size).
+  const resizedBuffer = await sharp(normalizedBuffer)
+    .resize({ width: 2400, height: 2400, fit: "inside", withoutEnlargement: true })
+    .toBuffer();
+  const { width: W = 2400, height: H = 2400 } = await sharp(resizedBuffer).metadata();
+  const watermarkSvg =
+    watermarkStyle === "corner"
+      ? buildCornerWatermarkSvg(W, H)
+      : buildWatermarkSvg(W, H);
+  const displayBuffer = await sharp(resizedBuffer)
+    .composite([{ input: watermarkSvg, gravity: "center" }])
+    .jpeg({ quality: 85 })
+    .toBuffer();
+
+  // Grid variant — un-watermarked, max 800px long edge, JPEG 75
+  const gridBuffer = await sharp(normalizedBuffer)
+    .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 75 })
+    .toBuffer();
+
+  // Thumbnail variant — 400×400 cover crop, JPEG 70
+  const thumbnailBuffer = await sharp(normalizedBuffer)
+    .resize(400, 400, { fit: "cover" })
+    .jpeg({ quality: 70 })
+    .toBuffer();
+
+  return { displayBuffer, gridBuffer, thumbnailBuffer };
+}
+
+/**
+ * Upload the three variant buffers to Vercel Blob under `pathPrefix` and return
+ * their public URLs. A timestamp in the path makes each generation produce a
+ * unique URL so browsers and the Vercel CDN serve fresh content immediately
+ * rather than the previously-cached variant. Orphaned blobs are small/harmless.
+ */
+async function uploadVariants(pathPrefix: string, buffers: VariantBuffers): Promise<VariantUrls> {
+  const ts = Date.now();
+  const [displayBlob, gridBlob, thumbnailBlob] = await Promise.all([
+    put(`${pathPrefix}-display-${ts}.jpg`, buffers.displayBuffer, {
+      access: "public",
+      contentType: "image/jpeg",
+      token: BLOB_TOKEN,
+    }),
+    put(`${pathPrefix}-grid-${ts}.jpg`, buffers.gridBuffer, {
+      access: "public",
+      contentType: "image/jpeg",
+      token: BLOB_TOKEN,
+    }),
+    put(`${pathPrefix}-thumbnail-${ts}.jpg`, buffers.thumbnailBuffer, {
+      access: "public",
+      contentType: "image/jpeg",
+      token: BLOB_TOKEN,
+    }),
+  ]);
+
+  return {
+    displayUrl: displayBlob.url,
+    gridUrl: gridBlob.url,
+    thumbnailUrl: thumbnailBlob.url,
+  };
+}
+
+async function fetchImageBuffer(url: string): Promise<Buffer> {
+  const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
+ * Generate display/grid/thumbnail variants for an `ArtworkImage` (fine-art
+ * originals and prints). Uses the diagonal watermark by default.
+ */
+export async function generateVariants(
+  imageId: string,
+  watermarkStyle: WatermarkStyle = "diagonal",
+): Promise<VariantUrls | null> {
   try {
-    const image = await prisma.artworkImage.findUnique({
-      where: { id: imageId },
-    });
+    const image = await prisma.artworkImage.findUnique({ where: { id: imageId } });
     if (!image) return null;
 
-    const response = await fetch(image.url, { signal: AbortSignal.timeout(30_000) });
-    if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
-    const arrayBuffer = await response.arrayBuffer();
-    const imageBuffer = Buffer.from(arrayBuffer);
+    const imageBuffer = await fetchImageBuffer(image.url);
+    const buffers = await buildVariantBuffers(imageBuffer, watermarkStyle);
+    const urls = await uploadVariants(`artworks/variants/${imageId}`, buffers);
 
-    // Normalise to sRGB + flatten alpha so all three variants can be JPEG-encoded.
-    // This handles CMYK TIFFs (common in print-ready files) and TIFFs with alpha.
-    const normalizedBuffer = await sharp(imageBuffer)
-      .rotate()
-      .toColorspace("srgb")
-      .flatten({ background: { r: 255, g: 255, b: 255 } })
-      .toBuffer();
-
-    // Display variant — watermarked, max 2400px long edge, JPEG 85
-    // Resize first so we know the exact output dimensions, then build a
-    // matching SVG (sharp requires the overlay to be ≤ the base image size).
-    const resizedBuffer = await sharp(normalizedBuffer)
-      .resize({ width: 2400, height: 2400, fit: "inside", withoutEnlargement: true })
-      .toBuffer();
-    const { width: W = 2400, height: H = 2400 } = await sharp(resizedBuffer).metadata();
-    const watermarkSvg = buildWatermarkSvg(W, H);
-    const displayBuffer = await sharp(resizedBuffer)
-      .composite([{ input: watermarkSvg, gravity: "center" }])
-      .jpeg({ quality: 85 })
-      .toBuffer();
-
-    // Grid variant — un-watermarked, max 800px long edge, JPEG 75
-    const gridBuffer = await sharp(normalizedBuffer)
-      .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 75 })
-      .toBuffer();
-
-    // Thumbnail variant — 400×400 cover crop, JPEG 70
-    const thumbnailBuffer = await sharp(normalizedBuffer)
-      .resize(400, 400, { fit: "cover" })
-      .jpeg({ quality: 70 })
-      .toBuffer();
-
-    // Use a timestamp in the path so each generation produces a unique URL.
-    // Overwriting the same path would leave the old content cached in Vercel's
-    // CDN indefinitely; a new path guarantees browsers and the CDN serve fresh
-    // content immediately. Orphaned blobs from previous generations are small
-    // and harmless.
-    const ts = Date.now();
-    const [displayBlob, gridBlob, thumbnailBlob] = await Promise.all([
-      put(`artworks/variants/${imageId}-display-${ts}.jpg`, displayBuffer, {
-        access: "public",
-        contentType: "image/jpeg",
-        token: BLOB_TOKEN,
-      }),
-      put(`artworks/variants/${imageId}-grid-${ts}.jpg`, gridBuffer, {
-        access: "public",
-        contentType: "image/jpeg",
-        token: BLOB_TOKEN,
-      }),
-      put(`artworks/variants/${imageId}-thumbnail-${ts}.jpg`, thumbnailBuffer, {
-        access: "public",
-        contentType: "image/jpeg",
-        token: BLOB_TOKEN,
-      }),
-    ]);
-
-    const urls: VariantUrls = {
-      displayUrl: displayBlob.url,
-      gridUrl: gridBlob.url,
-      thumbnailUrl: thumbnailBlob.url,
-    };
-
-    await prisma.artworkImage.update({
-      where: { id: imageId },
-      data: urls,
-    });
-
+    await prisma.artworkImage.update({ where: { id: imageId }, data: urls });
     return urls;
   } catch (err) {
     console.error("[generateVariants] failed for imageId", imageId, err);
+    return null;
+  }
+}
+
+/**
+ * Generate display/grid/thumbnail variants for an `ApparelListingImage`
+ * (lifestyle photos). Always uses the corner watermark so brand identification
+ * is present without degrading the marketing value of the photo. The clean
+ * design file sent to the dropshipper bypasses this pipeline entirely.
+ */
+export async function generateApparelImageVariants(
+  apparelImageId: string,
+): Promise<VariantUrls | null> {
+  try {
+    const image = await prisma.apparelListingImage.findUnique({ where: { id: apparelImageId } });
+    if (!image) return null;
+
+    const imageBuffer = await fetchImageBuffer(image.originalUrl);
+    const buffers = await buildVariantBuffers(imageBuffer, "corner");
+    const urls = await uploadVariants(`apparel/variants/${apparelImageId}`, buffers);
+
+    await prisma.apparelListingImage.update({ where: { id: apparelImageId }, data: urls });
+    return urls;
+  } catch (err) {
+    console.error("[generateApparelImageVariants] failed for apparelImageId", apparelImageId, err);
     return null;
   }
 }
@@ -114,6 +179,34 @@ function buildWatermarkSvg(width: number, height: number): Buffer {
       fill="rgba(150,150,150,0.30)"
       transform="rotate(-30, ${cx}, ${cy})"
     >Merch for the Future</text>
+  </svg>`;
+  return Buffer.from(svg);
+}
+
+/**
+ * Small brand mark in the bottom-right corner at ~8% of the image width and 70%
+ * opacity. A subtle dark stroke keeps it legible over light photo backgrounds.
+ */
+function buildCornerWatermarkSvg(width: number, height: number): Buffer {
+  const fontSize = Math.round(width * 0.08);
+  const pad = Math.round(width * 0.03);
+  const x = width - pad;
+  const y = height - pad;
+  const stroke = Math.max(1, Math.round(fontSize * 0.04));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+    <text
+      x="${x}"
+      y="${y}"
+      text-anchor="end"
+      dominant-baseline="alphabetic"
+      font-size="${fontSize}"
+      font-family="sans-serif"
+      font-weight="700"
+      fill="rgba(255,255,255,0.70)"
+      stroke="rgba(0,0,0,0.25)"
+      stroke-width="${stroke}"
+      paint-order="stroke"
+    >MFTF</text>
   </svg>`;
   return Buffer.from(svg);
 }

@@ -1,9 +1,11 @@
 import { auth } from "@/auth";
-import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { toggleListingStatusAction } from "@/app/actions/listings";
+import { toggleApparelListingStatusAction } from "@/app/actions/apparel";
+import { getSellerListings, type SellerListingRow } from "@/lib/seller/listings";
 import { DeleteListingButton } from "@/components/DeleteListingButton";
+import { DeleteApparelListingButton } from "@/components/DeleteApparelListingButton";
 
 const STATUS_STYLES: Record<string, { pill: string; label: string }> = {
   ACTIVE:          { pill: "bg-emerald-100 text-emerald-700", label: "Active" },
@@ -18,20 +20,18 @@ const SALE_TYPE_LABEL: Record<string, string> = {
   AUCTION: "Auction",
 };
 
+const KIND_LABEL: Record<SellerListingRow["kind"], string> = {
+  ARTWORK: "Art",
+  APPAREL: "Apparel",
+};
+
 export default async function SellerListingsPage() {
   const session = await auth();
   const user = session?.user as { id?: string; roles?: string[] } | undefined;
   if (!user?.id) redirect("/sign-in");
   if (!user.roles?.includes("SELLER")) redirect("/");
 
-  const listings = await prisma.originalListing.findMany({
-    where: { artwork: { sellerId: user.id } },
-    include: {
-      artwork: { include: { images: { where: { isPrimary: true }, take: 1, select: { url: true, thumbnailUrl: true, gridUrl: true } } } },
-      auction: { select: { bidCount: true, endAt: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const listings = await getSellerListings(user.id);
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
@@ -42,12 +42,20 @@ export default async function SellerListingsPage() {
             {listings.length === 0 ? "No listings yet." : `${listings.length} listing${listings.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Link
-          href="/seller/listings/new"
-          className="self-start sm:self-auto rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
-        >
-          + Add listing
-        </Link>
+        <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+          <Link
+            href="/seller/apparel/new"
+            className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+          >
+            + Apparel listing
+          </Link>
+          <Link
+            href="/seller/listings/new"
+            className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
+          >
+            + Artwork listing
+          </Link>
+        </div>
       </div>
 
       {listings.length === 0 ? (
@@ -62,85 +70,118 @@ export default async function SellerListingsPage() {
         </div>
       ) : (
         <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white shadow-sm overflow-hidden">
-          {listings.map((listing) => {
-            const artwork = listing.artwork;
-            const img = artwork.images[0];
-            const statusCfg = STATUS_STYLES[listing.status] ?? { pill: "bg-stone-100 text-stone-500", label: listing.status };
-            const canToggle = listing.status !== "SOLD";
-            const hasBids = (listing.auction?.bidCount ?? 0) > 0;
-
-            return (
-              <div key={listing.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
-                {/* Row 1 on mobile: thumbnail + title/meta */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <Link href={`/artwork/${artwork.id}`} className="h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-stone-100 hover:opacity-80 transition-opacity">
-                    {img ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={img.thumbnailUrl ?? img.gridUrl ?? img.url} alt={artwork.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center text-stone-300 text-xs">No image</div>
-                    )}
-                  </Link>
-
-                  {/* Details */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-stone-900 truncate">{artwork.title}</p>
-                    <div className="mt-1 flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-stone-400">{SALE_TYPE_LABEL[listing.saleType]}</span>
-                      {listing.price && (
-                        <span className="text-xs text-stone-400">
-                          · {listing.saleType === "AUCTION" ? "Start" : ""} ${Number(listing.price).toLocaleString()}
-                        </span>
-                      )}
-                      {listing.auction && (
-                        <span className="text-xs text-stone-400">
-                          · Ends {new Date(listing.auction.endAt).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Row 2 on mobile: status badge + actions */}
-                <div className="flex items-center gap-2 sm:contents">
-                  <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusCfg.pill}`}>
-                    {statusCfg.label}
-                  </span>
-
-                  <div className="flex items-center gap-2 ml-auto sm:ml-0">
-                    <Link
-                      href={`/seller/listings/${listing.id}/edit`}
-                      className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50 transition-colors"
-                    >
-                      Edit
-                    </Link>
-                    {canToggle && (
-                      <form
-                        action={async () => {
-                          "use server";
-                          await toggleListingStatusAction(listing.id);
-                        }}
-                      >
-                        <button
-                          type="submit"
-                          className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-50 transition-colors"
-                        >
-                          {listing.status === "ACTIVE" ? "Archive" : "Activate"}
-                        </button>
-                      </form>
-                    )}
-                    <DeleteListingButton
-                      listingId={listing.id}
-                      isSold={listing.status === "SOLD"}
-                      hasBids={hasBids}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {listings.map((row) => (
+            <ListingRow key={`${row.kind}-${row.id}`} row={row} />
+          ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ListingRow({ row }: { row: SellerListingRow }) {
+  const statusCfg = STATUS_STYLES[row.status] ?? { pill: "bg-stone-100 text-stone-500", label: row.status };
+  const thumbHref = row.kind === "ARTWORK" ? `/artwork/${row.artworkId}` : `/seller/apparel/${row.id}/edit`;
+  const editHref = row.kind === "ARTWORK" ? `/seller/listings/${row.id}/edit` : `/seller/apparel/${row.id}/edit`;
+
+  return (
+    <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
+      {/* Row 1 on mobile: thumbnail + title/meta */}
+      <div className="flex items-center gap-3 min-w-0">
+        <Link href={thumbHref} className="h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-stone-100 hover:opacity-80 transition-opacity">
+          {row.thumbnailUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={row.thumbnailUrl} alt={row.title} className="h-full w-full object-cover" />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-stone-300 text-xs">No image</div>
+          )}
+        </Link>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="shrink-0 rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-stone-500">
+              {KIND_LABEL[row.kind]}
+            </span>
+            <p className="text-sm font-medium text-stone-900 truncate">{row.title}</p>
+          </div>
+          <div className="mt-1 flex items-center gap-2 flex-wrap">
+            {row.kind === "ARTWORK" ? (
+              <>
+                <span className="text-xs text-stone-400">{SALE_TYPE_LABEL[row.saleType] ?? row.saleType}</span>
+                {row.price != null && (
+                  <span className="text-xs text-stone-400">
+                    · {row.saleType === "AUCTION" ? "Start " : ""}${row.price.toLocaleString()}
+                  </span>
+                )}
+                {row.auctionEndAt && (
+                  <span className="text-xs text-stone-400">· Ends {new Date(row.auctionEndAt).toLocaleDateString()}</span>
+                )}
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-stone-400">{row.productTypeName}</span>
+                <span className="text-xs text-stone-400">· ${row.retailPrice.toLocaleString()}</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Row 2 on mobile: status badge + actions */}
+      <div className="flex items-center gap-2 sm:contents">
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusCfg.pill}`}>
+          {statusCfg.label}
+        </span>
+
+        <div className="flex items-center gap-2 ml-auto sm:ml-0">
+          <Link
+            href={editHref}
+            className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+          >
+            Edit
+          </Link>
+
+          {row.kind === "ARTWORK" ? (
+            <>
+              {row.status !== "SOLD" && (
+                <form
+                  action={async () => {
+                    "use server";
+                    await toggleListingStatusAction(row.id);
+                  }}
+                >
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-50 transition-colors"
+                  >
+                    {row.status === "ACTIVE" ? "Archive" : "Activate"}
+                  </button>
+                </form>
+              )}
+              <DeleteListingButton listingId={row.id} isSold={row.status === "SOLD"} hasBids={row.hasBids} />
+            </>
+          ) : (
+            <>
+              {row.status !== "SOLD" && (
+                <form
+                  action={async () => {
+                    "use server";
+                    await toggleApparelListingStatusAction(row.id);
+                  }}
+                >
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-50 transition-colors"
+                  >
+                    {row.status === "ACTIVE" ? "Archive" : "Activate"}
+                  </button>
+                </form>
+              )}
+              <DeleteApparelListingButton listingId={row.id} isSold={row.status === "SOLD"} />
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
