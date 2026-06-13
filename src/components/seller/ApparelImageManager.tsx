@@ -217,58 +217,71 @@ export default function ApparelImageManager({
 
         {images.length > 0 && (
           <div className="flex flex-wrap gap-3">
-            {images.map((img) => (
-              <div
-                key={img.id}
-                className={`relative h-28 w-28 overflow-hidden rounded-xl border-2 bg-stone-100 ${
-                  img.isPrimary ? "border-stone-900" : "border-transparent"
-                }`}
-              >
-                {img.processingState === "uploading" || img.processingState === "processing" ? (
-                  <div className="absolute inset-0 flex items-center justify-center text-[10px] text-stone-500">
-                    Processing…
-                  </div>
-                ) : img.processingState === "error" ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-red-50 text-[10px] text-red-500">
-                    Failed
-                  </div>
-                ) : (
-                  <Image
-                    src={img.displayUrl ?? img.originalUrl}
-                    alt="Lifestyle photo"
-                    fill
-                    unoptimized
-                    className="object-cover"
-                    sizes="112px"
-                  />
-                )}
-                {img.processingState === "done" && (
-                  <div className="absolute inset-x-0 bottom-0 flex justify-between bg-black/50 px-1.5 py-1">
-                    {img.isPrimary ? (
-                      <span className="text-[10px] font-medium text-white">Primary</span>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={anyProcessing}
-                        onClick={() => handleSetPrimary(img.id)}
-                        className="text-[10px] text-stone-300 hover:text-white disabled:opacity-50"
-                      >
-                        Set primary
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      disabled={anyProcessing}
-                      onClick={() => handleDelete(img.id)}
-                      aria-label="Delete photo"
-                      className="text-[10px] text-rose-300 hover:text-rose-100 disabled:opacity-50"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+            {images.map((img) => {
+              const previewUrl = img.displayUrl ?? img.originalUrl;
+              return (
+                <div
+                  key={img.id}
+                  className={`relative h-32 w-32 overflow-hidden rounded-xl border-2 bg-stone-100 ${
+                    img.isPrimary ? "border-stone-900" : "border-transparent"
+                  }`}
+                >
+                  {img.processingState === "uploading" || img.processingState === "processing" ? (
+                    <div className="absolute inset-0 flex items-center justify-center text-[10px] text-stone-500">
+                      Processing…
+                    </div>
+                  ) : img.processingState === "error" ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-red-50 text-[10px] text-red-500">
+                      Failed
+                    </div>
+                  ) : (
+                    // object-contain (not cover) so the bottom-right corner watermark is
+                    // never cropped; click opens the full watermarked display variant.
+                    <a href={previewUrl} target="_blank" rel="noopener noreferrer" title="Open full image" className="absolute inset-0">
+                      <Image src={previewUrl} alt="Lifestyle photo" fill unoptimized className="object-contain" sizes="128px" />
+                    </a>
+                  )}
+                  {img.processingState === "done" && (
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-black/50 px-1.5 py-1">
+                      {img.isPrimary ? (
+                        <span className="text-[10px] font-medium text-white">Primary</span>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={anyProcessing}
+                          onClick={() => handleSetPrimary(img.id)}
+                          className="text-[10px] text-stone-300 hover:text-white disabled:opacity-50"
+                        >
+                          Set primary
+                        </button>
+                      )}
+                      <span className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={anyProcessing}
+                          onClick={() => processImage(img.id)}
+                          aria-label="Regenerate watermark"
+                          title="Regenerate watermark"
+                          className="text-[12px] leading-none text-stone-300 hover:text-white disabled:opacity-50"
+                        >
+                          ↺
+                        </button>
+                        <button
+                          type="button"
+                          disabled={anyProcessing}
+                          onClick={() => handleDelete(img.id)}
+                          aria-label="Delete photo"
+                          title="Delete photo"
+                          className="text-[10px] text-rose-300 hover:text-rose-100 disabled:opacity-50"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -287,7 +300,7 @@ export default function ApparelImageManager({
             disabled={isUploading || anyProcessing || images.length >= MAX_LIFESTYLE}
           />
         </label>
-        <p className="text-xs text-stone-400">Up to {MAX_LIFESTYLE} photos · a small corner watermark is added automatically.</p>
+        <p className="text-xs text-stone-400">Up to {MAX_LIFESTYLE} photos · a small corner watermark is added automatically · click a photo to view it full-size · ↺ regenerates the watermark.</p>
       </section>
     </div>
   );
