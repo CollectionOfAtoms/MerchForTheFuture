@@ -1598,12 +1598,12 @@
       "id": "US-MFTF-13.2",
       "epic": "Epic MFTF-13: Referenced Apparel Listings (Teemill Product Ref)",
       "title": "Teemill Catalog Ingest",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "ingestTeemillProduct(productRef) parses GET /catalog/products into cached ReferencedVariant snapshot. Verified auth: Authorization header = raw key (NO Bearer prefix); ?project={JWT sub claim} = merchforthefuture-451391 (NOT the public key). variantRef is absolute \u2026/catalog/variants/{uuid}. Colours carry hex; mockups matched by images[].variantIds. Idempotent re-ingest. LIVE-API FLAG: field paths verified against one product only (Powered By Plants) \u2014 confirm against a 2nd product before Passed."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-13",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-13",
+      "testPassedCommit": "pending",
+      "notes": "15 tests passing (US-MFTF-13.2-teemill-ingest.test.ts). src/lib/fulfillment/teemill/: client.ts (teemillGet + getTeemillProject \u2014 decodes JWT sub from TEEMILL_API_KEY, override via TEEMILL_PROJECT env) and ingest.ts. ingestTeemillProduct(productRef) calls GET /catalog/products with verified auth (Authorization = raw key, NO Bearer; ?project={JWT sub}=merchforthefuture-451391, NOT the public key \u2014 asserted in an auth test), matches the product by ref/id/slug, and returns a normalized snapshot {providerKey, providerProductRef, title, slug, providerBaseCurrency, providerBasePrice, variants[]}. Per variant: variantRef (absolute /catalog/variants/), colorName+colorHex (Colour attribute thumbnail), sizeLabel, stockLevel, isOrderable (enabled && stock>0), mockupUrl (matched from variant.images[] then product.images[] by variantIds). No 3-colour cap enforced. Errors (not-found/disabled/401/network) returned to caller, never thrown. No design file uploaded. applyTeemillSnapshot(listingId, snapshot, {preserveOrderableVariantRefs}) persists idempotently in a transaction (replace ReferencedVariant rows, preserve+mark-not-orderable vanished-but-ordered refs for 13.4, refresh providerBasePrice/currency/snapshotFetchedAt). MSW: shared __tests__/mocks/teemill-fixture.ts (verified Powered By Plants shape: 3 colours w/ hex, GBP prices, per-warehouse stock incl. a 0-stock variant, product-level mockups by variantIds, /catalog/variants/ refs) wired into global handlers. RESIDUAL LIVE-API FLAG (human, no sandbox exists): field paths verified against ONE product (Powered By Plants); confirm the parser against a 2nd live product (esp. images[].variantIds linkage + attributes ordering) \u2014 carried to the PR QA checklist."
     },
     {
       "id": "US-MFTF-13.3",

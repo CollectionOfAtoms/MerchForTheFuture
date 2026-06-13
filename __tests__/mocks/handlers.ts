@@ -1,4 +1,5 @@
 import { http, HttpResponse } from "msw";
+import { buildPoweredByPlantsCatalog } from "./teemill-fixture";
 
 // ─── Stripe handlers ──────────────────────────────────────────────────────────
 const stripeHandlers = [
@@ -130,10 +131,20 @@ const emailHandlers = [
   ),
 ];
 
+// ─── Teemill Orders API handlers ─────────────────────────────────────────────
+// Base: https://api.teemill.com/v1 — verified shapes from /docs/teemill-api-notes.md.
+// Auth (verified): Authorization = raw key (NO "Bearer"); ?project={JWT sub}.
+const teemillHandlers = [
+  http.get("https://api.teemill.com/v1/catalog/products", () =>
+    HttpResponse.json(buildPoweredByPlantsCatalog())
+  ),
+];
+
 export const handlers = [
   ...stripeHandlers,
   ...prodigiHandlers,
   ...taxHandlers,
   ...currencyHandlers,
   ...emailHandlers,
+  ...teemillHandlers,
 ];
