@@ -1572,12 +1572,12 @@
    "id": "US-MFTF-6.3",
    "epic": "Epic MFTF-6: Apparel Product Page & Browse",
    "title": "Apparel Listing in Seller Dashboard",
-   "status": "Not Started",
-   "testWrittenDate": null,
-   "testWrittenCommit": null,
+   "status": "In Progress",
+   "testWrittenDate": "2026-06-13",
+   "testWrittenCommit": "pending",
    "testPassedDate": null,
    "testPassedCommit": null,
-   "notes": null
+   "notes": "PARTIAL — visibility slice pulled forward into the MFTF-5 branch to close the dead-end US-MFTF-5.3 created (sellers could create an apparel listing but it never appeared in /seller/listings). Shipped: getSellerListings(sellerId) in src/lib/seller/listings.ts — a normalized, kind-discriminated ('ARTWORK' | 'APPAREL'), extensible-to-future-kinds row list, newest first (7 tests). /seller/listings now renders both kinds with a type chip; apparel rows show product type + price + Edit link. STILL TODO for full 6.3: apparel archive/activate (toggleApparelListingStatusAction) + delete actions, richer type badges, and the dashboard count summary (US-13.2). May be reshaped by the pending Teemill-model spec session."
   },
   {
    "id": "US-MFTF-7.1",
