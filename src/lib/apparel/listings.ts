@@ -160,7 +160,10 @@ export async function getReferencedListingForEdit(listingId: string) {
       isPrimary: i.isPrimary,
       sortOrder: i.sortOrder,
     })),
-    editOnTeemillUrl: teemillEditUrl({ ref: listing.providerProductRef }),
+    editOnTeemillUrl: teemillEditUrl({
+      slug: listing.providerProductSlug,
+      ref: listing.providerProductRef,
+    }),
   };
 }
 

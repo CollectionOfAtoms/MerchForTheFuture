@@ -411,6 +411,9 @@ model ApparelListing {
   providerKey         String?
   /// REFERENCED listings only — the provider product ref/id the snapshot is keyed off.
   providerProductRef  String?
+  /// REFERENCED listings only — the provider product slug (captured at ingest),
+  /// used to build the "Edit on Teemill" per-product editor deep-link.
+  providerProductSlug String?
   /// REFERENCED listings only — ISO 4217 currency of providerBasePrice (e.g. "GBP").
   providerBaseCurrency String?
   /// REFERENCED listings only — cached provider base cost for margin monitoring;

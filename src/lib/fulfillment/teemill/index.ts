@@ -11,5 +11,7 @@ export {
   getTeemillProject,
   getTeemillApiKey,
   teemillEditUrl,
+  teemillDesignerUrl,
   TEEMILL_API_BASE,
+  TEEMILL_SITE,
 } from "./client";

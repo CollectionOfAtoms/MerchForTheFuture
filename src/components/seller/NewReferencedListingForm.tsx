@@ -16,7 +16,9 @@ const LIFESTYLE_ACCEPT = ["image/jpeg", "image/png", "image/tiff", "image/webp"]
 const LIFESTYLE_MAX_BYTES = 70 * 1024 * 1024;
 const MAX_LIFESTYLE = 10;
 
-const DEFAULT_TEEMILL_DESIGNER = "https://teemill.com/make/";
+// Fallback only — the page passes a project-scoped designer URL
+// (https://teemill.com/create-a-product/?project={projectId}).
+const DEFAULT_TEEMILL_DESIGNER = "https://teemill.com/create-a-product/";
 // Indicative GBP→USD rate for a display-only margin hint. NOT a live FX call and
 // never used to compute the buyer's price (US-MFTF-13.3).
 const INDICATIVE_GBP_USD = 1.27;

@@ -4,6 +4,8 @@ import { server } from "../mocks/server";
 import {
   buildPoweredByPlantsCatalog,
   POWERED_BY_PLANTS_PRODUCT_REF,
+  POWERED_BY_PLANTS_SLUG,
+  TEEMILL_PROJECT_SUB,
   EXPECTED_VARIANT_REF_FOR,
 } from "../mocks/teemill-fixture";
 import { prisma, resetDatabase } from "../helpers/db";
@@ -16,8 +18,16 @@ const {
   resyncReferencedListingAction,
 } = await import("@/app/actions/referenced-apparel");
 const { getReferencedListingForEdit } = await import("@/lib/apparel/listings");
-const { ingestTeemillProduct, applyTeemillSnapshot } = await import("@/lib/fulfillment/teemill");
+const {
+  ingestTeemillProduct,
+  applyTeemillSnapshot,
+  teemillEditUrl,
+  teemillDesignerUrl,
+} = await import("@/lib/fulfillment/teemill");
 const { auth } = await import("@/auth");
+
+const EXPECTED_DESIGNER_URL = `https://teemill.com/create-a-product/?project=${TEEMILL_PROJECT_SUB}`;
+const EXPECTED_EDIT_URL = `https://teemill.com/create-a-product/${POWERED_BY_PLANTS_SLUG}/?project=${TEEMILL_PROJECT_SUB}`;
 
 const CATALOG_URL = "https://api.teemill.com/v1/catalog/products";
 
@@ -218,6 +228,23 @@ describe("US-MFTF-13.4 — resyncReferencedListingAction", () => {
   });
 });
 
+// ─── Teemill outbound URLs (live-confirmed pattern) ───────────────────────────
+
+describe("US-MFTF-13.4 — Teemill designer/editor URLs", () => {
+  it("builds the generic designer URL scoped to the project id from the API key", () => {
+    expect(teemillDesignerUrl()).toBe(EXPECTED_DESIGNER_URL);
+  });
+
+  it("builds a per-product editor deep-link from the stored slug + project id", () => {
+    expect(teemillEditUrl({ slug: POWERED_BY_PLANTS_SLUG })).toBe(EXPECTED_EDIT_URL);
+  });
+
+  it("falls back to the generic designer URL when no slug is known", () => {
+    expect(teemillEditUrl({})).toBe(EXPECTED_DESIGNER_URL);
+    expect(teemillEditUrl({ slug: null })).toBe(EXPECTED_DESIGNER_URL);
+  });
+});
+
 // ─── getReferencedListingForEdit ──────────────────────────────────────────────
 
 describe("US-MFTF-13.4 — getReferencedListingForEdit", () => {
@@ -238,7 +265,8 @@ describe("US-MFTF-13.4 — getReferencedListingForEdit", () => {
     expect(data!.providerProductRef).toBe(POWERED_BY_PLANTS_PRODUCT_REF);
     expect(data!.colors.find((c) => c.colorName === "Evergreen")?.colorHex).toBe("#23312d");
     expect(data!.sizes.length).toBeGreaterThan(0);
-    expect(data!.editOnTeemillUrl).toMatch(/^https:\/\/teemill\.com/);
+    // Live-confirmed editor deep-link: /create-a-product/{slug}/?project={sub}.
+    expect(data!.editOnTeemillUrl).toBe(EXPECTED_EDIT_URL);
     expect(Number(data!.retailPrice)).toBe(32);
   });
 

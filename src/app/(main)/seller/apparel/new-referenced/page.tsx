@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { teemillDesignerUrl } from "@/lib/fulfillment/teemill";
 import NewReferencedListingForm from "@/components/seller/NewReferencedListingForm";
 
 export default async function NewReferencedListingPage() {
@@ -7,6 +8,9 @@ export default async function NewReferencedListingPage() {
   const user = session?.user as { id?: string; roles?: string[] } | undefined;
   if (!user?.id) redirect("/sign-in");
   if (!user.roles?.includes("SELLER")) redirect("/");
+
+  // Project-scoped Teemill designer link (computed server-side — needs the API key).
+  const designerUrl = teemillDesignerUrl();
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
@@ -17,7 +21,7 @@ export default async function NewReferencedListingPage() {
         </p>
       </div>
 
-      <NewReferencedListingForm />
+      <NewReferencedListingForm teemillDesignerUrl={designerUrl} />
     </div>
   );
 }

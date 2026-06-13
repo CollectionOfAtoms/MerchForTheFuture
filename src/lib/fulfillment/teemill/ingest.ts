@@ -213,6 +213,7 @@ export async function applyTeemillSnapshot(
     await tx.apparelListing.update({
       where: { id: apparelListingId },
       data: {
+        providerProductSlug: snapshot.slug,
         providerBaseCurrency: snapshot.providerBaseCurrency,
         providerBasePrice: snapshot.providerBasePrice,
         snapshotFetchedAt: new Date(),

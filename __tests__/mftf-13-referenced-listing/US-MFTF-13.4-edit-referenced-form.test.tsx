@@ -32,7 +32,8 @@ const listing = {
   ],
   sizes: ["S", "M", "L"],
   images: [],
-  editOnTeemillUrl: "https://teemill.com/account/",
+  editOnTeemillUrl:
+    "https://teemill.com/create-a-product/powered-by-plants/?project=merchforthefuture-451391",
 };
 
 afterEach(() => {
@@ -60,7 +61,7 @@ describe("US-MFTF-13.4 — EditReferencedListingForm", () => {
     const link = screen.getByRole("link", { name: /edit on teemill/i });
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
-    expect(link).toHaveAttribute("href", "https://teemill.com/account/");
+    expect(link).toHaveAttribute("href", listing.editOnTeemillUrl);
   });
 
   it("offers a 'Re-sync from Teemill' control", () => {

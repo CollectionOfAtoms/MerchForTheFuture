@@ -33,18 +33,38 @@ export function getTeemillProject(): string {
   }
 }
 
+/** Public Teemill site base (the designer/editor live here, not on the API host). */
+export const TEEMILL_SITE = process.env.TEEMILL_SITE_URL ?? "https://teemill.com";
+
+function projectQuery(): string {
+  const project = getTeemillProject();
+  return project ? `?project=${encodeURIComponent(project)}` : "";
+}
+
 /**
- * Outbound "Edit on Teemill" link for a referenced product.
- *
- * LIVE-CONFIRM (Open Question, /docs/teemill-api-notes.md): a stable per-product
- * *editor* URL — and whether it needs the founder's authenticated Teemill session
- * — is unverified. The catalog exposes `ref`/`slug`, but the editor URL pattern is
- * not. Until it is confirmed live, we deliberately return the generic Teemill
- * account dashboard (a working fallback) rather than guessing a per-product URL
- * that could 404. Swap the body here once the pattern is known.
+ * The generic Teemill product designer, scoped to this project — where the
+ * founder starts a brand-new product. Live-confirmed pattern (2026-06-13):
+ *   https://teemill.com/create-a-product/?project={projectId}
  */
-export function teemillEditUrl(_opts: { ref?: string | null; slug?: string | null } = {}): string {
-  return process.env.TEEMILL_DASHBOARD_URL ?? "https://teemill.com/account/";
+export function teemillDesignerUrl(): string {
+  return `${TEEMILL_SITE}/create-a-product/${projectQuery()}`;
+}
+
+/**
+ * Outbound "Edit on Teemill" deep-link for a referenced product. Live-confirmed
+ * pattern (2026-06-13): the per-product editor is
+ *   https://teemill.com/create-a-product/{slug}/?project={projectId}
+ * where `slug` is captured from the catalog at ingest and `projectId` is the JWT
+ * `sub` on the API key. When no slug is known (e.g. a pre-existing listing not
+ * yet re-synced), fall back to the generic project-scoped designer rather than
+ * guessing a URL.
+ */
+export function teemillEditUrl(opts: { slug?: string | null; ref?: string | null } = {}): string {
+  const slug = opts.slug?.trim();
+  if (slug) {
+    return `${TEEMILL_SITE}/create-a-product/${encodeURIComponent(slug)}/${projectQuery()}`;
+  }
+  return teemillDesignerUrl();
 }
 
 /** Authenticated GET against the Teemill Orders API. */
