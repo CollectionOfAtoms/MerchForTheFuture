@@ -259,6 +259,45 @@ export async function setApparelPrimaryImageAction(
   return { success: true };
 }
 
+// ─── toggleApparelListingStatusAction ─────────────────────────────────────────
+
+/** Archive an active apparel listing, or reactivate an archived one. No-op on SOLD. */
+export async function toggleApparelListingStatusAction(listingId: string): Promise<void> {
+  const owned = await loadOwnedListing(listingId);
+  if ("error" in owned && owned.error) return;
+  const { listing } = owned;
+  if (listing.status === "SOLD") return;
+
+  const next = listing.status === "ACTIVE" ? "ARCHIVED" : "ACTIVE";
+  await prisma.apparelListing.update({ where: { id: listingId }, data: { status: next } });
+  revalidatePath("/seller/listings");
+}
+
+// ─── deleteApparelListingAction ───────────────────────────────────────────────
+
+/** Permanently delete an apparel listing (and its blobs). Refused on SOLD listings. */
+export async function deleteApparelListingAction(listingId: string): Promise<MutationResult> {
+  const owned = await loadOwnedListing(listingId);
+  if ("error" in owned && owned.error) return { error: owned.error };
+  const { listing } = owned;
+  if (listing.status === "SOLD") return { error: "Cannot delete a sold listing." };
+
+  const images = await prisma.apparelListingImage.findMany({ where: { apparelListingId: listingId } });
+  const urls = [
+    listing.designImageUrl,
+    ...images.flatMap((i) => [i.originalUrl, i.displayUrl, i.gridUrl, i.thumbnailUrl]),
+  ].filter((u): u is string => Boolean(u));
+  if (urls.length > 0) {
+    await del(urls, { token: BLOB_TOKEN }).catch(() => {});
+  }
+
+  // ApparelListingColor / ApparelListingImage rows cascade on delete.
+  await prisma.apparelListing.delete({ where: { id: listingId } });
+
+  revalidatePath("/seller/listings");
+  return { success: true };
+}
+
 // ─── replaceApparelDesignAction ───────────────────────────────────────────────
 
 /** Swaps the clean design file. Lifestyle photos are untouched. */

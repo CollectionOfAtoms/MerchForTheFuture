@@ -2,8 +2,10 @@ import { auth } from "@/auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { toggleListingStatusAction } from "@/app/actions/listings";
+import { toggleApparelListingStatusAction } from "@/app/actions/apparel";
 import { getSellerListings, type SellerListingRow } from "@/lib/seller/listings";
 import { DeleteListingButton } from "@/components/DeleteListingButton";
+import { DeleteApparelListingButton } from "@/components/DeleteApparelListingButton";
 
 const STATUS_STYLES: Record<string, { pill: string; label: string }> = {
   ACTIVE:          { pill: "bg-emerald-100 text-emerald-700", label: "Active" },
@@ -139,7 +141,7 @@ function ListingRow({ row }: { row: SellerListingRow }) {
             Edit
           </Link>
 
-          {row.kind === "ARTWORK" && (
+          {row.kind === "ARTWORK" ? (
             <>
               {row.status !== "SOLD" && (
                 <form
@@ -157,6 +159,25 @@ function ListingRow({ row }: { row: SellerListingRow }) {
                 </form>
               )}
               <DeleteListingButton listingId={row.id} isSold={row.status === "SOLD"} hasBids={row.hasBids} />
+            </>
+          ) : (
+            <>
+              {row.status !== "SOLD" && (
+                <form
+                  action={async () => {
+                    "use server";
+                    await toggleApparelListingStatusAction(row.id);
+                  }}
+                >
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-50 transition-colors"
+                  >
+                    {row.status === "ACTIVE" ? "Archive" : "Activate"}
+                  </button>
+                </form>
+              )}
+              <DeleteApparelListingButton listingId={row.id} isSold={row.status === "SOLD"} />
             </>
           )}
         </div>
