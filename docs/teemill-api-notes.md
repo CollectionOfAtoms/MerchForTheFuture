@@ -1,12 +1,16 @@
 # Teemill API Discovery Notes
 
-**Status:** Unblocked — API key obtained 2026-06-10. Spike can proceed against live API.  
-**Last updated:** 2026-06-10  
+**Status:** Live-verified — catalog shape confirmed 2026-06-12 against the live Orders API. Auth, variant ref shape, colour hex, sizes, mockups, stock, and GBP pricing all confirmed.
+**Last updated:** 2026-06-12
 **Unblocked by:** Teemill support resolved 2FA issue; API key generated at https://teemill.com/api
+
+> **Reading order:** the "Live API Verification (2026-06-12)" section and the "MSW Stub Handlers" block are authoritative. Older inline sections below (Custom Product API options table, the pre-verification Mockup/Sizing notes, the original Open Questions table) are retained as research history and are explicitly superseded where they conflict. Conflicts are annotated inline.
 
 ---
 
-## Summary for MFTF-3 / MFTF-7
+## Summary for MFTF-3 / MFTF-12 / MFTF-13
+
+> **Note (2026-06-12):** MFTF-7 (single-item apparel checkout) was dropped; its successors are MFTF-12 (multi-provider checkout/fulfillment) and MFTF-13 (referenced apparel listings). References to "MFTF-7" below are historical.
 
 Teemill exposes **two distinct APIs** with different integration models. Understanding which to use is the first architectural decision:
 
@@ -273,35 +277,66 @@ Sizes are not returned by the `/product/options` endpoint (only colors and desig
 
 ## Open Questions (require live API access)
 
-| # | Question | Blocks |
+| # | Question | Status |
 |---|---|---|
-| 1 | Full `/catalog/products` response shape — what fields do variants expose? | MFTF-3.3 stub accuracy, MFTF-7 |
-| 2 | Does the Orders API support webhooks? If so, what events and payload shape? | MFTF-7.2 |
-| 3 | What are the API rate limits? | MFTF-3.3 test design |
-| 4 | Is there a sandbox/test mode? (Strong prior: no.) | MFTF-3 and MFTF-7 testing strategy |
-| 5 | Does a programmatic mockup endpoint exist behind auth? | MFTF-8 scoping decision |
-| 6 | What sizes are available per product type? | MFTF-4 (admin product catalog) |
-| 7 | How is `shippingMethodId` chosen at order-confirm time? Is this buyer-facing or always the cheapest? | MFTF-7.1 order flow |
+| 1 | Full `/catalog/products` response shape — what fields do variants expose? | **Resolved 2026-06-12** — see Live API Verification + MSW stubs. |
+| 2 | Does the Orders API support webhooks? If so, what events and payload shape? | **Open** — none found; use polling `GET /orders/{ref}` until confirmed. Blocks the webhook upgrade of US-MFTF-12.6. |
+| 3 | What are the API rate limits? | **Open** — undocumented; gates synchronous checkout-time live stock/price re-reads (US-MFTF-12.3). |
+| 4 | Is there a sandbox/test mode? | **Resolved** — none; MSW is the only option. |
+| 5 | Does a programmatic mockup endpoint exist? | **Resolved 2026-06-12** — moot; mockups are served in the catalog (`images[].variantIds`). MFTF-8 not needed for Teemill. |
+| 6 | What sizes are available per product type? | **Resolved 2026-06-12** — sizes are variant attributes in `/catalog/products` (XS–XXL on the test product). |
+| 7 | How is `shippingMethodId` chosen at confirm time — always-cheapest or buyer-facing? | **Open** — not yet observed; assumed a stable "standard" method for US-MFTF-12.3. Confirm live. |
 
 ---
 
 ## MSW Stub Handlers
 
-The following stubs should be written for `__tests__/mocks/handlers.ts` to support MFTF-3 and MFTF-7 tests. Shapes marked `// UNVERIFIED` need live-API confirmation before MFTF-7 goes to "Passed".
+> **Updated 2026-06-12 to verified shapes.** The block below reflects the live `/catalog/products` response (the "Powered By Plants" test product), the verified `…/catalog/variants/{uuid}` ref form, colour hex, per-warehouse stock, GBP prices, and per-colour mockups linked by `variantIds`. Fields still genuinely unconfirmed are marked `// UNVERIFIED` (order status enum values; webhook/tracking payload). Use these for MFTF-3, MFTF-12, and MFTF-13 tests.
 
 ```typescript
 // Teemill Orders API stubs — base: https://api.teemill.com/v1
+// Auth (verified): Authorization: {raw key, NO "Bearer"}; ?project={JWT sub} = "merchforthefuture-451391" (NOT the public key)
 
 http.get('https://api.teemill.com/v1/catalog/products', () => {
   return HttpResponse.json({
     products: [
       {
-        // UNVERIFIED — shape inferred from demo code
-        id: 'mock-product-1',
-        name: "Men's Basic T-shirt",
+        id: 'mock-product-powered-by-plants',
+        ref: 'https://api.teemill.com/v1/catalog/products/mock-product-uuid',
+        title: 'Powered By Plants',
+        description: '<p>…</p>',
+        slug: 'powered-by-plants',
+        enabled: true,
+        sku: 'DIY-BLANK-9592969',
+        attributes: [
+          { name: 'Colour', values: ['Denim Blue', 'Brown', 'Evergreen'] },
+          { name: 'Size', values: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },
+        ],
+        // Product-level rendered mockups, each tagged to the variants it depicts:
+        images: [
+          { src: 'https://images.podos.io/mock-denimblue.jpg', variantIds: ['v-denimblue-m'] },
+          { src: 'https://images.podos.io/mock-evergreen.jpg', variantIds: ['v-evergreen-m'] },
+        ],
         variants: [
-          { url: '/v1/variants/mock-variant-uuid-1', colour: 'White', size: 'M' },
-          { url: '/v1/variants/mock-variant-uuid-2', colour: 'Black', size: 'M' },
+          {
+            id: 'v-evergreen-m',
+            // Orderable variantRef — absolute, /catalog/variants/ (NOT /v1/variants/):
+            ref: 'https://api.teemill.com/v1/catalog/variants/mock-variant-uuid-evergreen-m',
+            attributes: [
+              { name: 'Size', value: 'M' },
+              { name: 'Colour', value: 'Evergreen', thumbnail: { type: 'color', value: '#23312d' } },
+            ],
+            retailPrice: { amount: 21, currencyCode: 'GBP' },
+            price: { amount: 21, currencyCode: 'GBP' },
+            stock: { level: 73, locations: [{ country: 'GB', level: 73 }] },
+            applications: [
+              { technology: 'dtg', placement: 'front', src: 'https://images.podos.io/design.png', mockup: null },
+            ],
+            images: [
+              { src: 'https://images.podos.io/mock-evergreen.jpg', variantIds: ['v-evergreen-m'] },
+            ],
+          },
+          // …additional colour/size variants (3 colours × up to 6 sizes; not every combo stocked = 15 total)
         ],
       },
     ],
@@ -309,6 +344,7 @@ http.get('https://api.teemill.com/v1/catalog/products', () => {
 }),
 
 http.post('https://api.teemill.com/v1/orders', () => {
+  // Step 1 of two-step flow: returns fulfillments with availableShippingMethods (verified shape).
   return HttpResponse.json(
     {
       id: 'mock-order-id-123',
@@ -316,7 +352,7 @@ http.post('https://api.teemill.com/v1/orders', () => {
         {
           id: 'mock-fulfillment-id-1',
           availableShippingMethods: [
-            { id: 'standard', name: 'Standard', totalPrice: { amount: '3.99' } },
+            { id: 'standard', name: 'Standard', totalPrice: { amount: '3.99' } }, // UNVERIFIED — Open Q#7: is there a stable "standard" id, or buyer-facing choice?
             { id: 'express', name: 'Express', totalPrice: { amount: '7.99' } },
           ],
         },
@@ -327,22 +363,26 @@ http.post('https://api.teemill.com/v1/orders', () => {
 }),
 
 http.post('https://api.teemill.com/v1/orders/:orderId/confirm', () => {
+  // Step 2: body is [{ fulfillmentId, shippingMethodId }]
   return HttpResponse.json(
     {
       id: 'mock-order-id-123',
-      status: 'confirmed', // UNVERIFIED — status field name unknown
+      status: 'confirmed', // UNVERIFIED — status enum values not confirmed live
     },
     { status: 200 }
   );
 }),
 
 http.get('https://api.teemill.com/v1/orders/:orderRef', () => {
+  // Used for shipment-status POLLING (webhooks unconfirmed — see Webhooks section).
   return HttpResponse.json({
     id: 'mock-order-id-123',
     status: 'processing', // UNVERIFIED — status values unknown
     fulfillments: [
       {
         id: 'mock-fulfillment-id-1',
+        // UNVERIFIED — tracking number + carrier field paths on a dispatched fulfillment not yet seen live:
+        // trackingNumber: 'XXedrjfk', carrier: 'Royal Mail', status: 'dispatched',
         availableShippingMethods: [
           { id: 'standard', name: 'Standard', totalPrice: { amount: '3.99' } },
         ],
