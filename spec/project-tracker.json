@@ -1587,12 +1587,12 @@
       "id": "US-MFTF-13.1",
       "epic": "Epic MFTF-13: Referenced Apparel Listings (Teemill Product Ref)",
       "title": "Referenced Sourcing Mode: Schema Extension",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Additive schema extension. TOUCHES Passed story US-MFTF-5.1: adds sourcingMode (DESIGNED|REFERENCED, default DESIGNED), nullable providerKey/providerProductRef/providerBaseCurrency/providerBasePrice/snapshotFetchedAt on ApparelListing; makes productTypeId and designImageUrl nullable; adds ReferencedVariant model (variantRef, colorName, colorHex, sizeLabel, stockLevel, isOrderable, mockupUrl). App-layer invariant: exactly one of productTypeId / providerProductRef. Re-run __tests__/mftf-5-apparel-listing/ to confirm designed-mode unchanged. retailPrice stays USD/required in both modes; providerBasePrice is margin-monitoring metadata only."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-13",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-13",
+      "testPassedCommit": "pending",
+      "notes": "15 tests passing (__tests__/mftf-13-referenced-listing/US-MFTF-13.1-referenced-schema.test.ts). SourcingMode enum (DESIGNED|REFERENCED) added; ApparelListing gains sourcingMode (default DESIGNED so existing rows unchanged) + nullable providerKey/providerProductRef/providerBaseCurrency/providerBasePrice(Decimal 12,2)/snapshotFetchedAt; productTypeId + designImageUrl made nullable (productType relation now optional); ReferencedVariant model added (variantRef, colorName, colorHex, sizeLabel, stockLevel Int, isOrderable, mockupUrl?) with cascade delete + @@index. App-layer invariant validateApparelListingInvariant (src/lib/apparel/invariants.ts): DESIGNED requires productTypeId+designImageUrl & zero ReferencedVariant rows; REFERENCED requires providerKey+providerProductRef & zero ApparelListingColor rows; exactly one of productTypeId/providerProductRef. Schema pushed to main + test DBs via prisma db push; resetDatabase() updated with ReferencedVariant. Re-ran __tests__/mftf-5-apparel-listing/ (+mftf-4/mftf-6): 119 designed-mode tests pass unchanged. retailPrice stays USD/required both modes; providerBasePrice is margin-monitoring metadata only. The validator is wired into the create/update actions in US-MFTF-13.3/13.4."
     },
     {
       "id": "US-MFTF-13.2",
@@ -2403,5 +2403,5 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-06-12T00:00:00.000Z"
+  "lastUpdated": "2026-06-13T00:00:00.000Z"
 }
