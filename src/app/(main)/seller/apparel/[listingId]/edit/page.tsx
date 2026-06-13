@@ -1,8 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { getApparelListingForEdit } from "@/lib/apparel/listings";
+import {
+  getApparelListingForEdit,
+  getReferencedListingForEdit,
+} from "@/lib/apparel/listings";
 import EditApparelListingForm from "@/components/seller/EditApparelListingForm";
 import ApparelImageManager from "@/components/seller/ApparelImageManager";
+import EditReferencedListingForm from "@/components/seller/EditReferencedListingForm";
 
 export default async function EditApparelListingPage({
   params,
@@ -15,6 +19,31 @@ export default async function EditApparelListingPage({
   const user = session?.user as { id?: string; roles?: string[] } | undefined;
   if (!user?.id) redirect("/sign-in");
   if (!user.roles?.includes("SELLER")) redirect("/");
+
+  // Referenced (Teemill) listings use their own read + form; designed listings
+  // fall through to the original path below.
+  const referenced = await getReferencedListingForEdit(listingId);
+  if (referenced) {
+    if (referenced.sellerId !== user.id) redirect("/seller/listings");
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-12">
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold text-stone-900">Edit referenced listing</h1>
+          <p className="mt-1 text-sm text-stone-500">
+            Update your price and photos, or re-sync the latest from Teemill.
+          </p>
+        </div>
+        <EditReferencedListingForm
+          listing={{
+            ...referenced,
+            snapshotFetchedAt: referenced.snapshotFetchedAt
+              ? referenced.snapshotFetchedAt.toISOString()
+              : null,
+          }}
+        />
+      </div>
+    );
+  }
 
   const listing = await getApparelListingForEdit(listingId);
   if (!listing) notFound();

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { ingestTeemillProduct, applyTeemillSnapshot } from "@/lib/fulfillment/teemill";
+import type { TeemillProductSnapshot } from "@/lib/fulfillment/teemill";
 import {
   referencedListingColors,
   referencedListingSizes,
@@ -20,6 +21,29 @@ async function getSellerId(): Promise<string | null> {
   const user = session?.user as { id?: string; roles?: string[] } | undefined;
   if (!user?.id || !user.roles?.includes("SELLER")) return null;
   return user.id;
+}
+
+/**
+ * Loads a referenced listing the current seller owns. Returns `{ error }` for an
+ * unauthenticated/non-seller caller ("Unauthorized") or a listing that does not
+ * exist, belongs to someone else, or is not a referenced listing.
+ */
+async function loadOwnedReferencedListing(listingId: string) {
+  const sellerId = await getSellerId();
+  if (!sellerId) return { error: "Unauthorized" as const };
+
+  const listing = await prisma.apparelListing.findUnique({
+    where: { id: listingId },
+    include: { referencedVariants: true },
+  });
+  if (!listing || listing.sellerId !== sellerId || listing.sourcingMode !== "REFERENCED") {
+    return { error: "Listing not found." as const };
+  }
+  return { listing };
+}
+
+function editPath(listingId: string) {
+  return `/seller/apparel/${listingId}/edit`;
 }
 
 // ─── resolveTeemillRefAction (Step 1 preview) ─────────────────────────────────
@@ -135,4 +159,130 @@ export async function createReferencedListingAction(
 
   revalidatePath("/seller/listings");
   redirect(`/seller/apparel/${listing.id}/edit`);
+}
+
+// ─── updateReferencedListingAction ────────────────────────────────────────────
+
+type UpdateResult = { error: string } | { success: true };
+
+export async function updateReferencedListingAction(
+  listingId: string,
+  _prevState: UpdateResult | undefined,
+  formData: FormData,
+): Promise<UpdateResult> {
+  const owned = await loadOwnedReferencedListing(listingId);
+  if ("error" in owned && owned.error) return { error: owned.error };
+  const { listing } = owned;
+
+  if (listing.status === "SOLD") {
+    return { error: "Sold listings are read-only." };
+  }
+
+  // The underlying Teemill product cannot change — that would be a new listing
+  // (mirrors the designed-mode "product type cannot change" rule).
+  const submittedRef = (formData.get("providerProductRef") as string | null)?.trim();
+  if (submittedRef && submittedRef !== listing.providerProductRef) {
+    return { error: "The Teemill product ref cannot be changed after creation." };
+  }
+
+  const title = (formData.get("title") as string | null)?.trim() ?? "";
+  const description = (formData.get("description") as string | null)?.trim() || null;
+  const retailPrice = parseFloat((formData.get("retailPrice") as string | null) ?? "");
+
+  if (!title) return { error: "Title is required." };
+  if (!isFinite(retailPrice) || retailPrice < 1) {
+    return { error: "Retail price must be at least $1." };
+  }
+
+  await prisma.apparelListing.update({
+    where: { id: listingId },
+    data: { title, description, retailPrice },
+  });
+
+  revalidatePath(editPath(listingId));
+  return { success: true };
+}
+
+// ─── resyncReferencedListingAction ────────────────────────────────────────────
+
+type ResyncResult = { error: string } | { changes: string[] };
+
+/** Human-readable diff between the cached snapshot and a freshly-ingested one. */
+function diffSnapshot(
+  oldVariants: {
+    variantRef: string;
+    colorName: string;
+    sizeLabel: string;
+    stockLevel: number;
+  }[],
+  oldBasePrice: number | null,
+  snapshot: TeemillProductSnapshot,
+): string[] {
+  const changes: string[] = [];
+
+  if (oldBasePrice != null && oldBasePrice !== snapshot.providerBasePrice) {
+    changes.push(
+      `Base cost changed ${snapshot.providerBaseCurrency} ${oldBasePrice} → ${snapshot.providerBasePrice}.`,
+    );
+  }
+
+  const oldByRef = new Map(oldVariants.map((v) => [v.variantRef, v]));
+  const newByRef = new Map(snapshot.variants.map((v) => [v.variantRef, v]));
+  const label = (v: { colorName: string; sizeLabel: string }) => `${v.colorName} (${v.sizeLabel})`;
+
+  for (const nv of snapshot.variants) {
+    const ov = oldByRef.get(nv.variantRef);
+    if (!ov) {
+      changes.push(`${label(nv)} was added.`);
+      continue;
+    }
+    if (ov.stockLevel > 0 && nv.stockLevel === 0) {
+      changes.push(`${label(nv)} is now out of stock.`);
+    } else if (ov.stockLevel === 0 && nv.stockLevel > 0) {
+      changes.push(`${label(nv)} is back in stock.`);
+    }
+  }
+
+  for (const ov of oldVariants) {
+    if (!newByRef.has(ov.variantRef)) {
+      changes.push(`${label(ov)} is no longer available on Teemill.`);
+    }
+  }
+
+  return changes;
+}
+
+export async function resyncReferencedListingAction(listingId: string): Promise<ResyncResult> {
+  const owned = await loadOwnedReferencedListing(listingId);
+  if ("error" in owned && owned.error) return { error: owned.error };
+  const { listing } = owned;
+
+  if (!listing.providerProductRef) {
+    return { error: "This listing has no Teemill product ref to re-sync." };
+  }
+
+  const ingest = await ingestTeemillProduct(listing.providerProductRef);
+  if (!ingest.ok) return { error: ingest.error };
+  const { snapshot } = ingest;
+
+  const changes = diffSnapshot(
+    listing.referencedVariants,
+    listing.providerBasePrice != null ? Number(listing.providerBasePrice) : null,
+    snapshot,
+  );
+
+  // Keep variants that vanished from the catalog but have order history — they
+  // are marked not-orderable rather than deleted (preserves order records).
+  const orderedRows = await prisma.order.findMany({
+    where: { apparelListingId: listingId, externalSku: { not: null } },
+    select: { externalSku: true },
+  });
+  const preserveOrderableVariantRefs = orderedRows
+    .map((o) => o.externalSku)
+    .filter((s): s is string => Boolean(s));
+
+  await applyTeemillSnapshot(listingId, snapshot, { preserveOrderableVariantRefs });
+
+  revalidatePath(editPath(listingId));
+  return { changes };
 }

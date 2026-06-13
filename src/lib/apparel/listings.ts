@@ -1,4 +1,9 @@
 import { prisma } from "@/lib/db";
+import { teemillEditUrl } from "@/lib/fulfillment/teemill";
+import {
+  referencedListingColors,
+  referencedListingSizes,
+} from "@/lib/apparel/referenced";
 
 /**
  * Active product types available for a seller to build an apparel listing from.
@@ -102,4 +107,63 @@ export async function getApparelListingForEdit(listingId: string) {
 
 export type ApparelListingEditData = NonNullable<
   Awaited<ReturnType<typeof getApparelListingForEdit>>
+>;
+
+/**
+ * Editable state of a REFERENCED (Teemill) apparel listing: editable merchandising
+ * (title/description/retailPrice/status/photos) plus the read-only, provider-owned
+ * snapshot (colours+hex, sizes, per-variant stock) and an "Edit on Teemill" link.
+ * Returns null when the listing does not exist or is not a referenced listing
+ * (the designed path uses `getApparelListingForEdit`). Ownership is enforced by
+ * the caller.
+ */
+export async function getReferencedListingForEdit(listingId: string) {
+  const listing = await prisma.apparelListing.findUnique({
+    where: { id: listingId },
+    include: {
+      referencedVariants: { orderBy: [{ colorName: "asc" }, { sizeLabel: "asc" }] },
+      images: { orderBy: { sortOrder: "asc" } },
+    },
+  });
+  if (!listing || listing.sourcingMode !== "REFERENCED") return null;
+
+  return {
+    id: listing.id,
+    sellerId: listing.sellerId,
+    title: listing.title,
+    description: listing.description,
+    retailPrice: Number(listing.retailPrice),
+    status: listing.status,
+    sourcingMode: listing.sourcingMode,
+    providerKey: listing.providerKey,
+    providerProductRef: listing.providerProductRef,
+    providerBaseCurrency: listing.providerBaseCurrency,
+    providerBasePrice: listing.providerBasePrice != null ? Number(listing.providerBasePrice) : null,
+    snapshotFetchedAt: listing.snapshotFetchedAt,
+    colors: referencedListingColors(listing.referencedVariants),
+    sizes: referencedListingSizes(listing.referencedVariants),
+    variants: listing.referencedVariants.map((v) => ({
+      variantRef: v.variantRef,
+      colorName: v.colorName,
+      colorHex: v.colorHex,
+      sizeLabel: v.sizeLabel,
+      stockLevel: v.stockLevel,
+      isOrderable: v.isOrderable,
+      mockupUrl: v.mockupUrl,
+    })),
+    images: listing.images.map((i) => ({
+      id: i.id,
+      originalUrl: i.originalUrl,
+      displayUrl: i.displayUrl,
+      gridUrl: i.gridUrl,
+      thumbnailUrl: i.thumbnailUrl,
+      isPrimary: i.isPrimary,
+      sortOrder: i.sortOrder,
+    })),
+    editOnTeemillUrl: teemillEditUrl({ ref: listing.providerProductRef }),
+  };
+}
+
+export type ReferencedListingEditData = NonNullable<
+  Awaited<ReturnType<typeof getReferencedListingForEdit>>
 >;

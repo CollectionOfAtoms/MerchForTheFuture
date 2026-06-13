@@ -1620,12 +1620,12 @@
       "id": "US-MFTF-13.4",
       "epic": "Epic MFTF-13: Referenced Apparel Listings (Teemill Product Ref)",
       "title": "Edit / Re-Sync Referenced Listing",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Edit title/description/retailPrice/photos; colours/sizes/design are read-only (Teemill-owned). Re-sync re-runs ingest and reports diffs (stock/price). providerProductRef immutable after creation. Variant that vanishes but has orders is marked isOrderable:false, not deleted (preserves order history). Adds an 'Edit on Teemill' outbound deep-link (new tab) built from stored ref/slug, then guide seller to Re-sync. LIVE-CONFIRM: per-product editor URL pattern (and whether it needs the founder's Teemill session) is unverified \u2014 ship a dashboard/generic-designer fallback until confirmed."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-13",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-13",
+      "testPassedCommit": "pending",
+      "notes": "19 tests passing (US-MFTF-13.4-edit-resync-referenced-listing.test.ts: 14 node; US-MFTF-13.4-edit-referenced-form.test.tsx: 5 jsdom). updateReferencedListingAction(listingId, _prev, formData): auth+ownership guard, SOLD read-only, edits title/description/retailPrice (min $1), refuses to change providerProductRef (immutable after creation). resyncReferencedListingAction(listingId): re-ingests providerProductRef, diffs cached vs new snapshot into a human-readable change summary (base-cost change \u00a3X\u2192\u00a3Y, variant out of/back in stock, added, no-longer-available), applies snapshot via applyTeemillSnapshot with preserveOrderableVariantRefs = Order.externalSku for this listing so a vanished-but-ordered variant is kept and marked isOrderable:false (NOT deleted); unordered vanished variants are removed; returns {changes:[]} (empty = no changes). getReferencedListingForEdit(listingId) returns editable merchandising + read-only Teemill-owned data (colours+hex, sizes, per-variant stock) + editOnTeemillUrl; null for designed listings. EditReferencedListingForm: editable title/desc/price form + read-only colour swatches/sizes + 'Re-sync from Teemill' button (shows change summary) + 'Edit on Teemill' outbound link (new tab, rel=noopener). Edit page /seller/apparel/[listingId]/edit now branches on sourcingMode (referenced \u2192 new form; designed \u2192 unchanged). LIVE-CONFIRM (Open Q, carried to PR): per-product Teemill EDITOR URL pattern unverified \u2014 teemillEditUrl() deliberately returns the generic Teemill account/dashboard fallback (TEEMILL_DASHBOARD_URL override) rather than a guessed per-product URL; swap once confirmed live."
     },
     {
       "id": "US-MFTF-7.1",

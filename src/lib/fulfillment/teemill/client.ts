@@ -33,6 +33,20 @@ export function getTeemillProject(): string {
   }
 }
 
+/**
+ * Outbound "Edit on Teemill" link for a referenced product.
+ *
+ * LIVE-CONFIRM (Open Question, /docs/teemill-api-notes.md): a stable per-product
+ * *editor* URL — and whether it needs the founder's authenticated Teemill session
+ * — is unverified. The catalog exposes `ref`/`slug`, but the editor URL pattern is
+ * not. Until it is confirmed live, we deliberately return the generic Teemill
+ * account dashboard (a working fallback) rather than guessing a per-product URL
+ * that could 404. Swap the body here once the pattern is known.
+ */
+export function teemillEditUrl(_opts: { ref?: string | null; slug?: string | null } = {}): string {
+  return process.env.TEEMILL_DASHBOARD_URL ?? "https://teemill.com/account/";
+}
+
 /** Authenticated GET against the Teemill Orders API. */
 export async function teemillGet(path: string): Promise<Response> {
   const project = encodeURIComponent(getTeemillProject());

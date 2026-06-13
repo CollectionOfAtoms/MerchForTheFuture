@@ -7,4 +7,9 @@ export type {
   TeemillVariantSnapshot,
   IngestResult,
 } from "./ingest";
-export { getTeemillProject, getTeemillApiKey, TEEMILL_API_BASE } from "./client";
+export {
+  getTeemillProject,
+  getTeemillApiKey,
+  teemillEditUrl,
+  TEEMILL_API_BASE,
+} from "./client";
