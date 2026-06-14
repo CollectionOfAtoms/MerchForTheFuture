@@ -1,28 +1,50 @@
 // Read-shape helpers for REFERENCED (Teemill) apparel listings.
 
+function fromCodePointSafe(cp: number): string {
+  if (!Number.isFinite(cp) || cp < 0 || cp > 0x10ffff) return "";
+  try {
+    return String.fromCodePoint(cp);
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Convert a provider's HTML product description into plain text suitable for
- * pre-filling the (plain-text) description textarea. Block tags and `<br>` become
- * line breaks; remaining tags are stripped; common entities are decoded; runs of
- * whitespace are collapsed and blank lines dropped. The seller can edit or clear
- * the result — this is only a default.
+ * pre-filling the (plain-text) description textarea. The value is only ever used
+ * as a React text/`value` (which escapes it) — there is no HTML-injection path —
+ * but we still produce clean text: `<script>`/`<style>` contents and comments are
+ * dropped, block tags and `<br>` become line breaks, remaining tags are stripped,
+ * named + numeric/hex entities are decoded, control characters are removed, and
+ * runs of whitespace/blank lines are collapsed. The seller can edit or clear the
+ * result — this is only a default.
  */
 export function teemillDescriptionToText(html: string | null | undefined): string {
   if (!html) return "";
   const withBreaks = html
+    // Drop script/style element contents entirely (never surface them as text).
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "")
+    // Drop HTML comments.
+    .replace(/<!--[\s\S]*?-->/g, "")
+    // Block-level closers and <br> become line breaks.
     .replace(/<\s*br\s*\/?\s*>/gi, "\n")
-    .replace(/<\/\s*(p|div|li|h[1-6]|ul|ol|tr)\s*>/gi, "\n")
-    .replace(/<[^>]+>/g, "");
+    .replace(/<\/\s*(p|div|li|h[1-6]|ul|ol|tr|table|section|article|header|footer)\s*>/gi, "\n")
+    // Strip any remaining tags (including malformed/unclosed leftovers).
+    .replace(/<[^>]*>/g, "");
   const decoded = withBreaks
     .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
+    .replace(/&#x([0-9a-f]+);/gi, (_m, hex: string) => fromCodePointSafe(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_m, dec: string) => fromCodePointSafe(parseInt(dec, 10)))
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'");
+    .replace(/&amp;/gi, "&")
+    // Remove control characters except tab and newline.
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
   return decoded
     .split("\n")
-    .map((line) => line.replace(/\s+/g, " ").trim())
+    .map((line) => line.replace(/[^\S\n]+/g, " ").trim())
     .filter((line) => line.length > 0)
     .join("\n");
 }

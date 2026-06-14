@@ -254,6 +254,25 @@ describe("US-MFTF-13.3 — teemillDescriptionToText", () => {
     expect(teemillDescriptionToText(null)).toBe("");
     expect(teemillDescriptionToText("")).toBe("");
   });
+
+  it("drops <script>/<style> contents and HTML comments entirely", () => {
+    expect(
+      teemillDescriptionToText(
+        '<p>Hello</p><script>alert("x")</script><style>.a{}</style><!-- note --><p>World</p>',
+      ),
+    ).toBe("Hello\nWorld");
+  });
+
+  it("decodes numeric and hex entities", () => {
+    expect(teemillDescriptionToText("<p>caf&#233; &#x26; co</p>")).toBe("café & co");
+  });
+
+  it("strips malformed/unclosed tags without leaking markup", () => {
+    expect(teemillDescriptionToText("<p>Tee <b>bold</p>")).toBe("Tee bold");
+    // A stray angle-bracket span is treated as a tag and removed (Teemill encodes
+    // real `<` as &lt;); the point is no markup leaks through.
+    expect(teemillDescriptionToText("a < b and c > d")).toBe("a d");
+  });
 });
 
 // ─── Seller index renders REFERENCED rows (MFTF-13 schema-touch of 6.3 slice) ──
