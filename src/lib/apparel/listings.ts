@@ -3,6 +3,7 @@ import { teemillEditUrl } from "@/lib/fulfillment/teemill";
 import {
   referencedListingColors,
   referencedListingSizes,
+  referencedListingCarousel,
 } from "@/lib/apparel/referenced";
 
 /**
@@ -142,6 +143,11 @@ export async function getReferencedListingForEdit(listingId: string) {
     snapshotFetchedAt: listing.snapshotFetchedAt,
     colors: referencedListingColors(listing.referencedVariants),
     sizes: referencedListingSizes(listing.referencedVariants),
+    // Edit carousel: uploaded lifestyle photos first, then Teemill mockups.
+    carouselImages: referencedListingCarousel({
+      lifestyle: listing.images,
+      variants: listing.referencedVariants,
+    }),
     variants: listing.referencedVariants.map((v) => ({
       variantRef: v.variantRef,
       colorName: v.colorName,

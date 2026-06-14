@@ -32,6 +32,11 @@ const listing = {
   ],
   sizes: ["S", "M", "L"],
   images: [],
+  carouselImages: [
+    { url: "https://blob/ls-a.jpg", kind: "lifestyle" as const, label: null },
+    { url: "https://images.podos.io/mock-evergreen.jpg", kind: "mockup" as const, label: "Evergreen" },
+    { url: "https://images.podos.io/mock-brown.jpg", kind: "mockup" as const, label: "Brown" },
+  ],
   editOnTeemillUrl:
     "https://teemill.com/create-a-product/powered-by-plants/?project=merchforthefuture-451391",
 };
@@ -42,6 +47,17 @@ afterEach(() => {
 });
 
 describe("US-MFTF-13.4 — EditReferencedListingForm", () => {
+  it("renders a central carousel with the listing's images (lifestyle + mockups)", () => {
+    render(<EditReferencedListingForm listing={listing} />);
+    // First image (lifestyle) shown in the main viewer + a thumbnail each.
+    const imgs = screen.getAllByRole("img");
+    const srcs = imgs.map((i) => i.getAttribute("src"));
+    expect(srcs).toContain("https://blob/ls-a.jpg");
+    expect(srcs).toContain("https://images.podos.io/mock-evergreen.jpg");
+    // Prev/next controls appear when there is more than one image.
+    expect(screen.getByRole("button", { name: /next image/i })).toBeInTheDocument();
+  });
+
   it("renders editable merchandising fields (title, retail price)", () => {
     render(<EditReferencedListingForm listing={listing} />);
     expect((screen.getByLabelText(/title/i) as HTMLInputElement).value).toBe("Powered By Plants");

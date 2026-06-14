@@ -77,6 +77,36 @@ export function referencedListingImages(input: ReferencedImageInput): string[] {
   return urls;
 }
 
+export interface ReferencedCarouselImage {
+  url: string;
+  kind: "lifestyle" | "mockup";
+  /** Colour name for a mockup; null for lifestyle photos. */
+  label: string | null;
+}
+
+/**
+ * Ordered images for the referenced-listing edit carousel: uploaded lifestyle
+ * photos first (processed display variant when available, else the original),
+ * then the distinct per-colour Teemill mockups. Duplicate URLs are dropped so a
+ * mockup already shown as a lifestyle photo isn't repeated. Lifestyle photos are
+ * taken in the order given (the caller sorts by sortOrder).
+ */
+export function referencedListingCarousel(input: {
+  lifestyle: { displayUrl: string | null; originalUrl: string }[];
+  variants: { mockupUrl: string | null; colorName: string }[];
+}): ReferencedCarouselImage[] {
+  const out: ReferencedCarouselImage[] = [];
+  const seen = new Set<string>();
+  const push = (url: string | null | undefined, kind: "lifestyle" | "mockup", label: string | null) => {
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    out.push({ url, kind, label });
+  };
+  for (const img of input.lifestyle) push(img.displayUrl ?? img.originalUrl, "lifestyle", null);
+  for (const v of input.variants) push(v.mockupUrl, "mockup", v.colorName);
+  return out;
+}
+
 export interface ReferencedColorSwatch {
   colorName: string;
   colorHex: string;

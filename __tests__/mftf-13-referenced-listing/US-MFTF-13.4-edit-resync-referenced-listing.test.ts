@@ -18,6 +18,7 @@ const {
   resyncReferencedListingAction,
 } = await import("@/app/actions/referenced-apparel");
 const { getReferencedListingForEdit } = await import("@/lib/apparel/listings");
+const { referencedListingCarousel } = await import("@/lib/apparel/referenced");
 const {
   ingestTeemillProduct,
   applyTeemillSnapshot,
@@ -245,6 +246,40 @@ describe("US-MFTF-13.4 — Teemill designer/editor URLs", () => {
   });
 });
 
+// ─── referencedListingCarousel (pure ordering) ────────────────────────────────
+
+describe("US-MFTF-13.4 — referencedListingCarousel", () => {
+  it("orders lifestyle photos first, then distinct mockups, deduped", () => {
+    const result = referencedListingCarousel({
+      lifestyle: [
+        { displayUrl: "d1.jpg", originalUrl: "o1.jpg" },
+        { displayUrl: null, originalUrl: "o2.jpg" },
+      ],
+      variants: [
+        { mockupUrl: "m-green.jpg", colorName: "Evergreen" },
+        { mockupUrl: "m-green.jpg", colorName: "Evergreen" }, // duplicate colour
+        { mockupUrl: "m-brown.jpg", colorName: "Brown" },
+        { mockupUrl: null, colorName: "NoMock" },
+      ],
+    });
+    expect(result.map((r) => r.url)).toEqual(["d1.jpg", "o2.jpg", "m-green.jpg", "m-brown.jpg"]);
+    expect(result[0]).toEqual({ url: "d1.jpg", kind: "lifestyle", label: null });
+    expect(result[2]).toEqual({ url: "m-green.jpg", kind: "mockup", label: "Evergreen" });
+  });
+
+  it("returns an empty array when there are no images", () => {
+    expect(referencedListingCarousel({ lifestyle: [], variants: [] })).toEqual([]);
+  });
+
+  it("falls back to mockups only when no lifestyle photos exist", () => {
+    const result = referencedListingCarousel({
+      lifestyle: [],
+      variants: [{ mockupUrl: "m.jpg", colorName: "Black" }],
+    });
+    expect(result).toEqual([{ url: "m.jpg", kind: "mockup", label: "Black" }]);
+  });
+});
+
 // ─── getReferencedListingForEdit ──────────────────────────────────────────────
 
 describe("US-MFTF-13.4 — getReferencedListingForEdit", () => {
@@ -268,6 +303,47 @@ describe("US-MFTF-13.4 — getReferencedListingForEdit", () => {
     // Live-confirmed editor deep-link: /create-a-product/{slug}/?project={sub}.
     expect(data!.editOnTeemillUrl).toBe(EXPECTED_EDIT_URL);
     expect(Number(data!.retailPrice)).toBe(32);
+  });
+
+  it("exposes carouselImages: uploaded lifestyle photos first, then Teemill mockups", async () => {
+    const listing = await seedReferencedListing(seller.id);
+    // Add two lifestyle photos (one processed, one not).
+    await prisma.apparelListingImage.create({
+      data: {
+        apparelListingId: listing.id,
+        originalUrl: "https://blob/ls-a-orig.jpg",
+        displayUrl: "https://blob/ls-a-display.jpg",
+        isPrimary: true,
+        sortOrder: 0,
+      },
+    });
+    await prisma.apparelListingImage.create({
+      data: {
+        apparelListingId: listing.id,
+        originalUrl: "https://blob/ls-b-orig.jpg",
+        isPrimary: false,
+        sortOrder: 1,
+      },
+    });
+
+    const data = await getReferencedListingForEdit(listing.id);
+    const carousel = data!.carouselImages;
+    // Lifestyle first (display variant preferred, else original), in sort order.
+    expect(carousel[0]).toEqual({
+      url: "https://blob/ls-a-display.jpg",
+      kind: "lifestyle",
+      label: null,
+    });
+    expect(carousel[1]).toEqual({
+      url: "https://blob/ls-b-orig.jpg",
+      kind: "lifestyle",
+      label: null,
+    });
+    // Mockups follow.
+    const firstMockupIdx = carousel.findIndex((i) => i.kind === "mockup");
+    expect(firstMockupIdx).toBe(2);
+    expect(carousel.slice(firstMockupIdx).every((i) => i.kind === "mockup")).toBe(true);
+    expect(carousel.some((i) => i.url.includes("podos.io"))).toBe(true);
   });
 
   it("returns null for a designed listing (wrong mode)", async () => {

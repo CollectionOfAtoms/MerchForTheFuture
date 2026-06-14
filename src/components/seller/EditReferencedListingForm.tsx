@@ -5,6 +5,8 @@ import {
   updateReferencedListingAction,
   resyncReferencedListingAction,
 } from "@/app/actions/referenced-apparel";
+import ReferencedImageCarousel from "@/components/seller/ReferencedImageCarousel";
+import type { ReferencedCarouselImage } from "@/lib/apparel/referenced";
 
 const FIELD =
   "rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-stone-400 focus:outline-none w-full";
@@ -25,6 +27,7 @@ export interface ReferencedListingForForm {
   colors: { colorName: string; colorHex: string }[];
   sizes: string[];
   images: { id: string; originalUrl: string }[];
+  carouselImages: ReferencedCarouselImage[];
   editOnTeemillUrl: string;
 }
 
@@ -55,6 +58,11 @@ export default function EditReferencedListingForm({
 
   return (
     <div className="space-y-8">
+      {/* Central preview — lifestyle photos first, then Teemill mockups. */}
+      <div className="mx-auto max-w-md">
+        <ReferencedImageCarousel images={listing.carouselImages} title={listing.title} />
+      </div>
+
       {/* Provider banner — Teemill is named openly in referenced mode. */}
       <div className="rounded-2xl border border-stone-200 bg-white p-6 space-y-4">
         <div className="flex items-start justify-between gap-4">
