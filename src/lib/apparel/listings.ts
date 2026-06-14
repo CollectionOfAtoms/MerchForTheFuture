@@ -143,9 +143,12 @@ export async function getReferencedListingForEdit(listingId: string) {
     snapshotFetchedAt: listing.snapshotFetchedAt,
     colors: referencedListingColors(listing.referencedVariants),
     sizes: referencedListingSizes(listing.referencedVariants),
-    // Edit carousel: uploaded lifestyle photos first, then Teemill mockups.
+    // Edit carousel: uploaded lifestyle photos first (the primary photo leads,
+    // then the rest in sort order), then the Teemill mockups.
     carouselImages: referencedListingCarousel({
-      lifestyle: listing.images,
+      lifestyle: [...listing.images].sort(
+        (a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.sortOrder - b.sortOrder,
+      ),
       variants: listing.referencedVariants,
     }),
     variants: listing.referencedVariants.map((v) => ({

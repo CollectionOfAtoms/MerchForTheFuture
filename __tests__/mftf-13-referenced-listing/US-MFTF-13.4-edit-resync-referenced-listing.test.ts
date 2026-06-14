@@ -346,6 +346,30 @@ describe("US-MFTF-13.4 — getReferencedListingForEdit", () => {
     expect(carousel.some((i) => i.url.includes("podos.io"))).toBe(true);
   });
 
+  it("leads the carousel with the primary lifestyle photo even if its sortOrder is higher", async () => {
+    const listing = await seedReferencedListing(seller.id);
+    await prisma.apparelListingImage.create({
+      data: {
+        apparelListingId: listing.id,
+        originalUrl: "https://blob/first-by-order.jpg",
+        isPrimary: false,
+        sortOrder: 0,
+      },
+    });
+    await prisma.apparelListingImage.create({
+      data: {
+        apparelListingId: listing.id,
+        originalUrl: "https://blob/the-primary.jpg",
+        isPrimary: true,
+        sortOrder: 1,
+      },
+    });
+
+    const data = await getReferencedListingForEdit(listing.id);
+    expect(data!.carouselImages[0].url).toBe("https://blob/the-primary.jpg");
+    expect(data!.carouselImages[1].url).toBe("https://blob/first-by-order.jpg");
+  });
+
   it("returns null for a designed listing (wrong mode)", async () => {
     const pt = await prisma.productType.create({
       data: { name: `T ${crypto.randomUUID()}`, fulfillmentProvider: "TEEMILL", providerSkuBase: "RNA1" },

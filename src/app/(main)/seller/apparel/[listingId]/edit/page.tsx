@@ -7,6 +7,7 @@ import {
 import EditApparelListingForm from "@/components/seller/EditApparelListingForm";
 import ApparelImageManager from "@/components/seller/ApparelImageManager";
 import EditReferencedListingForm from "@/components/seller/EditReferencedListingForm";
+// (ApparelImageManager is shared by both the designed and referenced edit views.)
 
 export default async function EditApparelListingPage({
   params,
@@ -41,6 +42,18 @@ export default async function EditApparelListingPage({
               : null,
           }}
         />
+
+        {/* Lifestyle-photo management — these lead the carousel above, ahead of
+            the Teemill mockups. No design file (referenced listings own none). */}
+        <div className="mt-8">
+          <ApparelImageManager
+            listingId={referenced.id}
+            initialImages={referenced.images}
+            designImageUrl={null}
+            showDesignFile={false}
+            refreshOnChange
+          />
+        </div>
       </div>
     );
   }
