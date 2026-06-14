@@ -1587,45 +1587,45 @@
       "id": "US-MFTF-13.1",
       "epic": "Epic MFTF-13: Referenced Apparel Listings (Teemill Product Ref)",
       "title": "Referenced Sourcing Mode: Schema Extension",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Additive schema extension. TOUCHES Passed story US-MFTF-5.1: adds sourcingMode (DESIGNED|REFERENCED, default DESIGNED), nullable providerKey/providerProductRef/providerBaseCurrency/providerBasePrice/snapshotFetchedAt on ApparelListing; makes productTypeId and designImageUrl nullable; adds ReferencedVariant model (variantRef, colorName, colorHex, sizeLabel, stockLevel, isOrderable, mockupUrl). App-layer invariant: exactly one of productTypeId / providerProductRef. Re-run __tests__/mftf-5-apparel-listing/ to confirm designed-mode unchanged. retailPrice stays USD/required in both modes; providerBasePrice is margin-monitoring metadata only."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-13",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-13",
+      "testPassedCommit": "pending",
+      "notes": "15 tests passing (__tests__/mftf-13-referenced-listing/US-MFTF-13.1-referenced-schema.test.ts). SourcingMode enum (DESIGNED|REFERENCED) added; ApparelListing gains sourcingMode (default DESIGNED so existing rows unchanged) + nullable providerKey/providerProductRef/providerBaseCurrency/providerBasePrice(Decimal 12,2)/snapshotFetchedAt; productTypeId + designImageUrl made nullable (productType relation now optional); ReferencedVariant model added (variantRef, colorName, colorHex, sizeLabel, stockLevel Int, isOrderable, mockupUrl?) with cascade delete + @@index. App-layer invariant validateApparelListingInvariant (src/lib/apparel/invariants.ts): DESIGNED requires productTypeId+designImageUrl & zero ReferencedVariant rows; REFERENCED requires providerKey+providerProductRef & zero ApparelListingColor rows; exactly one of productTypeId/providerProductRef. Schema pushed to main + test DBs via prisma db push; resetDatabase() updated with ReferencedVariant. Re-ran __tests__/mftf-5-apparel-listing/ (+mftf-4/mftf-6): 119 designed-mode tests pass unchanged. retailPrice stays USD/required both modes; providerBasePrice is margin-monitoring metadata only. The validator is wired into the create/update actions in US-MFTF-13.3/13.4."
     },
     {
       "id": "US-MFTF-13.2",
       "epic": "Epic MFTF-13: Referenced Apparel Listings (Teemill Product Ref)",
       "title": "Teemill Catalog Ingest",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "ingestTeemillProduct(productRef) parses GET /catalog/products into cached ReferencedVariant snapshot. Verified auth: Authorization header = raw key (NO Bearer prefix); ?project={JWT sub claim} = merchforthefuture-451391 (NOT the public key). variantRef is absolute \u2026/catalog/variants/{uuid}. Colours carry hex; mockups matched by images[].variantIds. Idempotent re-ingest. LIVE-API FLAG: field paths verified against one product only (Powered By Plants) \u2014 confirm against a 2nd product before Passed."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-13",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-13",
+      "testPassedCommit": "pending",
+      "notes": "15 tests passing (US-MFTF-13.2-teemill-ingest.test.ts). src/lib/fulfillment/teemill/: client.ts (teemillGet + getTeemillProject \u2014 decodes JWT sub from TEEMILL_API_KEY, override via TEEMILL_PROJECT env) and ingest.ts. ingestTeemillProduct(productRef) calls GET /catalog/products with verified auth (Authorization = raw key, NO Bearer; ?project={JWT sub}=merchforthefuture-451391, NOT the public key \u2014 asserted in an auth test), matches the product by ref/id/slug, and returns a normalized snapshot {providerKey, providerProductRef, title, slug, providerBaseCurrency, providerBasePrice, variants[]}. Per variant: variantRef (absolute /catalog/variants/), colorName+colorHex (Colour attribute thumbnail), sizeLabel, stockLevel, isOrderable (enabled && stock>0), mockupUrl (matched from variant.images[] then product.images[] by variantIds). No 3-colour cap enforced. Errors (not-found/disabled/401/network) returned to caller, never thrown. No design file uploaded. applyTeemillSnapshot(listingId, snapshot, {preserveOrderableVariantRefs}) persists idempotently in a transaction (replace ReferencedVariant rows, preserve+mark-not-orderable vanished-but-ordered refs for 13.4, refresh providerBasePrice/currency/snapshotFetchedAt). MSW: shared __tests__/mocks/teemill-fixture.ts (verified Powered By Plants shape: 3 colours w/ hex, GBP prices, per-warehouse stock incl. a 0-stock variant, product-level mockups by variantIds, /catalog/variants/ refs) wired into global handlers. RESIDUAL LIVE-API FLAG (human, no sandbox exists): field paths verified against ONE product (Powered By Plants); confirm the parser against a 2nd live product (esp. images[].variantIds linkage + attributes ordering) \u2014 carried to the PR QA checklist."
     },
     {
       "id": "US-MFTF-13.3",
       "epic": "Epic MFTF-13: Referenced Apparel Listings (Teemill Product Ref)",
       "title": "Create Referenced Listing (Paste Teemill Ref)",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Seller pastes Teemill ref \u2192 ingest \u2192 preview (colours+hex, sizes, mockups, GBP base shown as founder margin context). Seller opacity intentionally DROPPED in referenced mode (Teemill named openly). Fixed USD retailPrice (min $1). Optional lifestyle photos via corner-watermark pipeline; cached Teemill mockups used as images when none uploaded. Margin hint is display-only, NO live FX call. Step 1 must instruct that the design is created on Teemill FIRST (outbound link to Teemill designer, new tab) + a how-to-find-the-ref blurb; no assumption of seller pre-knowledge. Unresolvable ref re-surfaces that guidance."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-13",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-13",
+      "testPassedCommit": "pending",
+      "notes": "20 tests passing (US-MFTF-13.3-create-referenced-listing.test.ts: 15 node action/integration; US-MFTF-13.3-create-referenced-listing-form.test.tsx: 6 jsdom component, via // @vitest-environment jsdom docblock). src/app/actions/referenced-apparel.ts: resolveTeemillRefAction(ref) (auth-guarded; ingest \u2192 preview {title, providerBaseCurrency, providerBasePrice, colors[name+hex], sizes, mockups, orderableCount}; errors returned so the form re-surfaces guidance) and createReferencedListingAction (auth; validates title, retail\u2265$1, ref resolves, \u22651 orderable variant; creates ApparelListing sourcingMode=REFERENCED with productTypeId/designImageUrl null + providerKey/providerProductRef, no ApparelListingColor rows, no design upload; applyTeemillSnapshot caches variants+base price; redirects to edit). src/lib/apparel/referenced.ts: pure read-shape helpers referencedListingImages (lifestyle photos else distinct Teemill mockups), referencedListingColors, referencedListingSizes. Component NewReferencedListingForm: Step 1 'create on Teemill first' guidance + outbound designer link (new tab, rel=noopener) + how-to-find-the-ref blurb + Resolve\u2192preview (swatches w/ hex, sizes, mockups, 'your cost, GBP'); Teemill named openly; margin hint is display-only with an illustrative rate (NO network FX). Page /seller/apparel/new-referenced + '+ Referenced listing' link on the seller index. MFTF-13 schema-touch of the early-shipped 6.3 slice: getSellerListings now renders REFERENCED rows (productType nullable \u2014 provider label 'Teemill', mockup thumbnail fallback, sourcingMode on the row); designed-mode readers (getApparelListingForEdit, updateApparelListingAction) made null-safe for the now-nullable productType. Regression: mftf-5 (53) + mftf-6 (39) green; tsc clean on src/. RESIDUAL: uses the same verified MSW catalog stub as 13.2 (one-product live-confirm flag carries through). ENHANCEMENT (2026-06-14): the description textarea auto-populates from the referenced product's Teemill description — ingest snapshot now carries the raw HTML description (TeemillProductSnapshot.description), resolveTeemillRefAction returns it cleaned to plain text via teemillDescriptionToText (src/lib/apparel/referenced.ts: strips tags, block tags/<br>→newlines, decodes common entities, collapses whitespace), and the form pre-fills the (still editable/clearable) description field on resolve. 80 mftf-13 tests green. HARDENING (2026-06-14): teemillDescriptionToText now drops <script>/<style> contents + HTML comments, decodes numeric/hex entities, removes control chars, and strips malformed tags (defensive — the value only ever lands in a textarea/value which React escapes, so there was never an HTML-injection path; no dangerouslySetInnerHTML anywhere). Added an SSR-stability regression test (US-MFTF-13.3-form-ssr-stability.test.tsx) that renderToStaticMarkup's the create form and asserts the action buttons render `disabled` and the description textarea renders empty at initial state — locking the server output against the client to prevent hydration mismatches. NOTE: a reported 'page no longer renders' hydration mismatch (server buttons missing `disabled`) reproduced only against a stale long-running dev server; a clean `rm -rf .next && npm run dev` SSRs identically to the client (verified via renderToStaticMarkup). 86 mftf-13 tests green; eslint + tsc clean."
     },
     {
       "id": "US-MFTF-13.4",
       "epic": "Epic MFTF-13: Referenced Apparel Listings (Teemill Product Ref)",
       "title": "Edit / Re-Sync Referenced Listing",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Edit title/description/retailPrice/photos; colours/sizes/design are read-only (Teemill-owned). Re-sync re-runs ingest and reports diffs (stock/price). providerProductRef immutable after creation. Variant that vanishes but has orders is marked isOrderable:false, not deleted (preserves order history). Adds an 'Edit on Teemill' outbound deep-link (new tab) built from stored ref/slug, then guide seller to Re-sync. LIVE-CONFIRM: per-product editor URL pattern (and whether it needs the founder's Teemill session) is unverified \u2014 ship a dashboard/generic-designer fallback until confirmed."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-13",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-13",
+      "testPassedCommit": "pending",
+      "notes": "19 tests passing (US-MFTF-13.4-edit-resync-referenced-listing.test.ts: 14 node; US-MFTF-13.4-edit-referenced-form.test.tsx: 5 jsdom). updateReferencedListingAction(listingId, _prev, formData): auth+ownership guard, SOLD read-only, edits title/description/retailPrice (min $1), refuses to change providerProductRef (immutable after creation). resyncReferencedListingAction(listingId): re-ingests providerProductRef, diffs cached vs new snapshot into a human-readable change summary (base-cost change \u00a3X\u2192\u00a3Y, variant out of/back in stock, added, no-longer-available), applies snapshot via applyTeemillSnapshot with preserveOrderableVariantRefs = Order.externalSku for this listing so a vanished-but-ordered variant is kept and marked isOrderable:false (NOT deleted); unordered vanished variants are removed; returns {changes:[]} (empty = no changes). getReferencedListingForEdit(listingId) returns editable merchandising + read-only Teemill-owned data (colours+hex, sizes, per-variant stock) + editOnTeemillUrl; null for designed listings. EditReferencedListingForm: editable title/desc/price form + read-only colour swatches/sizes + 'Re-sync from Teemill' button (shows change summary) + 'Edit on Teemill' outbound link (new tab, rel=noopener). Edit page /seller/apparel/[listingId]/edit now branches on sourcingMode (referenced \u2192 new form; designed \u2192 unchanged). LIVE-CONFIRM RESOLVED 2026-06-13 (founder-confirmed): per-product editor URL is https://teemill.com/create-a-product/{slug}/?project={projectId} and the generic designer is https://teemill.com/create-a-product/?project={projectId}, where projectId = getTeemillProject() (JWT sub) and slug is cached at ingest on new column ApparelListing.providerProductSlug. teemillEditUrl()/teemillDesignerUrl() build these (3 URL unit tests); generic designer is the fallback when no slug is stored yet. Schema gained providerProductSlug (additive nullable, pushed to both DBs). The create form's 'Open the Teemill designer' button and the edit page's 'Edit on Teemill' link both use these. mftf-13 73 tests green; mftf-5/6 (70) regression green; tsc clean. ENHANCEMENT (2026-06-14): the referenced edit page now shows a central image carousel (ReferencedImageCarousel client component, plain <img> since Teemill mockups are served from images.podos.io which is not in the next/image allowlist) populated by referencedListingCarousel() — uploaded lifestyle photos first (display variant preferred, else original, in sortOrder), then distinct per-colour Teemill mockups, deduped; getReferencedListingForEdit returns carouselImages and EditReferencedListingForm renders it centered above the merchandising form. 91 mftf-13 tests green; eslint + tsc clean. ENHANCEMENT (2026-06-14, US-MFTF-13.4 AC 'edit lifestyle photos'): the referenced edit page now manages lifestyle photos by reusing ApparelImageManager (add via Blob + corner-watermark pipeline, delete, set-primary). ApparelImageManager gained showDesignFile (default true; referenced passes false so the design-file uploader — designed-mode only — is hidden) and refreshOnChange (referenced passes true → router.refresh() after add/delete/set-primary/process so the central carousel re-reads server data). The carousel now leads with the primary lifestyle photo (then sortOrder, then mockups), making set-primary the cover/reorder control. The underlying image actions (addApparelImageAction/deleteApparelImageAction/setApparelPrimaryImageAction) were already listing-agnostic. 95 mftf-13 tests green; mftf-5/6 (70) regression green; eslint + tsc clean."
     },
     {
       "id": "US-MFTF-7.1",
@@ -2403,5 +2403,5 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-06-12T00:00:00.000Z"
+  "lastUpdated": "2026-06-13T00:00:00.000Z"
 }

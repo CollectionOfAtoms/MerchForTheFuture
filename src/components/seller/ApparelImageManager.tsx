@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import {
   addApparelImageAction,
@@ -29,14 +30,25 @@ export default function ApparelImageManager({
   listingId,
   initialImages,
   designImageUrl,
+  showDesignFile = true,
+  refreshOnChange = false,
 }: {
   listingId: string;
   initialImages: LifestyleImage[];
   designImageUrl: string | null;
+  /** Designed listings show the clean design-file uploader; referenced listings don't. */
+  showDesignFile?: boolean;
+  /** Refresh server data after a change (so a sibling carousel re-reads it). */
+  refreshOnChange?: boolean;
 }) {
+  const router = useRouter();
   const [images, setImages] = useState<LifestyleImage[]>(
     initialImages.map((img) => ({ ...img, processingState: "done" })),
   );
+
+  function notifyChanged() {
+    if (refreshOnChange) router.refresh();
+  }
   const [design, setDesign] = useState<string | null>(designImageUrl);
   const [designUploading, setDesignUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +83,7 @@ export default function ApparelImageManager({
         ),
       );
       if (!body.ok) setError("Photo processing failed. Remove it and try again.");
+      else notifyChanged();
     } catch {
       setImages((prev) =>
         prev.map((img) => (img.id === imageId ? { ...img, processingState: "error" } : img)),
@@ -137,6 +150,7 @@ export default function ApparelImageManager({
       }
       return remaining;
     });
+    notifyChanged();
   }
 
   async function handleSetPrimary(imageId: string) {
@@ -146,6 +160,7 @@ export default function ApparelImageManager({
       return;
     }
     setImages((prev) => prev.map((img) => ({ ...img, isPrimary: img.id === imageId })));
+    notifyChanged();
   }
 
   async function handleReplaceDesign(e: React.ChangeEvent<HTMLInputElement>) {
@@ -179,7 +194,8 @@ export default function ApparelImageManager({
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>
       )}
 
-      {/* Design file */}
+      {/* Design file — designed listings only (referenced listings have no design file). */}
+      {showDesignFile && (
       <section className="rounded-2xl border border-stone-200 bg-white p-6 space-y-3">
         <h2 className="text-sm font-semibold text-stone-800">Design file</h2>
         <p className="text-xs text-stone-400">
@@ -210,6 +226,7 @@ export default function ApparelImageManager({
           </label>
         </div>
       </section>
+      )}
 
       {/* Lifestyle photos */}
       <section className="rounded-2xl border border-stone-200 bg-white p-6 space-y-4">

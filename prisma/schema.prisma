@@ -381,30 +381,84 @@ model ProductTypeSizeOption {
   @@index([productTypeId])
 }
 
-// ─── Apparel Listings (MFTF-5) ────────────────────────────────────────────────
+// ─── Apparel Listings (MFTF-5 / MFTF-13) ──────────────────────────────────────
+
+/// How an apparel listing is sourced.
+/// DESIGNED   — seller uploads a clean design file onto a founder-curated blank
+///              (Prodigi today); platform owns colour/size curation (MFTF-4/5).
+/// REFERENCED — founder builds the product on the provider's site (Teemill today)
+///              and references it; the provider owns blank/design/colours/sizes/
+///              stock/price, cached as a ReferencedVariant snapshot (MFTF-13).
+enum SourcingMode {
+  DESIGNED
+  REFERENCED
+}
 
 model ApparelListing {
   id             String        @id @default(cuid())
   sellerId       String
-  productTypeId  String
+  sourcingMode   SourcingMode  @default(DESIGNED)
+  /// DESIGNED listings only — null for REFERENCED.
+  productTypeId  String?
   title          String
   description    String?       @db.Text
   retailPrice    Decimal       @db.Decimal(12, 2)
   status         ListingStatus @default(ACTIVE)
-  /// Clean design file URL (no watermark) — sent directly to the fulfillment provider
+  /// Clean design file URL (no watermark) — sent directly to the fulfillment
+  /// provider. DESIGNED listings only; null for REFERENCED (provider owns the design).
   designImageUrl String?
+  /// REFERENCED listings only — fulfillment registry key (e.g. "teemill").
+  providerKey         String?
+  /// REFERENCED listings only — the provider product ref/id the snapshot is keyed off.
+  providerProductRef  String?
+  /// REFERENCED listings only — the provider product slug (captured at ingest),
+  /// used to build the "Edit on Teemill" per-product editor deep-link.
+  providerProductSlug String?
+  /// REFERENCED listings only — ISO 4217 currency of providerBasePrice (e.g. "GBP").
+  providerBaseCurrency String?
+  /// REFERENCED listings only — cached provider base cost for margin monitoring;
+  /// NEVER used to compute the buyer's USD retail price.
+  providerBasePrice   Decimal?  @db.Decimal(12, 2)
+  /// REFERENCED listings only — when the cached snapshot was last refreshed.
+  snapshotFetchedAt   DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  seller      User                  @relation(fields: [sellerId], references: [id])
-  productType ProductType           @relation(fields: [productTypeId], references: [id])
-  colors      ApparelListingColor[]
-  images      ApparelListingImage[]
-  orders      Order[]
+  seller            User                  @relation(fields: [sellerId], references: [id])
+  productType       ProductType?          @relation(fields: [productTypeId], references: [id])
+  colors            ApparelListingColor[]
+  images            ApparelListingImage[]
+  referencedVariants ReferencedVariant[]
+  orders            Order[]
 
   @@index([sellerId])
   @@index([status])
   @@index([productTypeId])
+  @@index([providerProductRef])
+}
+
+/// Cached, orderable variant snapshot for a REFERENCED (Teemill) apparel listing.
+/// One row per orderable colour × size combination, ingested from the provider
+/// catalog (US-MFTF-13.2). Buyers/checkout read these; only the FulfillmentProvider
+/// subclass turns `variantRef` back into a provider order.
+model ReferencedVariant {
+  id               String  @id @default(cuid())
+  apparelListingId String
+  /// Absolute orderable variant URL, e.g. https://api.teemill.com/v1/catalog/variants/{uuid}
+  variantRef       String
+  colorName        String
+  /// Hex from the variant `Colour` attribute `{type:"color", value}`.
+  colorHex         String
+  sizeLabel        String
+  /// Stock level cached at snapshot time.
+  stockLevel       Int
+  isOrderable      Boolean @default(true)
+  /// Per-colour mockup URL from `variant.images[]`/`product.images[]` (by variantIds).
+  mockupUrl        String?
+
+  apparelListing ApparelListing @relation(fields: [apparelListingId], references: [id], onDelete: Cascade)
+
+  @@index([apparelListingId])
 }
 
 model ApparelListingColor {

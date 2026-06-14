@@ -55,6 +55,13 @@ Both `product.images[]` and each `variant.images[]` carry rendered mockup URLs (
 - **3-colour free-tier cap:** confirmed live (the product maxed at exactly 3 colours).
 - **Currency:** Teemill bases cost in **GBP** while the store is USD/Stripe — an FX/margin input to the open "apparel retail pricing model" question.
 
+### Designer / per-product editor URLs (confirmed live 2026-06-13)
+These are on the **public site** (`teemill.com`), not the API host:
+- **New product (designer):** `https://teemill.com/create-a-product/?project={projectId}`
+- **Edit an existing product:** `https://teemill.com/create-a-product/{slug}/?project={projectId}`
+
+`{projectId}` is the JWT `sub` on the API key (`merchforthefuture-451391`) — the same value used as the `?project=` param on the Orders API. `{slug}` is the product `slug` from `/catalog/products` (e.g. `powered-by-plants`; the live product's reference address is `https://merchforthefuture.teemill.com/product/powered-by-plants/`). Implemented in `src/lib/fulfillment/teemill/client.ts` (`teemillDesignerUrl()` / `teemillEditUrl()`); the slug is cached at ingest on `ApparelListing.providerProductSlug`. This resolves the US-MFTF-13.4 "Edit on Teemill" live-confirm flag.
+
 ### Design implication (for a spec session — not decided here)
 A Teemill custom design only becomes orderable once the product exists in the project, after which the catalog exposes design, colours, sizes, mockups, stock and base price by **product ref**. This points toward a "reference a Teemill product ref" listing model for Teemill — distinct from the Prodigi "send a design file to a chosen blank" model that MFTF-4/5 currently implement. That divergence is a spec-level decision; see the kickoff prompt handed to the design session.
 
