@@ -13,6 +13,7 @@ interface MobileMenuProps {
 }
 
 const sharedLinks = [
+  { href: "/shop", label: "Shop" },
   { href: "/browse", label: "Browse" },
   { href: "/browse?type=auction", label: "Auctions" },
   { href: "/browse?type=print", label: "Prints" },

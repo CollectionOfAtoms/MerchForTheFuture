@@ -4,6 +4,7 @@ import MobileMenu from "@/components/MobileMenu";
 import NavDropdown from "@/components/NavDropdown";
 
 const sharedLinks = [
+  { href: "/shop", label: "Shop" },
   { href: "/browse", label: "Browse" },
   { href: "/browse?type=auction", label: "Auctions" },
   { href: "/browse?type=print", label: "Prints" },

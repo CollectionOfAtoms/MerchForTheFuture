@@ -1554,12 +1554,12 @@
       "id": "US-MFTF-6.1",
       "epic": "Epic MFTF-6: Apparel Product Page & Browse",
       "title": "Apparel Browse Page",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-14",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-14",
+      "testPassedCommit": "pending",
+      "notes": "18 tests passing (US-MFTF-6.1-apparel-browse.test.ts: 11 node read; US-MFTF-6.1-apparel-card.test.tsx: 5 jsdom component; US-MFTF-6.1-shop-nav-link.test.tsx: 2 jsdom nav). getApparelListings(opts) in src/lib/apparel/browse.ts: ACTIVE-only, createdAt desc, ≤24/page (limit clamped to 24), returns normalized ApparelCard {id,title,primaryImageUrl,retailPrice,colorCount} for BOTH sourcing modes from one projection — colorCount = offered ApparelListingColor rows (designed) or distinct ReferencedVariant colours (referenced, via referencedListingColors); primaryImageUrl prefers the primary lifestyle photo's grid variant, else falls back to a cached Teemill mockup. Card carries no provider name/base price/currency/sourcingMode (buyer opacity unconditional). ApparelListingCard renders title, USD price, 'Available in N color(s)', links to /shop/[listingId]; plain <img> (Teemill mockups served from images.podos.io, not in next/image allowlist). /shop server-rendered grid page (src/app/(main)/shop/page.tsx) with Previous/Next pagination. 'Shop' nav link added to Nav + MobileMenu sharedLinks (visible to all users)."
     },
     {
       "id": "US-MFTF-6.2",
