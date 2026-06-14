@@ -220,10 +220,14 @@ export default function NewReferencedListingForm({
 
         <div>
           <label htmlFor="description" className={LABEL}>Description</label>
+          {/* Pre-filled from the Teemill product description; keyed so a fresh
+              resolve replaces the default. The seller can edit or clear it. */}
           <textarea
             id="description"
             name="description"
             rows={4}
+            defaultValue={preview?.description ?? ""}
+            key={`desc-${preview?.title ?? ""}`}
             placeholder="Tell buyers about this design…"
             className={`${FIELD} resize-none`}
           />

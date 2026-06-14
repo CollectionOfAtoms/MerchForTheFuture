@@ -76,6 +76,12 @@ describe("US-MFTF-13.2 — ingestTeemillProduct parser", () => {
     expect(bySlug.ok).toBe(true);
   });
 
+  it("carries the product's Teemill description (raw HTML) on the snapshot", async () => {
+    const result = await ingestTeemillProduct(POWERED_BY_PLANTS_PRODUCT_REF);
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.snapshot.description).toBe("<p>Organic cotton tee.</p>");
+  });
+
   it("parses GBP base currency and price from the variant", async () => {
     const result = await ingestTeemillProduct(POWERED_BY_PLANTS_PRODUCT_REF);
     if (!result.ok) throw new Error("expected ok");

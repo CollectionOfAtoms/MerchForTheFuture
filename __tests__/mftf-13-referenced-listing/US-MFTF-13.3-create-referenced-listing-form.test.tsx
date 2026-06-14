@@ -68,6 +68,7 @@ describe("US-MFTF-13.3 — NewReferencedListingForm Step 1 guidance", () => {
     resolveTeemillRefAction.mockResolvedValue({
       preview: {
         title: "Powered By Plants",
+        description: "Organic cotton tee.",
         providerBaseCurrency: "GBP",
         providerBasePrice: 21,
         colors: [
@@ -92,5 +93,32 @@ describe("US-MFTF-13.3 — NewReferencedListingForm Step 1 guidance", () => {
     // GBP cost labelled as founder margin context.
     expect(screen.getByText(/your cost/i)).toBeInTheDocument();
     expect(screen.getByText(/£?\s*21/)).toBeInTheDocument();
+  });
+
+  it("auto-populates the description field from the resolved Teemill product", async () => {
+    resolveTeemillRefAction.mockResolvedValue({
+      preview: {
+        title: "Powered By Plants",
+        description: "Organic cotton tee, printed on demand.",
+        providerBaseCurrency: "GBP",
+        providerBasePrice: 21,
+        colors: [{ colorName: "Evergreen", colorHex: "#23312d" }],
+        sizes: ["M"],
+        mockups: [],
+        orderableCount: 1,
+      },
+    });
+    render(<NewReferencedListingForm />);
+
+    fireEvent.change(screen.getByLabelText(/Teemill product link or ref/i), {
+      target: { value: "https://api.teemill.com/v1/catalog/products/x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /resolve|look up|preview/i }));
+
+    await waitFor(() => {
+      expect((screen.getByLabelText(/description/i) as HTMLTextAreaElement).value).toBe(
+        "Organic cotton tee, printed on demand.",
+      );
+    });
   });
 });

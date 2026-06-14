@@ -9,6 +9,7 @@ import type { TeemillProductSnapshot } from "@/lib/fulfillment/teemill";
 import {
   referencedListingColors,
   referencedListingSizes,
+  teemillDescriptionToText,
 } from "@/lib/apparel/referenced";
 
 type ActionResult = { error: string } | undefined;
@@ -50,6 +51,8 @@ function editPath(listingId: string) {
 
 export interface ReferencedPreview {
   title: string;
+  /** Teemill's product description, cleaned to plain text for the form default. */
+  description: string;
   providerBaseCurrency: string;
   providerBasePrice: number;
   colors: { colorName: string; colorHex: string }[];
@@ -79,6 +82,7 @@ export async function resolveTeemillRefAction(productRef: string): Promise<Resol
   return {
     preview: {
       title: snapshot.title,
+      description: teemillDescriptionToText(snapshot.description),
       providerBaseCurrency: snapshot.providerBaseCurrency,
       providerBasePrice: snapshot.providerBasePrice,
       colors: referencedListingColors(snapshot.variants),

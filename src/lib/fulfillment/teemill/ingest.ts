@@ -18,6 +18,8 @@ export interface TeemillProductSnapshot {
   /** The product ref/id/slug the seller pasted (stored as providerProductRef). */
   providerProductRef: string;
   title: string;
+  /** The product description as returned by Teemill (HTML). */
+  description: string | null;
   slug: string | null;
   providerBaseCurrency: string;
   providerBasePrice: number;
@@ -56,6 +58,7 @@ interface RawProduct {
   id?: string;
   ref?: string;
   title?: string;
+  description?: string;
   slug?: string;
   enabled?: boolean;
   images?: RawImage[];
@@ -145,6 +148,7 @@ export async function ingestTeemillProduct(productRef: string): Promise<IngestRe
       providerKey: "teemill",
       providerProductRef: productRef,
       title: product.title ?? "",
+      description: product.description ?? null,
       slug: product.slug ?? null,
       providerBaseCurrency: priceSource?.currencyCode ?? "GBP",
       providerBasePrice: priceSource?.amount ?? 0,

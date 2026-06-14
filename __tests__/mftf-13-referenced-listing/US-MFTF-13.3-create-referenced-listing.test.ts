@@ -18,7 +18,9 @@ vi.mock("@/auth", () => ({ auth: vi.fn() }));
 const { createReferencedListingAction, resolveTeemillRefAction } = await import(
   "@/app/actions/referenced-apparel"
 );
-const { referencedListingImages } = await import("@/lib/apparel/referenced");
+const { referencedListingImages, teemillDescriptionToText } = await import(
+  "@/lib/apparel/referenced"
+);
 const { getSellerListings } = await import("@/lib/seller/listings");
 const { auth } = await import("@/auth");
 
@@ -228,6 +230,32 @@ describe("US-MFTF-13.3 — createReferencedListingAction success", () => {
   });
 });
 
+// ─── teemillDescriptionToText (HTML → plain text for the description default) ──
+
+describe("US-MFTF-13.3 — teemillDescriptionToText", () => {
+  it("strips a single paragraph to plain text", () => {
+    expect(teemillDescriptionToText("<p>Organic cotton tee.</p>")).toBe("Organic cotton tee.");
+  });
+
+  it("turns block tags and <br> into line breaks", () => {
+    expect(teemillDescriptionToText("<p>Line one.</p><p>Line two.</p>")).toBe(
+      "Line one.\nLine two.",
+    );
+    expect(teemillDescriptionToText("Line one.<br>Line two.")).toBe("Line one.\nLine two.");
+  });
+
+  it("decodes common HTML entities and collapses whitespace", () => {
+    expect(teemillDescriptionToText("<p>Bees &amp;   plants&nbsp;&#39;26</p>")).toBe(
+      "Bees & plants '26",
+    );
+  });
+
+  it("returns an empty string for null/empty input", () => {
+    expect(teemillDescriptionToText(null)).toBe("");
+    expect(teemillDescriptionToText("")).toBe("");
+  });
+});
+
 // ─── Seller index renders REFERENCED rows (MFTF-13 schema-touch of 6.3 slice) ──
 
 describe("US-MFTF-13.3 — getSellerListings renders referenced listings", () => {
@@ -280,6 +308,12 @@ describe("US-MFTF-13.3 — resolveTeemillRefAction preview", () => {
     expect(res.preview.colors.find((c) => c.colorName === "Evergreen")?.colorHex).toBe("#23312d");
     expect(res.preview.sizes.length).toBeGreaterThan(0);
     expect(res.preview.mockups.length).toBeGreaterThan(0);
+  });
+
+  it("returns the Teemill description as cleaned plain text for the form default", async () => {
+    const res = await resolveTeemillRefAction(POWERED_BY_PLANTS_PRODUCT_REF);
+    if ("error" in res) throw new Error("expected preview");
+    expect(res.preview.description).toBe("Organic cotton tee.");
   });
 
   it("returns an error with guidance when the ref cannot be resolved", async () => {
