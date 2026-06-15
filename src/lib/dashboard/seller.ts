@@ -10,19 +10,29 @@ export interface SellerListingSummary {
 }
 
 export async function getSellerListingSummary(sellerId: string): Promise<SellerListingSummary> {
-  const groups = await prisma.originalListing.groupBy({
-    by: ["status"],
-    where: { artwork: { sellerId } },
-    _count: { id: true },
-  });
+  // Count artwork (originalListing) and apparel (apparelListing) listings into
+  // one summary. Apparel covers both sourcing modes — the status enum is shared,
+  // so designed and referenced listings are counted identically (MFTF-6.3).
+  const [artworkGroups, apparelGroups] = await Promise.all([
+    prisma.originalListing.groupBy({
+      by: ["status"],
+      where: { artwork: { sellerId } },
+      _count: { id: true },
+    }),
+    prisma.apparelListing.groupBy({
+      by: ["status"],
+      where: { sellerId },
+      _count: { id: true },
+    }),
+  ]);
 
   const summary: SellerListingSummary = { active: 0, sold: 0, archived: 0, total: 0 };
-  for (const group of groups) {
+  for (const group of [...artworkGroups, ...apparelGroups]) {
     const count = group._count.id;
     summary.total += count;
-    if (group.status === "ACTIVE") summary.active = count;
-    else if (group.status === "SOLD") summary.sold = count;
-    else if (group.status === "ARCHIVED") summary.archived = count;
+    if (group.status === "ACTIVE") summary.active += count;
+    else if (group.status === "SOLD") summary.sold += count;
+    else if (group.status === "ARCHIVED") summary.archived += count;
   }
   return summary;
 }

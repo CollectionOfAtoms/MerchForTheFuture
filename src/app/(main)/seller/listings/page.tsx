@@ -20,9 +20,11 @@ const SALE_TYPE_LABEL: Record<string, string> = {
   AUCTION: "Auction",
 };
 
-const KIND_LABEL: Record<SellerListingRow["kind"], string> = {
-  ARTWORK: "Art",
-  APPAREL: "Apparel",
+// Type badge per listing kind — distinct colour so apparel reads apart from
+// artwork at a glance, not just by label (US-MFTF-6.3 badge refinement).
+const KIND_BADGE: Record<SellerListingRow["kind"], { label: string; className: string }> = {
+  ARTWORK: { label: "Art", className: "bg-stone-100 text-stone-500" },
+  APPAREL: { label: "Apparel", className: "bg-cerulean/10 text-cerulean" },
 };
 
 export default async function SellerListingsPage() {
@@ -105,8 +107,8 @@ function ListingRow({ row }: { row: SellerListingRow }) {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="shrink-0 rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-stone-500">
-              {KIND_LABEL[row.kind]}
+            <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${KIND_BADGE[row.kind].className}`}>
+              {KIND_BADGE[row.kind].label}
             </span>
             <p className="text-sm font-medium text-stone-900 truncate">{row.title}</p>
           </div>

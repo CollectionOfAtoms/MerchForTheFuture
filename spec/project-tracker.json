@@ -1576,12 +1576,12 @@
       "id": "US-MFTF-6.3",
       "epic": "Epic MFTF-6: Apparel Product Page & Browse",
       "title": "Apparel Listing in Seller Dashboard",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Status intentionally Not Started: MFTF-6 comes after MFTF-13 in epicOrder. However, one slice was shipped EARLY during MFTF-5 verification \u2014 apparel listings were not visible in the seller feed, which made it hard to verify MFTF-5 work, so the seller-index was extended to show apparel. Shipped early (do not rebuild): src/lib/seller/listings.ts getSellerListings (unified, kind-discriminated row list); the rewritten /seller/listings index (artwork + apparel); apparel archive/activate + delete; design preview. Still open for this story: dashboard count summary (overlaps US-MFTF-13.x referenced-listing counts) and badge refinements. Dependency: MFTF-13 will revisit this slice \u2014 getSellerListings must render REFERENCED listings, and US-MFTF-13.1 makes productTypeId/designImageUrl nullable + adds sourcingMode. Do not mark Passed until the remaining scope is built against the post-MFTF-13 schema."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-15",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-15",
+      "testPassedCommit": "pending",
+      "notes": "REMAINING SCOPE COMPLETED 2026-06-15 (6 tests passing, US-MFTF-6.3-apparel-in-seller-dashboard.test.ts): (1) Count summary — getSellerListingSummary (src/lib/dashboard/seller.ts) now groupBy-counts BOTH originalListing and apparelListing into one active/sold/archived/total summary (apparel covers designed + referenced; shared ListingStatus enum, counted identically). The /dashboard/seller summary cards now reflect apparel in totals automatically. (2) Badge refinement — the /seller/listings type badge is now colour-distinct per kind (Art = neutral stone pill; Apparel = cerulean pill) so apparel reads apart from artwork at a glance, not just by label. The unified index, archive/activate (toggleApparelListingStatusAction), delete (deleteApparelListingAction), and REFERENCED-row rendering were shipped early and remain unchanged (covered by US-MFTF-6.3-seller-listings-index.test.ts + US-MFTF-6.3-apparel-listing-lifecycle.test.ts). ORIGINAL EARLY-SHIP NOTE: Status was intentionally Not Started: MFTF-6 comes after MFTF-13 in epicOrder. However, one slice was shipped EARLY during MFTF-5 verification \u2014 apparel listings were not visible in the seller feed, which made it hard to verify MFTF-5 work, so the seller-index was extended to show apparel. Shipped early (do not rebuild): src/lib/seller/listings.ts getSellerListings (unified, kind-discriminated row list); the rewritten /seller/listings index (artwork + apparel); apparel archive/activate + delete; design preview. Still open for this story: dashboard count summary (overlaps US-MFTF-13.x referenced-listing counts) and badge refinements. Dependency: MFTF-13 will revisit this slice \u2014 getSellerListings must render REFERENCED listings, and US-MFTF-13.1 makes productTypeId/designImageUrl nullable + adds sourcingMode. Do not mark Passed until the remaining scope is built against the post-MFTF-13 schema."
     },
     {
       "id": "US-MFTF-13.1",
