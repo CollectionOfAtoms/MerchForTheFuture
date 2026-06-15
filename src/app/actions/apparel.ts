@@ -89,7 +89,9 @@ export async function createApparelListingAction(
     return { error: `You can upload at most ${MAX_LIFESTYLE_PHOTOS} lifestyle photos.` };
   }
 
-  const status = intent === "draft" ? "ARCHIVED" : "ACTIVE";
+  // A "draft" is UNLISTED — hidden from feeds but viewable by direct link so the
+  // seller can preview it before publishing (going ACTIVE).
+  const status = intent === "draft" ? "UNLISTED" : "ACTIVE";
 
   const listing = await prisma.apparelListing.create({
     data: {
@@ -270,6 +272,29 @@ export async function toggleApparelListingStatusAction(listingId: string): Promi
 
   const next = listing.status === "ACTIVE" ? "ARCHIVED" : "ACTIVE";
   await prisma.apparelListing.update({ where: { id: listingId }, data: { status: next } });
+  revalidatePath("/seller/listings");
+}
+
+/** Statuses a seller may set an apparel listing to directly. */
+const SETTABLE_APPAREL_STATUSES = ["ACTIVE", "UNLISTED", "ARCHIVED"] as const;
+export type SettableApparelStatus = (typeof SETTABLE_APPAREL_STATUSES)[number];
+
+/**
+ * Set an apparel listing to ACTIVE (live), UNLISTED (viewable by direct link
+ * only, hidden from feeds), or ARCHIVED (retired). No-op on SOLD listings, for
+ * non-owners/non-sellers, and for unknown targets.
+ */
+export async function setApparelListingStatusAction(
+  listingId: string,
+  status: SettableApparelStatus,
+): Promise<void> {
+  if (!SETTABLE_APPAREL_STATUSES.includes(status)) return;
+  const owned = await loadOwnedListing(listingId);
+  if ("error" in owned && owned.error) return;
+  const { listing } = owned;
+  if (listing.status === "SOLD") return;
+
+  await prisma.apparelListing.update({ where: { id: listingId }, data: { status } });
   revalidatePath("/seller/listings");
 }
 

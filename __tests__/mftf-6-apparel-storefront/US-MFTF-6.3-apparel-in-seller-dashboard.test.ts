@@ -50,7 +50,7 @@ describe("getSellerListingSummary — apparel in totals", () => {
 
   it("returns all zeros for a seller with no listings", async () => {
     const seller = await seedSeller();
-    expect(await getSellerListingSummary(seller.id)).toEqual({ active: 0, sold: 0, archived: 0, total: 0 });
+    expect(await getSellerListingSummary(seller.id)).toEqual({ active: 0, unlisted: 0, sold: 0, archived: 0, total: 0 });
   });
 
   it("still counts artwork listings on their own", async () => {
@@ -79,7 +79,7 @@ describe("getSellerListingSummary — apparel in totals", () => {
     await seedArtwork(seller.id, "ARCHIVED");
     await seedDesignedApparel(seller.id, "ACTIVE");
     await seedReferencedApparel(seller.id, "SOLD");
-    expect(await getSellerListingSummary(seller.id)).toEqual({ active: 2, sold: 1, archived: 1, total: 4 });
+    expect(await getSellerListingSummary(seller.id)).toEqual({ active: 2, unlisted: 0, sold: 1, archived: 1, total: 4 });
   });
 
   it("counts only the given seller's listings", async () => {
@@ -88,6 +88,6 @@ describe("getSellerListingSummary — apparel in totals", () => {
     await seedDesignedApparel(seller.id, "ACTIVE");
     await seedReferencedApparel(other.id, "ACTIVE");
     await seedArtwork(other.id, "ACTIVE");
-    expect(await getSellerListingSummary(seller.id)).toEqual({ active: 1, sold: 0, archived: 0, total: 1 });
+    expect(await getSellerListingSummary(seller.id)).toEqual({ active: 1, unlisted: 0, sold: 0, archived: 0, total: 1 });
   });
 });

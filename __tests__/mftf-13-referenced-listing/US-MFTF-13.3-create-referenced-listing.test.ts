@@ -176,10 +176,10 @@ describe("US-MFTF-13.3 — createReferencedListingAction success", () => {
     expect(redirect).toContain(`/seller/apparel/${listing!.id}/edit`);
   });
 
-  it("saves as a draft (ARCHIVED) when intent is draft", async () => {
+  it("saves as a draft (UNLISTED) when intent is draft", async () => {
     await submit(validForm({ intent: "draft" }));
     const listing = await prisma.apparelListing.findFirst({ where: { sellerId: seller.id } });
-    expect(listing!.status).toBe("ARCHIVED");
+    expect(listing!.status).toBe("UNLISTED");
   });
 
   it("uploads no design file and creates no ApparelListingColor rows", async () => {

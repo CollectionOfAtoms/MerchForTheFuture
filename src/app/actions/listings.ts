@@ -185,6 +185,35 @@ export async function toggleListingStatusAction(listingId: string): Promise<void
   revalidatePath("/seller/listings");
 }
 
+/** Statuses a seller may set a listing to directly (live / pre-launch preview / retired). */
+const SETTABLE_LISTING_STATUSES = ["ACTIVE", "UNLISTED", "ARCHIVED"] as const;
+export type SettableListingStatus = (typeof SETTABLE_LISTING_STATUSES)[number];
+
+/**
+ * Set an artwork listing to ACTIVE (live), UNLISTED (viewable by direct link
+ * only, hidden from feeds), or ARCHIVED (retired). No-op on SOLD listings, on
+ * auctions that already have bids, for non-owners, and for unknown targets.
+ */
+export async function setListingStatusAction(
+  listingId: string,
+  status: SettableListingStatus,
+): Promise<void> {
+  const sellerId = await requireSeller();
+  if (!SETTABLE_LISTING_STATUSES.includes(status)) return;
+
+  const listing = await prisma.originalListing.findUnique({
+    where: { id: listingId },
+    include: { artwork: true, auction: { select: { bidCount: true } } },
+  });
+
+  if (!listing || listing.artwork.sellerId !== sellerId) return;
+  if (listing.status === "SOLD") return;
+  if (listing.auction && (listing.auction.bidCount ?? 0) > 0) return;
+
+  await prisma.originalListing.update({ where: { id: listingId }, data: { status } });
+  revalidatePath("/seller/listings");
+}
+
 export async function deleteListingAction(listingId: string): Promise<ActionResult> {
   const sellerId = await requireSeller();
 

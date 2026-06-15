@@ -224,11 +224,11 @@ describe("US-MFTF-5.3 — createApparelListingAction success", () => {
     expect(listing!.designImageUrl).toBe("https://blob.vercel.com/apparel/design/clean.png");
   });
 
-  it("creates an ARCHIVED listing when saved as a draft", async () => {
+  it("creates an UNLISTED listing when saved as a draft (viewable by link, hidden from feeds)", async () => {
     const pt = await seedProductType();
     await submit(validForm(pt, { intent: "draft" }));
     const listing = await prisma.apparelListing.findFirst({ where: { sellerId: seller.id } });
-    expect(listing!.status).toBe("ARCHIVED");
+    expect(listing!.status).toBe("UNLISTED");
   });
 
   it("creates ApparelListingColor rows only for the offered colors", async () => {

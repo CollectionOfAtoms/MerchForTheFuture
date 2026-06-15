@@ -35,9 +35,10 @@ export default async function SellerDashboardPage() {
         </div>
 
         {/* Listings summary + revenue */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {[
             { label: "Active", value: summary.active },
+            { label: "Unlisted", value: summary.unlisted },
             { label: "Sold", value: summary.sold },
             { label: "Archived", value: summary.archived },
             { label: "Total", value: summary.total },

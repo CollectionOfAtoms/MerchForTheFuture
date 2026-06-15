@@ -1,18 +1,27 @@
 import { auth } from "@/auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { toggleListingStatusAction } from "@/app/actions/listings";
-import { toggleApparelListingStatusAction } from "@/app/actions/apparel";
+import { setListingStatusAction, type SettableListingStatus } from "@/app/actions/listings";
+import { setApparelListingStatusAction } from "@/app/actions/apparel";
 import { getSellerListings, type SellerListingRow } from "@/lib/seller/listings";
 import { DeleteListingButton } from "@/components/DeleteListingButton";
 import { DeleteApparelListingButton } from "@/components/DeleteApparelListingButton";
 
 const STATUS_STYLES: Record<string, { pill: string; label: string }> = {
   ACTIVE:          { pill: "bg-emerald-100 text-emerald-700", label: "Active" },
+  UNLISTED:        { pill: "bg-violet-100 text-violet-700",   label: "Unlisted" },
   ARCHIVED:        { pill: "bg-stone-100 text-stone-500",     label: "Archived" },
   SOLD:            { pill: "bg-sky-100 text-sky-700",         label: "Sold" },
   RESERVE_NOT_MET: { pill: "bg-amber-100 text-amber-700",    label: "Reserve not met" },
   CANCELLED:       { pill: "bg-red-100 text-red-600",         label: "Cancelled" },
+};
+
+// Status transitions a seller can trigger from the index, by current status.
+// SOLD (and any other terminal status) offers none.
+const STATUS_TRANSITIONS: Record<string, { label: string; target: SettableListingStatus }[]> = {
+  ACTIVE:   [{ label: "Unlist", target: "UNLISTED" }, { label: "Archive", target: "ARCHIVED" }],
+  UNLISTED: [{ label: "Publish", target: "ACTIVE" }, { label: "Archive", target: "ARCHIVED" }],
+  ARCHIVED: [{ label: "Publish", target: "ACTIVE" }],
 };
 
 const SALE_TYPE_LABEL: Record<string, string> = {
@@ -137,44 +146,28 @@ function ListingRow({ row }: { row: SellerListingRow }) {
             Edit
           </Link>
 
+          {(STATUS_TRANSITIONS[row.status] ?? []).map((t) => (
+            <form
+              key={t.target}
+              action={async () => {
+                "use server";
+                if (row.kind === "ARTWORK") await setListingStatusAction(row.id, t.target);
+                else await setApparelListingStatusAction(row.id, t.target);
+              }}
+            >
+              <button
+                type="submit"
+                className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-50 transition-colors"
+              >
+                {t.label}
+              </button>
+            </form>
+          ))}
+
           {row.kind === "ARTWORK" ? (
-            <>
-              {row.status !== "SOLD" && (
-                <form
-                  action={async () => {
-                    "use server";
-                    await toggleListingStatusAction(row.id);
-                  }}
-                >
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-50 transition-colors"
-                  >
-                    {row.status === "ACTIVE" ? "Archive" : "Activate"}
-                  </button>
-                </form>
-              )}
-              <DeleteListingButton listingId={row.id} isSold={row.status === "SOLD"} hasBids={row.hasBids} />
-            </>
+            <DeleteListingButton listingId={row.id} isSold={row.status === "SOLD"} hasBids={row.hasBids} />
           ) : (
-            <>
-              {row.status !== "SOLD" && (
-                <form
-                  action={async () => {
-                    "use server";
-                    await toggleApparelListingStatusAction(row.id);
-                  }}
-                >
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-50 transition-colors"
-                  >
-                    {row.status === "ACTIVE" ? "Archive" : "Activate"}
-                  </button>
-                </form>
-              )}
-              <DeleteApparelListingButton listingId={row.id} isSold={row.status === "SOLD"} />
-            </>
+            <DeleteApparelListingButton listingId={row.id} isSold={row.status === "SOLD"} />
           )}
         </div>
       </div>

@@ -5,6 +5,7 @@ import { getSellerListings, type SellerListingRow } from "@/lib/seller/listings"
 
 export interface SellerListingSummary {
   active: number;
+  unlisted: number;
   sold: number;
   archived: number;
   total: number;
@@ -27,11 +28,12 @@ export async function getSellerListingSummary(sellerId: string): Promise<SellerL
     }),
   ]);
 
-  const summary: SellerListingSummary = { active: 0, sold: 0, archived: 0, total: 0 };
+  const summary: SellerListingSummary = { active: 0, unlisted: 0, sold: 0, archived: 0, total: 0 };
   for (const group of [...artworkGroups, ...apparelGroups]) {
     const count = group._count.id;
     summary.total += count;
     if (group.status === "ACTIVE") summary.active += count;
+    else if (group.status === "UNLISTED") summary.unlisted += count;
     else if (group.status === "SOLD") summary.sold += count;
     else if (group.status === "ARCHIVED") summary.archived += count;
   }

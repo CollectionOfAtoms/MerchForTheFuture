@@ -108,7 +108,9 @@ export async function getApparelListingDetail(listingId: string): Promise<Appare
     where: { id: listingId },
     include: detailInclude,
   });
-  if (!listing || listing.status !== "ACTIVE") return null;
+  // ACTIVE listings are live; UNLISTED listings are viewable by direct link
+  // (a seller's pre-launch preview). ARCHIVED/SOLD/missing render a 404.
+  if (!listing || (listing.status !== "ACTIVE" && listing.status !== "UNLISTED")) return null;
 
   return {
     id: listing.id,
