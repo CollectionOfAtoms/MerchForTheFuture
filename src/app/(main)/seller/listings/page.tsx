@@ -46,22 +46,10 @@ export default async function SellerListingsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
           <Link
-            href="/seller/apparel/new"
-            className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
-          >
-            + Apparel listing
-          </Link>
-          <Link
-            href="/seller/apparel/new-referenced"
-            className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
-          >
-            + Referenced listing
-          </Link>
-          <Link
             href="/seller/listings/new"
             className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
           >
-            + Artwork listing
+            + New listing
           </Link>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getSellerListings, type SellerListingRow } from "@/lib/seller/listings";
 
 // ─── Listing summary ──────────────────────────────────────────────────────────
 
@@ -39,20 +40,15 @@ export async function getSellerListingSummary(sellerId: string): Promise<SellerL
 
 // ─── Active listings ──────────────────────────────────────────────────────────
 
-export async function getSellerActiveListings(sellerId: string) {
-  return prisma.originalListing.findMany({
-    where: { status: "ACTIVE", artwork: { sellerId } },
-    include: {
-      artwork: {
-        select: {
-          title: true,
-          images: { where: { isPrimary: true }, take: 1, select: { url: true, thumbnailUrl: true, gridUrl: true, isPrimary: true } },
-        },
-      },
-      auction: { select: { endAt: true, currentBid: true, status: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+/**
+ * Active listings for the seller dashboard preview — artwork and apparel (both
+ * sourcing modes) merged into one newest-first list via the unified seller
+ * index reader, filtered to ACTIVE. Returns the same `SellerListingRow` shape
+ * the /seller/listings index uses.
+ */
+export async function getSellerActiveListings(sellerId: string): Promise<SellerListingRow[]> {
+  const rows = await getSellerListings(sellerId);
+  return rows.filter((r) => r.status === "ACTIVE");
 }
 
 // ─── Recent activity ──────────────────────────────────────────────────────────
