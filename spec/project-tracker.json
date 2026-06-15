@@ -1565,12 +1565,12 @@
       "id": "US-MFTF-6.2",
       "epic": "Epic MFTF-6: Apparel Product Page & Browse",
       "title": "Apparel Product Detail Page",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-15",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-15",
+      "testPassedCommit": "pending",
+      "notes": "20 tests passing (US-MFTF-6.2-apparel-detail-page.test.ts: 12 node read; US-MFTF-6.2-apparel-product-view.test.tsx: 8 jsdom component). getApparelListingDetail(listingId) in src/lib/apparel/detail.ts returns null for missing/ARCHIVED/SOLD (page renders 404 via notFound). Normalized ApparelDetail {id,title,description,retailPrice,images[{url,colorName}],colors[{name,hex,swatchImageUrl}],sizes[]} renders identically for both modes: designed colours = offered ApparelListingColor→ProductTypeColor (name + swatchImageUrl, hex null); referenced colours = distinct ReferencedVariant (name + colorHex, swatchImageUrl null) via referencedListingColors. Sizes: designed = ProductType.sizes by sortOrder; referenced = distinct ReferencedVariant in ingest order (referencedVariants ordered by id — cuid creation order — since there's no sortOrder column, so S/M/L/XL stay catalog-ordered, not alphabetical). Images: uploaded lifestyle photos (display variant, primary-first) else cached Teemill mockups (one per colour). No provider name/base price/currency/sourcingMode in the projection. ApparelProductView (client): plain-<img> carousel + thumbnails, colour swatches (hex circle or swatch image — never branches on mode) with aria-pressed highlight + 'exact shade may vary slightly by batch' note, size selector (role=group, no pre-selection), and STUBBED 'Add to cart' button disabled until both colour+size chosen (real wiring is MFTF-11; selecting a colour does NOT change photos). Page /shop/[listingId] server-rendered with generateMetadata + OG image. NOTE: spec's 'Add to cart deferred to MFTF-7' is stale — MFTF-7 replaced by MFTF-11; button ships stubbed here per handoff."
     },
     {
       "id": "US-MFTF-6.3",
