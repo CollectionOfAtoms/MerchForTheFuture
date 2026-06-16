@@ -1,28 +1,17 @@
 import { auth } from "@/auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { setListingStatusAction, type SettableListingStatus } from "@/app/actions/listings";
+import { setListingStatusAction } from "@/app/actions/listings";
 import { setApparelListingStatusAction } from "@/app/actions/apparel";
 import { getSellerListings, type SellerListingRow } from "@/lib/seller/listings";
+import {
+  listingStatusStyle,
+  listingStatusTransitions,
+  isPubliclyViewable,
+  publicListingHref,
+} from "@/lib/seller/listing-status";
 import { DeleteListingButton } from "@/components/DeleteListingButton";
 import { DeleteApparelListingButton } from "@/components/DeleteApparelListingButton";
-
-const STATUS_STYLES: Record<string, { pill: string; label: string }> = {
-  ACTIVE:          { pill: "bg-emerald-100 text-emerald-700", label: "Active" },
-  UNLISTED:        { pill: "bg-violet-100 text-violet-700",   label: "Unlisted" },
-  ARCHIVED:        { pill: "bg-stone-100 text-stone-500",     label: "Archived" },
-  SOLD:            { pill: "bg-sky-100 text-sky-700",         label: "Sold" },
-  RESERVE_NOT_MET: { pill: "bg-amber-100 text-amber-700",    label: "Reserve not met" },
-  CANCELLED:       { pill: "bg-red-100 text-red-600",         label: "Cancelled" },
-};
-
-// Status transitions a seller can trigger from the index, by current status.
-// SOLD (and any other terminal status) offers none.
-const STATUS_TRANSITIONS: Record<string, { label: string; target: SettableListingStatus }[]> = {
-  ACTIVE:   [{ label: "Unlist", target: "UNLISTED" }, { label: "Archive", target: "ARCHIVED" }],
-  UNLISTED: [{ label: "Publish", target: "ACTIVE" }, { label: "Archive", target: "ARCHIVED" }],
-  ARCHIVED: [{ label: "Publish", target: "ACTIVE" }],
-};
 
 const SALE_TYPE_LABEL: Record<string, string> = {
   FIXED_PRICE: "Fixed price",
@@ -85,9 +74,14 @@ export default async function SellerListingsPage() {
 }
 
 function ListingRow({ row }: { row: SellerListingRow }) {
-  const statusCfg = STATUS_STYLES[row.status] ?? { pill: "bg-stone-100 text-stone-500", label: row.status };
-  const thumbHref = row.kind === "ARTWORK" ? `/artwork/${row.artworkId}` : `/seller/apparel/${row.id}/edit`;
+  const statusCfg = listingStatusStyle(row.status);
   const editHref = row.kind === "ARTWORK" ? `/seller/listings/${row.id}/edit` : `/seller/apparel/${row.id}/edit`;
+  // The thumbnail links to the public product page when it's viewable; for an
+  // apparel listing that 404s publicly (ARCHIVED/SOLD) it falls back to the edit
+  // page so the click is never a dead link.
+  const thumbHref = isPubliclyViewable(row.kind, row.status)
+    ? publicListingHref(row.kind, { listingId: row.id, artworkId: row.kind === "ARTWORK" ? row.artworkId : undefined })
+    : editHref;
 
   return (
     <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
@@ -146,7 +140,7 @@ function ListingRow({ row }: { row: SellerListingRow }) {
             Edit
           </Link>
 
-          {(STATUS_TRANSITIONS[row.status] ?? []).map((t) => (
+          {(row.status === "SOLD" ? [] : listingStatusTransitions(row.status)).map((t) => (
             <form
               key={t.target}
               action={async () => {

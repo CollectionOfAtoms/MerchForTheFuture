@@ -8,15 +8,18 @@ import {
 import EditApparelListingForm from "@/components/seller/EditApparelListingForm";
 import ApparelImageManager from "@/components/seller/ApparelImageManager";
 import EditReferencedListingForm from "@/components/seller/EditReferencedListingForm";
+import ListingStatusControls from "@/components/seller/ListingStatusControls";
+import { isPubliclyViewable } from "@/lib/seller/listing-status";
 // (ApparelImageManager is shared by both the designed and referenced edit views.)
 
 /**
- * Link to the public product page. Only ACTIVE listings render at
- * /shop/[listingId] (the page 404s otherwise), so the button is shown only when
- * the listing is live to avoid a dead link.
+ * Link to the public product page. ACTIVE and UNLISTED apparel listings render
+ * at /shop/[listingId]; ARCHIVED/SOLD listings 404 there, so the button is
+ * hidden for them to avoid a dead link. (An UNLISTED listing is viewable by
+ * direct link, which is exactly what this button provides.)
  */
 function ViewListingButton({ listingId, status }: { listingId: string; status: string }) {
-  if (status !== "ACTIVE") return null;
+  if (!isPubliclyViewable("APPAREL", status)) return null;
   return (
     <Link
       href={`/shop/${listingId}`}
@@ -55,6 +58,11 @@ export default async function EditApparelListingPage({
           </div>
           <ViewListingButton listingId={referenced.id} status={referenced.status} />
         </div>
+
+        <div className="mb-8">
+          <ListingStatusControls kind="APPAREL" listingId={referenced.id} status={referenced.status} />
+        </div>
+
         <EditReferencedListingForm
           listing={{
             ...referenced,
@@ -99,6 +107,10 @@ export default async function EditApparelListingPage({
           </p>
         </div>
         <ViewListingButton listingId={listing.id} status={listing.status} />
+      </div>
+
+      <div className="mb-8">
+        <ListingStatusControls kind="APPAREL" listingId={listing.id} status={listing.status} />
       </div>
 
       {readOnly ? (

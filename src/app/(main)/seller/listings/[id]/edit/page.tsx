@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import EditListingForm from "./EditListingForm";
 import PrintConfigForm from "@/components/PrintConfigForm";
+import ListingStatusControls from "@/components/seller/ListingStatusControls";
 import { getPrintCatalog, parseArtworkDimensions, type CatalogProduct } from "@/lib/print/listing";
 import printCostsJson from "@/lib/print/costs.json";
 
@@ -59,6 +60,11 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
           View listing →
         </a>
       </div>
+
+      <div className="mb-8">
+        <ListingStatusControls kind="ARTWORK" listingId={listing.id} status={listing.status} />
+      </div>
+
       <EditListingForm listing={serialized} />
       <div className="mt-6">
         <PrintConfigForm
