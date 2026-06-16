@@ -29,6 +29,11 @@ enum SaleType {
 
 enum ListingStatus {
   ACTIVE
+  /// Visible only by direct link to the detail page; hidden from every browse/
+  /// feed and excluded from "active" counts. A seller's pre-launch draft state —
+  /// they can build and preview a listing without it going live. Distinct from
+  /// ARCHIVED (retired/hidden, not viewable).
+  UNLISTED
   SOLD
   RESERVE_NOT_MET
   CANCELLED

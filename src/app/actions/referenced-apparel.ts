@@ -134,7 +134,9 @@ export async function createReferencedListingAction(
     return { error: "That Teemill product has no orderable variants in stock right now." };
   }
 
-  const status = intent === "draft" ? "ARCHIVED" : "ACTIVE";
+  // A "draft" is UNLISTED — hidden from feeds but viewable by direct link so the
+  // seller can preview it before publishing (going ACTIVE).
+  const status = intent === "draft" ? "UNLISTED" : "ACTIVE";
 
   const listing = await prisma.apparelListing.create({
     data: {

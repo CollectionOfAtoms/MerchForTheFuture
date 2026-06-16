@@ -138,6 +138,22 @@ describe("US-13.2 — Seller Dashboard", () => {
   // ── getSellerActiveListings ──────────────────────────────────────────────────
 
   describe("Integration: getSellerActiveListings", () => {
+    // Active listings are now the unified SellerListingRow shape (artwork +
+    // apparel, both sourcing modes), filtered to ACTIVE.
+    async function createDesignedApparel(sellerId: string, title: string, status: "ACTIVE" | "ARCHIVED" | "SOLD" = "ACTIVE") {
+      const pt = await prisma.productType.create({
+        data: { name: `Tee ${crypto.randomUUID()}`, fulfillmentProvider: "PRODIGI", providerSkuBase: "RNA1" },
+      });
+      return prisma.apparelListing.create({
+        data: { sellerId, sourcingMode: "DESIGNED", productTypeId: pt.id, title, retailPrice: 28, status, designImageUrl: "https://blob/d.png" },
+      });
+    }
+    async function createReferencedApparel(sellerId: string, title: string, status: "ACTIVE" | "ARCHIVED" | "SOLD" = "ACTIVE") {
+      return prisma.apparelListing.create({
+        data: { sellerId, sourcingMode: "REFERENCED", title, retailPrice: 32, status, providerKey: "teemill", providerProductRef: `ref-${crypto.randomUUID()}` },
+      });
+    }
+
     it("returns empty array when seller has no active listings", async () => {
       const seller = await seedSeller();
       const listings = await getSellerActiveListings(seller.id);
@@ -152,16 +168,18 @@ describe("US-13.2 — Seller Dashboard", () => {
 
       const listings = await getSellerActiveListings(seller.id);
       expect(listings).toHaveLength(1);
-      expect(listings[0].artwork.title).toBe("Active");
+      expect(listings[0].title).toBe("Active");
     });
 
-    it("includes artwork title and price for each active listing", async () => {
+    it("includes artwork title and price for each active artwork listing", async () => {
       const seller = await seedSeller();
       await createListing(seller.id, { title: "My Painting", price: 750, status: "ACTIVE" });
 
       const listings = await getSellerActiveListings(seller.id);
-      expect(listings[0].artwork.title).toBe("My Painting");
-      expect(Number(listings[0].price)).toBe(750);
+      const art = listings.find((l) => l.kind === "ARTWORK");
+      expect(art).toBeDefined();
+      expect(art!.title).toBe("My Painting");
+      expect(art!.kind === "ARTWORK" && art!.price).toBe(750);
     });
 
     it("includes auction end time for auction listings", async () => {
@@ -174,20 +192,35 @@ describe("US-13.2 — Seller Dashboard", () => {
         auctionEndOffset: 48 * 3600 * 1000,
       });
 
+      const [row] = await getSellerActiveListings(seller.id);
+      expect(row.kind).toBe("ARTWORK");
+      expect(row.kind === "ARTWORK" && row.auctionEndAt).toBeInstanceOf(Date);
+    });
+
+    it("includes active designed and referenced apparel listings alongside artwork", async () => {
+      const seller = await seedSeller();
+      await createListing(seller.id, { title: "A Painting", status: "ACTIVE" });
+      await createDesignedApparel(seller.id, "Designed Tee", "ACTIVE");
+      await createReferencedApparel(seller.id, "Referenced Tee", "ACTIVE");
+      await createDesignedApparel(seller.id, "Archived Tee", "ARCHIVED");
+
       const listings = await getSellerActiveListings(seller.id);
-      expect(listings[0].auction).not.toBeNull();
-      expect(listings[0].auction!.endAt).toBeInstanceOf(Date);
+      expect(listings.map((l) => l.title).sort()).toEqual(["A Painting", "Designed Tee", "Referenced Tee"]);
+      const apparel = listings.filter((l) => l.kind === "APPAREL");
+      expect(apparel).toHaveLength(2);
+      expect(apparel.every((l) => l.kind === "APPAREL" && l.retailPrice > 0)).toBe(true);
     });
 
     it("does not return listings from other sellers", async () => {
       const seller1 = await seedSeller("seller1@test.com");
       const seller2 = await seedSeller("seller2@test.com");
       await createListing(seller1.id, { title: "Seller1 Art", status: "ACTIVE" });
+      await createReferencedApparel(seller2.id, "Seller2 Tee", "ACTIVE");
       await createListing(seller2.id, { title: "Seller2 Art", status: "ACTIVE" });
 
       const listings = await getSellerActiveListings(seller1.id);
       expect(listings).toHaveLength(1);
-      expect(listings[0].artwork.title).toBe("Seller1 Art");
+      expect(listings[0].title).toBe("Seller1 Art");
     });
   });
 

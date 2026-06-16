@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getArtworkDetail } from "@/lib/artworks/detail";
 import ImageLightbox from "@/components/ImageLightbox";
+import OwnerUnlistedNotice from "@/components/seller/OwnerUnlistedNotice";
 import AuctionCountdown from "./AuctionCountdown";
 import PlaceBidForm from "@/components/PlaceBidForm";
 import PrintOptionsSelector from "@/components/PrintOptionsSelector";
@@ -41,7 +42,15 @@ export default async function ArtworkDetailPage({ params }: PageProps) {
   const isSeller = !!sessionUser?.id && sessionUser.id === artwork.sellerId;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <>
+      {orig && (
+        <OwnerUnlistedNotice
+          sellerId={artwork.sellerId}
+          status={orig.status}
+          editHref={`/seller/listings/${orig.listingId}/edit`}
+        />
+      )}
+      <div className="mx-auto max-w-5xl px-6 py-10">
       <div className="grid gap-10 lg:grid-cols-2">
         {/* Left: image carousel */}
         <div>
@@ -209,6 +218,7 @@ export default async function ArtworkDetailPage({ params }: PageProps) {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

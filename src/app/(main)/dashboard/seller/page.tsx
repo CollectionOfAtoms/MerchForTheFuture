@@ -35,9 +35,10 @@ export default async function SellerDashboardPage() {
         </div>
 
         {/* Listings summary + revenue */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {[
             { label: "Active", value: summary.active },
+            { label: "Unlisted", value: summary.unlisted },
             { label: "Sold", value: summary.sold },
             { label: "Archived", value: summary.archived },
             { label: "Total", value: summary.total },
@@ -92,37 +93,45 @@ export default async function SellerDashboardPage() {
             </div>
           ) : (
             <ul className="divide-y divide-tuscan-sun/10">
-              {activeListings.map((listing) => (
-                <li key={listing.id} className="flex items-center gap-4 px-6 py-4">
-                  <div className="h-12 w-12 shrink-0 rounded-xl overflow-hidden bg-tuscan-sun/10">
-                    {listing.artwork.images[0] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={listing.artwork.images[0].thumbnailUrl ?? listing.artwork.images[0].gridUrl ?? listing.artwork.images[0].url}
-                        alt={listing.artwork.title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center text-tuscan-sun/50 text-xs">—</div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-blue-slate truncate">{listing.artwork.title}</p>
-                    <p className="text-xs text-blue-slate/50 mt-0.5">
-                      {SALE_TYPE_LABEL[listing.saleType]} · ${Number(listing.price).toLocaleString()}
-                      {listing.auction && (
-                        <> · Ends {new Date(listing.auction.endAt).toLocaleDateString()}</>
+              {activeListings.map((row) => {
+                const editHref = row.kind === "ARTWORK"
+                  ? `/seller/listings/${row.id}/edit`
+                  : `/seller/apparel/${row.id}/edit`;
+                const meta = row.kind === "ARTWORK"
+                  ? `${SALE_TYPE_LABEL[row.saleType] ?? row.saleType}${row.price != null ? ` · $${row.price.toLocaleString()}` : ""}${row.auctionEndAt ? ` · Ends ${new Date(row.auctionEndAt).toLocaleDateString()}` : ""}`
+                  : `${row.productTypeName} · $${row.retailPrice.toLocaleString()}`;
+                return (
+                  <li key={`${row.kind}-${row.id}`} className="flex items-center gap-4 px-6 py-4">
+                    <div className="h-12 w-12 shrink-0 rounded-xl overflow-hidden bg-tuscan-sun/10">
+                      {row.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={row.thumbnailUrl}
+                          alt={row.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-tuscan-sun/50 text-xs">—</div>
                       )}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/seller/listings/${listing.id}/edit`}
-                    className="shrink-0 rounded-lg border border-tuscan-sun/30 px-3 py-1.5 text-xs font-medium text-blue-slate hover:bg-tuscan-sun/5 transition-colors"
-                  >
-                    Edit
-                  </Link>
-                </li>
-              ))}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-blue-slate truncate">
+                        <span className="mr-2 align-middle rounded-md bg-tuscan-sun/20 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-blue-slate/60">
+                          {row.kind === "ARTWORK" ? "Art" : "Apparel"}
+                        </span>
+                        {row.title}
+                      </p>
+                      <p className="text-xs text-blue-slate/50 mt-0.5">{meta}</p>
+                    </div>
+                    <Link
+                      href={editHref}
+                      className="shrink-0 rounded-lg border border-tuscan-sun/30 px-3 py-1.5 text-xs font-medium text-blue-slate hover:bg-tuscan-sun/5 transition-colors"
+                    >
+                      Edit
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

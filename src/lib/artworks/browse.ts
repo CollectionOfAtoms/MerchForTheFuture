@@ -102,6 +102,10 @@ function buildWhere(opts: BrowseOptions): Prisma.ArtworkWhereInput {
     ],
   });
 
+  // UNLISTED listings are viewable by direct link only — never surface them in
+  // browse, even when print is available.
+  conditions.push({ NOT: { originalListing: { status: "UNLISTED" } } });
+
   return { AND: conditions };
 }
 

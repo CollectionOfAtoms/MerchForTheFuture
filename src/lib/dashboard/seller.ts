@@ -1,48 +1,56 @@
 import { prisma } from "@/lib/db";
+import { getSellerListings, type SellerListingRow } from "@/lib/seller/listings";
 
 // ─── Listing summary ──────────────────────────────────────────────────────────
 
 export interface SellerListingSummary {
   active: number;
+  unlisted: number;
   sold: number;
   archived: number;
   total: number;
 }
 
 export async function getSellerListingSummary(sellerId: string): Promise<SellerListingSummary> {
-  const groups = await prisma.originalListing.groupBy({
-    by: ["status"],
-    where: { artwork: { sellerId } },
-    _count: { id: true },
-  });
+  // Count artwork (originalListing) and apparel (apparelListing) listings into
+  // one summary. Apparel covers both sourcing modes — the status enum is shared,
+  // so designed and referenced listings are counted identically (MFTF-6.3).
+  const [artworkGroups, apparelGroups] = await Promise.all([
+    prisma.originalListing.groupBy({
+      by: ["status"],
+      where: { artwork: { sellerId } },
+      _count: { id: true },
+    }),
+    prisma.apparelListing.groupBy({
+      by: ["status"],
+      where: { sellerId },
+      _count: { id: true },
+    }),
+  ]);
 
-  const summary: SellerListingSummary = { active: 0, sold: 0, archived: 0, total: 0 };
-  for (const group of groups) {
+  const summary: SellerListingSummary = { active: 0, unlisted: 0, sold: 0, archived: 0, total: 0 };
+  for (const group of [...artworkGroups, ...apparelGroups]) {
     const count = group._count.id;
     summary.total += count;
-    if (group.status === "ACTIVE") summary.active = count;
-    else if (group.status === "SOLD") summary.sold = count;
-    else if (group.status === "ARCHIVED") summary.archived = count;
+    if (group.status === "ACTIVE") summary.active += count;
+    else if (group.status === "UNLISTED") summary.unlisted += count;
+    else if (group.status === "SOLD") summary.sold += count;
+    else if (group.status === "ARCHIVED") summary.archived += count;
   }
   return summary;
 }
 
 // ─── Active listings ──────────────────────────────────────────────────────────
 
-export async function getSellerActiveListings(sellerId: string) {
-  return prisma.originalListing.findMany({
-    where: { status: "ACTIVE", artwork: { sellerId } },
-    include: {
-      artwork: {
-        select: {
-          title: true,
-          images: { where: { isPrimary: true }, take: 1, select: { url: true, thumbnailUrl: true, gridUrl: true, isPrimary: true } },
-        },
-      },
-      auction: { select: { endAt: true, currentBid: true, status: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+/**
+ * Active listings for the seller dashboard preview — artwork and apparel (both
+ * sourcing modes) merged into one newest-first list via the unified seller
+ * index reader, filtered to ACTIVE. Returns the same `SellerListingRow` shape
+ * the /seller/listings index uses.
+ */
+export async function getSellerActiveListings(sellerId: string): Promise<SellerListingRow[]> {
+  const rows = await getSellerListings(sellerId);
+  return rows.filter((r) => r.status === "ACTIVE");
 }
 
 // ─── Recent activity ──────────────────────────────────────────────────────────

@@ -1,28 +1,28 @@
 import { auth } from "@/auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { toggleListingStatusAction } from "@/app/actions/listings";
-import { toggleApparelListingStatusAction } from "@/app/actions/apparel";
+import { setListingStatusAction } from "@/app/actions/listings";
+import { setApparelListingStatusAction } from "@/app/actions/apparel";
 import { getSellerListings, type SellerListingRow } from "@/lib/seller/listings";
+import {
+  listingStatusStyle,
+  listingStatusTransitions,
+  isPubliclyViewable,
+  publicListingHref,
+} from "@/lib/seller/listing-status";
 import { DeleteListingButton } from "@/components/DeleteListingButton";
 import { DeleteApparelListingButton } from "@/components/DeleteApparelListingButton";
-
-const STATUS_STYLES: Record<string, { pill: string; label: string }> = {
-  ACTIVE:          { pill: "bg-emerald-100 text-emerald-700", label: "Active" },
-  ARCHIVED:        { pill: "bg-stone-100 text-stone-500",     label: "Archived" },
-  SOLD:            { pill: "bg-sky-100 text-sky-700",         label: "Sold" },
-  RESERVE_NOT_MET: { pill: "bg-amber-100 text-amber-700",    label: "Reserve not met" },
-  CANCELLED:       { pill: "bg-red-100 text-red-600",         label: "Cancelled" },
-};
 
 const SALE_TYPE_LABEL: Record<string, string> = {
   FIXED_PRICE: "Fixed price",
   AUCTION: "Auction",
 };
 
-const KIND_LABEL: Record<SellerListingRow["kind"], string> = {
-  ARTWORK: "Art",
-  APPAREL: "Apparel",
+// Type badge per listing kind — distinct colour so apparel reads apart from
+// artwork at a glance, not just by label (US-MFTF-6.3 badge refinement).
+const KIND_BADGE: Record<SellerListingRow["kind"], { label: string; className: string }> = {
+  ARTWORK: { label: "Art", className: "bg-stone-100 text-stone-500" },
+  APPAREL: { label: "Apparel", className: "bg-cerulean/10 text-cerulean" },
 };
 
 export default async function SellerListingsPage() {
@@ -44,22 +44,10 @@ export default async function SellerListingsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
           <Link
-            href="/seller/apparel/new"
-            className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
-          >
-            + Apparel listing
-          </Link>
-          <Link
-            href="/seller/apparel/new-referenced"
-            className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
-          >
-            + Referenced listing
-          </Link>
-          <Link
             href="/seller/listings/new"
             className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
           >
-            + Artwork listing
+            + New listing
           </Link>
         </div>
       </div>
@@ -86,9 +74,14 @@ export default async function SellerListingsPage() {
 }
 
 function ListingRow({ row }: { row: SellerListingRow }) {
-  const statusCfg = STATUS_STYLES[row.status] ?? { pill: "bg-stone-100 text-stone-500", label: row.status };
-  const thumbHref = row.kind === "ARTWORK" ? `/artwork/${row.artworkId}` : `/seller/apparel/${row.id}/edit`;
+  const statusCfg = listingStatusStyle(row.status);
   const editHref = row.kind === "ARTWORK" ? `/seller/listings/${row.id}/edit` : `/seller/apparel/${row.id}/edit`;
+  // The thumbnail links to the public product page when it's viewable; for an
+  // apparel listing that 404s publicly (ARCHIVED/SOLD) it falls back to the edit
+  // page so the click is never a dead link.
+  const thumbHref = isPubliclyViewable(row.kind, row.status)
+    ? publicListingHref(row.kind, { listingId: row.id, artworkId: row.kind === "ARTWORK" ? row.artworkId : undefined })
+    : editHref;
 
   return (
     <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
@@ -105,8 +98,8 @@ function ListingRow({ row }: { row: SellerListingRow }) {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="shrink-0 rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-stone-500">
-              {KIND_LABEL[row.kind]}
+            <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${KIND_BADGE[row.kind].className}`}>
+              {KIND_BADGE[row.kind].label}
             </span>
             <p className="text-sm font-medium text-stone-900 truncate">{row.title}</p>
           </div>
@@ -147,44 +140,28 @@ function ListingRow({ row }: { row: SellerListingRow }) {
             Edit
           </Link>
 
+          {(row.status === "SOLD" ? [] : listingStatusTransitions(row.status)).map((t) => (
+            <form
+              key={t.target}
+              action={async () => {
+                "use server";
+                if (row.kind === "ARTWORK") await setListingStatusAction(row.id, t.target);
+                else await setApparelListingStatusAction(row.id, t.target);
+              }}
+            >
+              <button
+                type="submit"
+                className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-50 transition-colors"
+              >
+                {t.label}
+              </button>
+            </form>
+          ))}
+
           {row.kind === "ARTWORK" ? (
-            <>
-              {row.status !== "SOLD" && (
-                <form
-                  action={async () => {
-                    "use server";
-                    await toggleListingStatusAction(row.id);
-                  }}
-                >
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-50 transition-colors"
-                  >
-                    {row.status === "ACTIVE" ? "Archive" : "Activate"}
-                  </button>
-                </form>
-              )}
-              <DeleteListingButton listingId={row.id} isSold={row.status === "SOLD"} hasBids={row.hasBids} />
-            </>
+            <DeleteListingButton listingId={row.id} isSold={row.status === "SOLD"} hasBids={row.hasBids} />
           ) : (
-            <>
-              {row.status !== "SOLD" && (
-                <form
-                  action={async () => {
-                    "use server";
-                    await toggleApparelListingStatusAction(row.id);
-                  }}
-                >
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-50 transition-colors"
-                  >
-                    {row.status === "ACTIVE" ? "Archive" : "Activate"}
-                  </button>
-                </form>
-              )}
-              <DeleteApparelListingButton listingId={row.id} isSold={row.status === "SOLD"} />
-            </>
+            <DeleteApparelListingButton listingId={row.id} isSold={row.status === "SOLD"} />
           )}
         </div>
       </div>

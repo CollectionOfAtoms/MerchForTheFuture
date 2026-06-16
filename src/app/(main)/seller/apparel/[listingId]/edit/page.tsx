@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { auth } from "@/auth";
 import {
   getApparelListingForEdit,
@@ -7,7 +8,27 @@ import {
 import EditApparelListingForm from "@/components/seller/EditApparelListingForm";
 import ApparelImageManager from "@/components/seller/ApparelImageManager";
 import EditReferencedListingForm from "@/components/seller/EditReferencedListingForm";
+import ListingStatusControls from "@/components/seller/ListingStatusControls";
+import { isPubliclyViewable } from "@/lib/seller/listing-status";
 // (ApparelImageManager is shared by both the designed and referenced edit views.)
+
+/**
+ * Link to the public product page. ACTIVE and UNLISTED apparel listings render
+ * at /shop/[listingId]; ARCHIVED/SOLD listings 404 there, so the button is
+ * hidden for them to avoid a dead link. (An UNLISTED listing is viewable by
+ * direct link, which is exactly what this button provides.)
+ */
+function ViewListingButton({ listingId, status }: { listingId: string; status: string }) {
+  if (!isPubliclyViewable("APPAREL", status)) return null;
+  return (
+    <Link
+      href={`/shop/${listingId}`}
+      className="shrink-0 rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+    >
+      View listing →
+    </Link>
+  );
+}
 
 export default async function EditApparelListingPage({
   params,
@@ -28,12 +49,20 @@ export default async function EditApparelListingPage({
     if (referenced.sellerId !== user.id) redirect("/seller/listings");
     return (
       <div className="mx-auto max-w-2xl px-6 py-12">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-stone-900">Edit referenced listing</h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Update your price and photos, or re-sync the latest from Teemill.
-          </p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-stone-900">Edit referenced listing</h1>
+            <p className="mt-1 text-sm text-stone-500">
+              Update your price and photos, or re-sync the latest from Teemill.
+            </p>
+          </div>
+          <ViewListingButton listingId={referenced.id} status={referenced.status} />
         </div>
+
+        <div className="mb-8">
+          <ListingStatusControls kind="APPAREL" listingId={referenced.id} status={referenced.status} />
+        </div>
+
         <EditReferencedListingForm
           listing={{
             ...referenced,
@@ -66,15 +95,22 @@ export default async function EditApparelListingPage({
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-stone-900">
+            {readOnly ? "Apparel listing" : "Edit apparel listing"}
+          </h1>
+          <p className="mt-1 text-sm text-stone-500">
+            {readOnly
+              ? "This listing has sold and is read-only."
+              : "Update your product details, colors, design, and photos."}
+          </p>
+        </div>
+        <ViewListingButton listingId={listing.id} status={listing.status} />
+      </div>
+
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-stone-900">
-          {readOnly ? "Apparel listing" : "Edit apparel listing"}
-        </h1>
-        <p className="mt-1 text-sm text-stone-500">
-          {readOnly
-            ? "This listing has sold and is read-only."
-            : "Update your product details, colors, design, and photos."}
-        </p>
+        <ListingStatusControls kind="APPAREL" listingId={listing.id} status={listing.status} />
       </div>
 
       {readOnly ? (
