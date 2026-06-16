@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getApparelListingDetail } from "@/lib/apparel/detail";
+import { getApparelListingDetail, getApparelListingOwnership } from "@/lib/apparel/detail";
 import ApparelProductView from "@/components/ApparelProductView";
+import OwnerUnlistedNotice from "@/components/seller/OwnerUnlistedNotice";
 
 interface PageProps {
   params: Promise<{ listingId: string }>;
@@ -20,8 +21,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ApparelDetailPage({ params }: PageProps) {
   const { listingId } = await params;
-  const detail = await getApparelListingDetail(listingId);
+  const [detail, ownership] = await Promise.all([
+    getApparelListingDetail(listingId),
+    getApparelListingOwnership(listingId),
+  ]);
   if (!detail) notFound();
 
-  return <ApparelProductView detail={detail} />;
+  return (
+    <>
+      {ownership && (
+        <OwnerUnlistedNotice
+          sellerId={ownership.sellerId}
+          status={ownership.status}
+          editHref={`/seller/apparel/${listingId}/edit`}
+        />
+      )}
+      <ApparelProductView detail={detail} />
+    </>
+  );
 }

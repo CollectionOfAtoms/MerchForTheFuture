@@ -122,3 +122,18 @@ export async function getApparelListingDetail(listingId: string): Promise<Appare
     sizes: toSizes(listing),
   };
 }
+
+/**
+ * Owner + status for a listing — used server-side to decide whether to show the
+ * seller their "unlisted" notice on the public product page. Kept off the
+ * buyer-facing `ApparelDetail` projection so `sellerId` is never sent to the
+ * client. Returns null when the listing does not exist.
+ */
+export async function getApparelListingOwnership(
+  listingId: string,
+): Promise<{ sellerId: string; status: string } | null> {
+  return prisma.apparelListing.findUnique({
+    where: { id: listingId },
+    select: { sellerId: true, status: true },
+  });
+}

@@ -4,6 +4,7 @@ import {
   listingStatusStyle,
   isPubliclyViewable,
   publicListingHref,
+  shouldShowOwnerUnlistedNotice,
 } from "@/lib/seller/listing-status";
 
 describe("listingStatusTransitions", () => {
@@ -50,5 +51,21 @@ describe("publicListingHref", () => {
   });
   it("links apparel to /shop/[listingId]", () => {
     expect(publicListingHref("APPAREL", { listingId: "l1" })).toBe("/shop/l1");
+  });
+});
+
+describe("shouldShowOwnerUnlistedNotice", () => {
+  it("shows for the owning seller viewing their UNLISTED listing", () => {
+    expect(shouldShowOwnerUnlistedNotice("seller1", "seller1", "UNLISTED")).toBe(true);
+  });
+  it("hides for an UNLISTED listing the viewer does not own", () => {
+    expect(shouldShowOwnerUnlistedNotice("someone", "seller1", "UNLISTED")).toBe(false);
+  });
+  it("hides for anonymous visitors", () => {
+    expect(shouldShowOwnerUnlistedNotice(null, "seller1", "UNLISTED")).toBe(false);
+    expect(shouldShowOwnerUnlistedNotice(undefined, "seller1", "UNLISTED")).toBe(false);
+  });
+  it("hides when the listing is not UNLISTED, even for the owner", () => {
+    expect(shouldShowOwnerUnlistedNotice("seller1", "seller1", "ACTIVE")).toBe(false);
   });
 });

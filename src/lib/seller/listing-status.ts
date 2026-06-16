@@ -44,6 +44,19 @@ export function isPubliclyViewable(kind: ListingKind, status: string): boolean {
   return status === "ACTIVE" || status === "UNLISTED";
 }
 
+/**
+ * Whether to show the "this listing is unlisted" owner notice on a public detail
+ * page: only when the listing is UNLISTED and the current viewer is the seller
+ * who owns it. Buyers reaching an UNLISTED listing by direct link see nothing.
+ */
+export function shouldShowOwnerUnlistedNotice(
+  viewerId: string | null | undefined,
+  sellerId: string,
+  status: string,
+): boolean {
+  return status === "UNLISTED" && !!viewerId && viewerId === sellerId;
+}
+
 /** The public detail-page href for a listing (the buyer-facing product page). */
 export function publicListingHref(
   kind: ListingKind,
