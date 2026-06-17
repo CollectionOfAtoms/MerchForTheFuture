@@ -1763,11 +1763,12 @@
       "id": "US-MFTF-12.5",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "Post-Payment Fulfillment Fan-Out",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "On PAID, the webhook CART branch calls dispatchOrderFulfillment(orderId) which dispatches each FulfillmentOrder through provider.fulfill() (the 12.1 template). Implemented the fulfill() steps: Prodigi createProviderOrder (multi-item POST /orders; single-step, default no-op confirm); Teemill two-step createProviderOrder (POST /orders) + confirmProviderOrder (POST /orders/{id}/confirm with the quoted shippingMethodId — // UNVERIFIED 'standard', Open Q#7). Per-shipment FAILURE ISOLATION: any error sets that FulfillmentOrder FAILED + notes and does not throw, so siblings proceed. IDEMPOTENT per FulfillmentOrder: skipped once providerOrderId is set (no duplicate provider orders on webhook replay). Admin retry: retryFulfillmentAction (admin-only) + a 'Failed shipments' section with a Retry button on /admin/fulfillment (US-14.5 page). Job items resolve referenced variantRef from the cached ReferencedVariant by colour+size, designed apparel to providerSkuBase, prints to prodigiSku + printSourceImageUrl. Legacy single-item PRINT webhook path left as-is (cart prints now route through the abstraction). MSW: Teemill POST /orders/:id/confirm + GET /orders/:ref added globally. MFTF-3 provider tests re-run green."
     },
     {
       "id": "US-MFTF-12.6",

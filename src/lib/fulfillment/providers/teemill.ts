@@ -90,7 +90,40 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
     throw new Error('TeemillFulfillmentProvider.checkFulfillmentStatus: not yet implemented');
   }
 
-  protected async createProviderOrder(_job: FulfillmentJob): Promise<FulfillmentOrderResult> {
-    throw new Error('TeemillFulfillmentProvider.createProviderOrder: not yet implemented');
+  // ── fulfill() steps (US-MFTF-12.5) — two-step: create then confirm ─────────
+
+  protected async createProviderOrder(job: FulfillmentJob): Promise<FulfillmentOrderResult> {
+    const resp = await teemillPost('/orders', {
+      contactInformation: { email: job.contact?.email ?? '', phone: job.contact?.phone ?? '' },
+      shippingAddress: toTeemillAddress(job.shippingAddress),
+      items: job.items.map((i) => ({ variantRef: i.variantRef, quantity: i.quantity })),
+    });
+    if (!resp.ok) {
+      throw new Error(`Teemill order create (POST /orders) failed with status ${resp.status}`);
+    }
+    const data = (await resp.json()) as TeemillOrderResponse;
+    if (!data.id) {
+      throw new Error('Teemill order response missing id');
+    }
+    return {
+      externalOrderId: data.id,
+      estimatedDispatchDate: null,
+      providerMetadata: { fulfillmentId: data.fulfillments?.[0]?.id },
+    };
+  }
+
+  protected async confirmProviderOrder(
+    job: FulfillmentJob,
+    created: FulfillmentOrderResult,
+  ): Promise<FulfillmentOrderResult> {
+    const fulfillmentId = (created.providerMetadata as { fulfillmentId?: string }).fulfillmentId;
+    const shippingMethodId = job.shippingMethod ?? DEFAULT_SHIPPING_METHOD_ID;
+    const resp = await teemillPost(`/orders/${created.externalOrderId}/confirm`, [
+      { fulfillmentId, shippingMethodId },
+    ]);
+    if (!resp.ok) {
+      throw new Error(`Teemill order confirm failed with status ${resp.status}`);
+    }
+    return created;
   }
 }

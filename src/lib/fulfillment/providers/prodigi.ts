@@ -145,7 +145,43 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
     throw new Error('ProdigiFulfillmentProvider.checkFulfillmentStatus: not yet implemented');
   }
 
-  protected async createProviderOrder(_job: FulfillmentJob): Promise<FulfillmentOrderResult> {
-    throw new Error('ProdigiFulfillmentProvider.createProviderOrder: not yet implemented');
+  protected async createProviderOrder(job: FulfillmentJob): Promise<FulfillmentOrderResult> {
+    const { shippingAddress } = job;
+    const resp = await fetch(`${this.base}/orders`, {
+      method: 'POST',
+      headers: { 'X-API-Key': this.apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        shippingMethod: job.shippingMethod ?? 'Standard',
+        recipient: {
+          name: shippingAddress.name,
+          address: {
+            line1: shippingAddress.line1,
+            townOrCity: shippingAddress.city,
+            stateOrCounty: shippingAddress.state ?? '',
+            postalOrZipCode: shippingAddress.postal,
+            countryCode: shippingAddress.country,
+          },
+        },
+        items: job.items.map((i) => ({
+          sku: i.sku,
+          copies: i.quantity,
+          sizing: 'fillPrintArea',
+          assets: i.sourceImageUrl ? [{ printArea: 'default', url: i.sourceImageUrl }] : [],
+        })),
+      }),
+    });
+    if (!resp.ok) {
+      throw new Error(`Prodigi order creation failed with status ${resp.status}`);
+    }
+    const data = (await resp.json()) as ProdigiOrderResponse;
+    if (!data.order?.id) {
+      throw new Error('Prodigi response missing order.id');
+    }
+    return {
+      externalOrderId: data.order.id,
+      estimatedDispatchDate: null,
+      providerMetadata: data as Record<string, unknown>,
+    };
   }
+  // Prodigi is single-step — the base-class no-op confirmProviderOrder applies.
 }

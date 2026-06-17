@@ -173,6 +173,23 @@ const teemillHandlers = [
       { status: 201 }
     )
   ),
+  // Step 2 — confirm (US-MFTF-12.5). // UNVERIFIED status enum.
+  http.post("https://api.teemill.com/v1/orders/:id/confirm", () =>
+    HttpResponse.json({ id: "mock-order-id-123", status: "confirmed" }, { status: 200 })
+  ),
+  // Status polling (US-MFTF-12.6). // UNVERIFIED tracking field paths.
+  http.get("https://api.teemill.com/v1/orders/:orderRef", ({ params }) =>
+    HttpResponse.json({
+      id: params.orderRef,
+      status: "processing",
+      fulfillments: [
+        {
+          id: "mock-fulfillment-id-1",
+          availableShippingMethods: [{ id: "standard", name: "Standard", totalPrice: { amount: "3.99" } }],
+        },
+      ],
+    })
+  ),
 ];
 
 export const handlers = [
