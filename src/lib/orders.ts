@@ -49,10 +49,28 @@ export async function getBuyerOrders(userId: string): Promise<BuyerOrderSummary[
           },
         },
       },
+      fulfillmentOrders: { select: { status: true } },
+      _count: { select: { orderItems: true } },
     },
   });
 
   return orders.map((order) => {
+    // Cart orders carry no single artwork; surface an aggregate status derived
+    // from their per-shipment FulfillmentOrders (US-MFTF-12.6).
+    if (order.listingType === "CART") {
+      const allShipped =
+        order.fulfillmentOrders.length > 0 && order.fulfillmentOrders.every((f) => f.status === "SHIPPED");
+      const itemCount = order._count.orderItems;
+      return {
+        id: order.id,
+        createdAt: order.createdAt,
+        totalAmount: order.totalAmount,
+        status: allShipped ? "SHIPPED" : "PROCESSING",
+        listingType: order.listingType,
+        artwork: { title: `Order · ${itemCount} item${itemCount === 1 ? "" : "s"}`, thumbnailUrl: null },
+      };
+    }
+
     const artwork = order.originalListing?.artwork ?? null;
     return {
       id: order.id,

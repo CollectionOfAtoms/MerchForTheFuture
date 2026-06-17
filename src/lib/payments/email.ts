@@ -181,6 +181,65 @@ export async function sendShippingNotificationEmail(orderId: string): Promise<vo
   });
 }
 
+// ─── Per-shipment shipped notification (US-MFTF-12.6) ─────────────────────────
+
+/**
+ * Email the buyer when one shipment of a multi-item cart order ships. Lists only
+ * that shipment's items and its tracking — never the provider/dropshipper name.
+ * The send path is identical regardless of how dispatch was detected (poll vs.
+ * webhook).
+ */
+export async function sendShipmentShippedEmail(fulfillmentOrderId: string): Promise<void> {
+  const fo = await prisma.fulfillmentOrder.findUnique({
+    where: { id: fulfillmentOrderId },
+    include: {
+      order: {
+        select: {
+          id: true,
+          buyer: { select: { email: true } },
+          fulfillmentOrders: { select: { id: true } },
+        },
+      },
+      items: {
+        include: {
+          apparelListing: { select: { title: true } },
+          originalListing: { select: { artwork: { select: { title: true } } } },
+        },
+      },
+    },
+  });
+  if (!fo) return;
+
+  const total = fo.order.fulfillmentOrders.length;
+  const index = fo.order.fulfillmentOrders.findIndex((f) => f.id === fo.id) + 1;
+  const shipmentLabel = total > 1 ? `Shipment ${index} of ${total}` : "Your order";
+
+  const itemLines = fo.items
+    .map((it) => {
+      const title = it.itemKind === "APPAREL" ? it.apparelListing?.title : it.originalListing?.artwork?.title;
+      return `<li>${title ?? "Item"} × ${it.quantity}</li>`;
+    })
+    .join("");
+
+  const trackingInfo =
+    fo.carrier && fo.trackingNumber
+      ? `<p style="color:#78716c;font-size:14px">Carrier: ${fo.carrier}<br/>Tracking: ${fo.trackingNumber}</p>`
+      : "";
+
+  await mailersend({
+    to: fo.order.buyer.email,
+    subject: `${shipmentLabel} has shipped`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1c1917">
+        <p style="font-size:18px;font-weight:600;margin-bottom:4px">${shipmentLabel} is on its way</p>
+        <ul style="color:#78716c">${itemLines}</ul>
+        ${trackingInfo}
+        <a href="${BASE_URL}/buyer/orders/${fo.order.id}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View order →</a>
+      </div>
+    `,
+  });
+}
+
 // ─── Payment Reminder ─────────────────────────────────────────────────────────
 
 export async function sendPaymentReminderEmail(orderId: string, hoursRemaining: number): Promise<void> {

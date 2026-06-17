@@ -141,8 +141,30 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
     };
   }
 
-  async checkFulfillmentStatus(_q: FulfillmentStatusQuery): Promise<FulfillmentStatusResult> {
-    throw new Error('ProdigiFulfillmentProvider.checkFulfillmentStatus: not yet implemented');
+  async checkFulfillmentStatus(q: FulfillmentStatusQuery): Promise<FulfillmentStatusResult> {
+    const none = { shipped: false, trackingNumber: null, carrier: null };
+    if (!q.providerOrderId) return none;
+    // Prodigi exposes shipment + tracking on the order; this is the same data its
+    // webhook carries, so the status contract is identical to the webhook path.
+    const resp = await fetch(`${this.base}/orders/${q.providerOrderId}`, {
+      headers: { 'X-API-Key': this.apiKey },
+    });
+    if (!resp.ok) return none;
+    const data = (await resp.json()) as {
+      order?: {
+        status?: { stage?: string };
+        shipments?: Array<{ tracking?: { number?: string; carrier?: string } }>;
+      };
+    };
+    const tracking = data.order?.shipments?.[0]?.tracking;
+    const stage = data.order?.status?.stage;
+    const dispatched = stage === 'Complete' || stage === 'Dispatched' || stage === 'Shipped';
+    return {
+      shipped: dispatched && !!tracking?.number,
+      trackingNumber: tracking?.number ?? null,
+      carrier: tracking?.carrier ?? null,
+      raw: data as Record<string, unknown>,
+    };
   }
 
   protected async createProviderOrder(job: FulfillmentJob): Promise<FulfillmentOrderResult> {

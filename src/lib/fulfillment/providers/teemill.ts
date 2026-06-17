@@ -10,7 +10,7 @@ import {
   type FulfillmentStatusQuery,
   type FulfillmentStatusResult,
 } from '../types';
-import { teemillPost } from '../teemill/client';
+import { teemillPost, teemillGet } from '../teemill/client';
 
 /** The shipping method id we select at confirm time. */
 // Open Q#7 (docs/teemill-api-notes.md): unverified that a stable "standard" id
@@ -86,8 +86,28 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
     };
   }
 
-  async checkFulfillmentStatus(_q: FulfillmentStatusQuery): Promise<FulfillmentStatusResult> {
-    throw new Error('TeemillFulfillmentProvider.checkFulfillmentStatus: not yet implemented');
+  async checkFulfillmentStatus(q: FulfillmentStatusQuery): Promise<FulfillmentStatusResult> {
+    const none = { shipped: false, trackingNumber: null, carrier: null };
+    if (!q.providerOrderId) return none;
+    // TODO: replace Teemill polling with webhook once payload shape is confirmed live.
+    // Teemill webhook support is unconfirmed (Open Q#2) — until then shipment status
+    // is detected by polling GET /orders/{orderRef} on a daily reconciliation cron.
+    const resp = await teemillGet(`/orders/${q.providerOrderId}`);
+    if (!resp.ok) return none;
+    const data = (await resp.json()) as {
+      status?: string;
+      fulfillments?: Array<{ status?: string; trackingNumber?: string; carrier?: string }>;
+    };
+    const fulfillment = data.fulfillments?.[0];
+    // // UNVERIFIED: the tracking number + carrier field paths and the dispatched
+    // status value are guesses until a live proofing order confirms them.
+    const dispatched = fulfillment?.status === 'dispatched';
+    return {
+      shipped: dispatched && !!fulfillment?.trackingNumber,
+      trackingNumber: fulfillment?.trackingNumber ?? null,
+      carrier: fulfillment?.carrier ?? null,
+      raw: data as Record<string, unknown>,
+    };
   }
 
   // ── fulfill() steps (US-MFTF-12.5) — two-step: create then confirm ─────────

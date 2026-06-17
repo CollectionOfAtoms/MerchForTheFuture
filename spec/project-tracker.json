@@ -1774,11 +1774,12 @@
       "id": "US-MFTF-12.6",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "Buyer Order View with Per-Shipment Status",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Tests Passing — pending live confirmation",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "Implemented + green against MSW (8 tests incl. a jsdom component test). getOrderShipmentsView groups a cart order's items into 'Shipment N of M' with per-shipment status + tracking and NEVER exposes provider names; OrderShipments component renders it on the confirmation page and the Epic 22 order detail page (CART branch). aggregateOrderStatus → order history shows 'Processing' until all shipments SHIPPED then 'Shipped' (getBuyerOrders CART branch). checkFulfillmentStatus() on the provider abstraction: Prodigi reads shipments[].tracking over its order GET (same data its webhook carries); Teemill polls GET /orders/{orderRef}. checkAndSyncShipments (daily cron /api/cron/teemill-shipments, schedule 0 6 * * *, Hobby-compatible, CRON_SECRET) marks dispatched shipments SHIPPED + tracking/carrier and sends a per-shipment MailerSend email (sendShipmentShippedEmail — only that shipment's items; identical path for poll vs webhook); idempotent (only CONFIRMED+providerOrderId are polled). HELD at non-Passed (Option B, founder decision): Open Q#2 — Teemill webhook support unconfirmed, so shipment status is polling with a '// TODO: replace Teemill polling with webhook once payload shape is confirmed live' marker and the tracking field paths / dispatched-status value marked // UNVERIFIED; needs a live proofing order before Passed. No live API calls in tests (MSW only)."
     },
     {
       "id": "US-MFTF-8.1",
