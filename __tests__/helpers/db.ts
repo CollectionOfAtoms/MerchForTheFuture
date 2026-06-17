@@ -14,7 +14,7 @@ const prisma = createClient();
 
 export async function resetDatabase() {
   await prisma.$executeRawUnsafe(
-    `TRUNCATE TABLE "CartItem","Cart","Notification","Transaction","Order","Bid","Auction","ReferencedVariant","ApparelListingImage","ApparelListingColor","ApparelListing","OriginalListing","ArtworkImage","Artwork","UserAddress","Session","Account","VerificationToken","PasswordResetToken","EmailVerificationToken","User","ProductTypeSizeOption","ProductTypeColor","ProductType" RESTART IDENTITY CASCADE`
+    `TRUNCATE TABLE "OrderItem","FulfillmentOrder","CartItem","Cart","Notification","Transaction","Order","Bid","Auction","ReferencedVariant","ApparelListingImage","ApparelListingColor","ApparelListing","OriginalListing","ArtworkImage","Artwork","UserAddress","Session","Account","VerificationToken","PasswordResetToken","EmailVerificationToken","User","ProductTypeSizeOption","ProductTypeColor","ProductType" RESTART IDENTITY CASCADE`
   );
 }
 

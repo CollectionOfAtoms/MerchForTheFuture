@@ -1730,11 +1730,12 @@
       "id": "US-MFTF-12.2",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "Multi-Item Order Schema",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "Added OrderItem (reuses CartItemKind; apparelListingId/listingId exactly-one app-layer invariant; selection Json; unitPrice Decimal captured at checkout; nullable fulfillmentOrderId) and FulfillmentOrder (provider key, providerOrderId, status FulfillmentOrderStatus PENDING|SUBMITTED|CONFIRMED|SHIPPED|FAILED, shippingMethod/shippingCost, trackingNumber/carrier, notes). Order keeps its single-FK fields for legacy flows; cart checkouts use OrderItem rows and leave the single FKs null. Invariants in src/lib/orders/invariants.ts (validateOrderItemReference, validateOrderShape). Order cascade-deletes OrderItem/FulfillmentOrder. Applied via prisma db push to both DBs; resetDatabase truncates the new tables. Epic 14/22 order tests re-run green unchanged (legacy shape unaffected)."
     },
     {
       "id": "US-MFTF-12.3",
