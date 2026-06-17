@@ -5,6 +5,7 @@ import {
   type FulfillmentStatus,
   type FulfillmentJob,
   type ShippingQuote,
+  type ShippingOption,
   type ShippingQuoteItem,
   type FulfillmentShippingAddress,
   type FulfillmentStatusQuery,
@@ -141,6 +142,15 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
     const data = (await resp.json()) as TeemillOrderResponse;
     const fulfillment = data.fulfillments?.[0];
     const methods = fulfillment?.availableShippingMethods ?? [];
+
+    // Buyer-selectable options: deliverable methods only (never in-store collect),
+    // each with its parseable price; cheapest first.
+    const options: ShippingOption[] = methods
+      .filter((m) => !COLLECT_METHOD_RE.test(m.name ?? ''))
+      .map((m) => ({ method: m.name ?? '', cost: extractShippingAmount(m) ?? 0 }))
+      .filter((o) => o.method !== '')
+      .sort((a, b) => a.cost - b.cost);
+
     const chosen = chooseTeemillShippingMethod(methods);
     const amount = extractShippingAmount(chosen);
 
@@ -163,6 +173,7 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
       // shipping is bundled into the item cost, so this is typically 0.
       shippingCost: amount ?? 0,
       currency: 'GBP',
+      options,
       providerMetadata: { teemillOrderId: data.id, fulfillmentId: fulfillment?.id },
     };
   }

@@ -13,12 +13,19 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
  * the server action with `confirmed: true` (the buyer has already acknowledged any
  * changes in CheckoutClient), which creates the Order + rows and the session.
  */
-export default function CartPaymentForm({ address }: { address: FulfillmentShippingAddress }) {
+export default function CartPaymentForm({
+  address,
+  selections,
+}: {
+  address: FulfillmentShippingAddress;
+  /** Buyer's per-shipment method choice, keyed by group index ("0", "1", …). */
+  selections?: Record<string, string>;
+}) {
   const fetchClientSecret = useCallback(async () => {
-    const result = await createCartCheckoutSessionAction(address, { confirmed: true });
+    const result = await createCartCheckoutSessionAction(address, { confirmed: true, selections });
     if ("clientSecret" in result) return result.clientSecret;
     throw new Error("error" in result ? result.error : "Could not start payment.");
-  }, [address]);
+  }, [address, selections]);
 
   return (
     <div className="mt-4">

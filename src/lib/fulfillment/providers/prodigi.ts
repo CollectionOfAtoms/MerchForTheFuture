@@ -10,6 +10,7 @@ import {
   type FulfillmentStatusQuery,
   type FulfillmentStatusResult,
   type QuoteContact,
+  type ShippingOption,
 } from '../types';
 
 interface ProdigiOrderResponse {
@@ -118,7 +119,8 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
       method: 'POST',
       headers: { 'X-API-Key': this.apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        shippingMethod: 'Standard',
+        // Omit shippingMethod so Prodigi returns a quote for EVERY available
+        // service tier (Budget/Standard/Express/Overnight) for buyer selection.
         currencyCode: 'USD',
         destinationCountryCode: address.country,
         // Prodigi prices per print area, so each item must carry attributes +
@@ -149,12 +151,22 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
         costSummary?: { shipping?: { amount?: string | number; currency?: string } };
       }>;
     };
-    const quote = data.quotes?.[0];
-    const amount = Number(quote?.costSummary?.shipping?.amount ?? 0);
+    const quotes = data.quotes ?? [];
+    // One buyer-selectable option per returned service tier; cheapest first.
+    const options: ShippingOption[] = quotes
+      .map((q) => ({
+        method: q.shipmentMethod ?? 'Standard',
+        cost: Number(q.costSummary?.shipping?.amount ?? 0),
+      }))
+      .filter((o) => Number.isFinite(o.cost))
+      .sort((a, b) => a.cost - b.cost);
+    const currency = quotes[0]?.costSummary?.shipping?.currency ?? 'USD';
+    const cheapest = options[0] ?? { method: 'Standard', cost: 0 };
     return {
-      shippingMethod: quote?.shipmentMethod ?? 'Standard',
-      shippingCost: Number.isFinite(amount) ? amount : 0,
-      currency: quote?.costSummary?.shipping?.currency ?? 'USD',
+      shippingMethod: cheapest.method,
+      shippingCost: cheapest.cost,
+      currency,
+      options,
       providerMetadata: data as Record<string, unknown>,
     };
   }

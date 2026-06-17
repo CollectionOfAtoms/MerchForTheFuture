@@ -48,13 +48,22 @@ export interface SummaryLine {
   lineTotal: number;
 }
 
+/** A buyer-selectable shipping option for a shipment (USD). */
+export interface SummaryGroupOption {
+  method: string;
+  cost: number;
+}
+
 /** One shipment group in the checkout summary ("Shipment 1") — no provider name. */
 export interface SummaryGroup {
   label: string;
   items: SummaryLine[];
+  /** The selected method name (buyer's choice, else cheapest default). */
   shippingMethod: string;
-  /** Shipping cost in USD (Teemill GBP already converted). */
+  /** Selected shipping cost in USD (Teemill GBP already converted). */
   shippingCost: number;
+  /** All selectable methods for this shipment (USD), cheapest first. */
+  options: SummaryGroupOption[];
 }
 
 export interface CheckoutSummary {

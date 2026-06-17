@@ -24,6 +24,7 @@ export function summarizePlan(plan: CheckoutPlan): CheckoutSummary {
       })),
       shippingMethod: g.shippingMethod,
       shippingCost: g.shippingCost,
+      options: g.options.map((o) => ({ method: o.method, cost: o.cost })),
     })),
     itemsSubtotal: plan.itemsSubtotal,
     shippingTotal: plan.shippingTotal,

@@ -14,12 +14,21 @@ import type { KeptItem, RemovedItem, PriceChange } from "./types";
 /** Vercel serverless functions cap at 10s; the quote phase must finish within it. */
 const QUOTE_TIMEOUT_MS = 10_000;
 
+/** A selectable shipping option for a group, cost already converted to USD. */
+export interface PlanGroupOption {
+  method: string;
+  cost: number;
+}
+
 export interface PlanGroup {
   /** Internal provider registry key — never exposed to the buyer. */
   providerKey: string;
+  /** The selected method name (buyer's choice, else the cheapest default). */
   shippingMethod: string;
-  /** Shipping cost in USD (provider currency already converted). */
+  /** Selected shipping cost in USD (provider currency already converted). */
   shippingCost: number;
+  /** All buyer-selectable options for this group, in USD, cheapest first. */
+  options: PlanGroupOption[];
   items: KeptItem[];
 }
 
@@ -48,6 +57,8 @@ export async function planCheckout(
   cartId: string,
   address: FulfillmentShippingAddress,
   contact?: QuoteContact,
+  /** Buyer's per-shipment method choice, keyed by group index ("0", "1", …). */
+  selections?: Record<string, string>,
 ): Promise<CheckoutPlan> {
   const { kept, removed, priceChanges } = await revalidateCheckout(cartId);
 
@@ -61,7 +72,7 @@ export async function planCheckout(
 
   const groups = await withTimeout(
     Promise.all(
-      providerKeys.map(async (key): Promise<PlanGroup> => {
+      providerKeys.map(async (key, index): Promise<PlanGroup> => {
         const items = byProvider.get(key)!;
         const provider = getProviderByKey(key);
         const quote = await provider.quoteShipping(
@@ -72,7 +83,18 @@ export async function planCheckout(
         // Single FX point — shipping only (the item base is never FX-converted).
         // // UNVERIFIED rate until a live Teemill proofing order confirms amounts.
         const rate = quote.currency === "USD" ? 1 : await getExchangeRate(quote.currency, "USD");
-        return { providerKey: key, shippingMethod: quote.shippingMethod, shippingCost: round2(quote.shippingCost * rate), items };
+        const rawOptions = quote.options ?? [{ method: quote.shippingMethod, cost: quote.shippingCost }];
+        const options: PlanGroupOption[] = rawOptions
+          .map((o) => ({ method: o.method, cost: round2(o.cost * rate) }))
+          .sort((a, b) => a.cost - b.cost);
+        // Apply the buyer's choice for this shipment if it's still on offer;
+        // otherwise fall back to the cheapest default.
+        const wanted = selections?.[String(index)];
+        const selected =
+          (wanted ? options.find((o) => o.method === wanted) : undefined) ??
+          options.find((o) => o.method === quote.shippingMethod) ??
+          options[0] ?? { method: quote.shippingMethod, cost: round2(quote.shippingCost * rate) };
+        return { providerKey: key, shippingMethod: selected.method, shippingCost: selected.cost, options, items };
       }),
     ),
     QUOTE_TIMEOUT_MS,

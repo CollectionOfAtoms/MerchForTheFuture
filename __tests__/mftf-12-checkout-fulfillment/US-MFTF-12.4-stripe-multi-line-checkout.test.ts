@@ -145,6 +145,71 @@ describe("US-MFTF-12.4 — multi-line Stripe checkout session", () => {
     });
   });
 
+  describe("buyer shipping-method selection", () => {
+    async function seedPrintCart(buyerId: string, sellerId: string) {
+      const print = await seedPrint(sellerId);
+      const cart = await prisma.cart.create({ data: { userId: buyerId } });
+      await prisma.cartItem.create({ data: { cartId: cart.id, itemKind: "PRINT", listingId: print.id, selection: { prodigiSku: "GLOBAL-FAP-16X24", attributes: {}, quotedUnitPrice: 40 }, quantity: 1 } });
+      return cart;
+    }
+
+    function useMultiTierProdigi() {
+      server.use(
+        ...["https://api.prodigi.com/v4.0", "https://api.sandbox.prodigi.com/v4.0"].map((base) =>
+          http.post(`${base}/quotes`, () =>
+            HttpResponse.json({
+              quotes: [
+                { shipmentMethod: "Budget", costSummary: { shipping: { amount: "3.50", currency: "USD" } } },
+                { shipmentMethod: "Express", costSummary: { shipping: { amount: "9.99", currency: "USD" } } },
+              ],
+            }),
+          ),
+        ),
+      );
+    }
+
+    it("summary exposes every service tier (cheapest pre-selected)", async () => {
+      useMultiTierProdigi();
+      const buyer = await seedUser();
+      const seller = await seedUser();
+      authAs(buyer.id);
+      await seedPrintCart(buyer.id, seller.id);
+
+      const { createCheckoutAction } = await import("@/app/actions/checkout");
+      const result = await createCheckoutAction(ADDRESS);
+      expect("summary" in result).toBe(true);
+      if ("summary" in result) {
+        const group = result.summary.groups[0];
+        expect(group.options.map((o) => o.method)).toEqual(["Budget", "Express"]);
+        expect(group.shippingMethod).toBe("Budget"); // cheapest default
+        expect(group.shippingCost).toBe(3.5);
+      }
+    });
+
+    it("persists the buyer's chosen tier on the FulfillmentOrder and the order total", async () => {
+      useMultiTierProdigi();
+      captureStripe();
+      const buyer = await seedUser();
+      const seller = await seedUser();
+      authAs(buyer.id);
+      await seedPrintCart(buyer.id, seller.id);
+
+      const result = await createCartCheckoutSessionAction(ADDRESS, { confirmed: true, selections: { "0": "Express" } });
+      expect("clientSecret" in result).toBe(true);
+      if ("clientSecret" in result) {
+        const order = await prisma.order.findUnique({
+          where: { id: result.orderId },
+          include: { fulfillmentOrders: true },
+        });
+        const fo = order!.fulfillmentOrders[0];
+        expect(fo.shippingMethod).toBe("Express");
+        expect(Number(fo.shippingCost)).toBe(9.99);
+        // total = item (40) + chosen shipping (9.99)
+        expect(Number(order!.totalAmount)).toBe(49.99);
+      }
+    });
+  });
+
   describe("webhook checkout.session.completed (cart order)", () => {
     it("marks the cart order PAID and empties the buyer's cart", async () => {
       captureStripe();

@@ -123,7 +123,7 @@ export type CartCheckoutSessionResult =
  */
 export async function createCartCheckoutSessionAction(
   address: FulfillmentShippingAddress,
-  opts: { confirmed?: boolean } = {},
+  opts: { confirmed?: boolean; selections?: Record<string, string> } = {},
 ): Promise<CartCheckoutSessionResult> {
   const session = await auth();
   const user = session?.user as { id?: string; email?: string } | undefined;
@@ -140,7 +140,7 @@ export async function createCartCheckoutSessionAction(
   if (!cart || cart._count.items === 0) return { error: "Your cart is empty." };
 
   try {
-    const plan = await planCheckout(cart.id, address, { email: user.email });
+    const plan = await planCheckout(cart.id, address, { email: user.email }, opts.selections);
     if (plan.groups.length === 0) {
       return { error: "None of the items in your cart are still available." };
     }

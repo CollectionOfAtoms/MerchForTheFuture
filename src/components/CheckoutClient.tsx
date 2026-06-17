@@ -34,12 +34,15 @@ export default function CheckoutClient({ view }: { view: CartView }) {
   const [pending, setPending] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  // Buyer's per-shipment shipping-method choice, keyed by group index ("0", "1", …).
+  const [selections, setSelections] = useState<Record<string, string>>({});
 
   function set<K extends keyof FulfillmentShippingAddress>(key: K, value: string) {
     setAddress((a) => ({ ...a, [key]: value }));
     setSummary(null);
     setAcknowledged(false);
     setShowPayment(false);
+    setSelections({});
   }
 
   async function calculate(e: React.FormEvent) {
@@ -53,7 +56,26 @@ export default function CheckoutClient({ view }: { view: CartView }) {
       return;
     }
     setSummary(result.summary);
+    // Pre-select each shipment's default (cheapest) method.
+    const defaults: Record<string, string> = {};
+    result.summary.groups.forEach((g, i) => { defaults[String(i)] = g.shippingMethod; });
+    setSelections(defaults);
   }
+
+  function chooseMethod(groupIndex: number, method: string) {
+    setSelections((s) => ({ ...s, [String(groupIndex)]: method }));
+    setShowPayment(false); // re-open payment with the new selection
+  }
+
+  function selectedFor(group: CheckoutSummary["groups"][number], index: number) {
+    const method = selections[String(index)] ?? group.shippingMethod;
+    return group.options.find((o) => o.method === method) ?? { method, cost: group.shippingCost };
+  }
+
+  const computedShipping = summary
+    ? summary.groups.reduce((sum, g, i) => sum + selectedFor(g, i).cost, 0)
+    : 0;
+  const computedTotal = (summary?.itemsSubtotal ?? 0) + computedShipping;
 
   const mustReconfirm = summary?.status === "changed" && !acknowledged;
   const canPay = summary != null && summary.groups.length > 0 && !mustReconfirm;
@@ -123,26 +145,51 @@ export default function CheckoutClient({ view }: { view: CartView }) {
               </div>
             )}
 
-            {summary.groups.map((g) => (
-              <div key={g.label} className="border-t border-stone-200 pt-2">
-                <p className="font-medium text-stone-900">{g.label}</p>
-                {g.items.map((i, idx) => (
-                  <div key={idx} className="flex justify-between text-stone-600">
-                    <span>{i.title} × {i.quantity}</span>
-                    <span>{usd(i.lineTotal)}</span>
+            {summary.groups.map((g, gi) => {
+              const selected = selectedFor(g, gi);
+              return (
+                <div key={g.label} className="border-t border-stone-200 pt-2">
+                  <p className="font-medium text-stone-900">{g.label}</p>
+                  {g.items.map((i, idx) => (
+                    <div key={idx} className="flex justify-between text-stone-600">
+                      <span>{i.title} × {i.quantity}</span>
+                      <span>{usd(i.lineTotal)}</span>
+                    </div>
+                  ))}
+                  <div className="mt-1">
+                    <p className="text-xs font-medium text-stone-500">Shipping method</p>
+                    {g.options.length > 0 ? (
+                      <div className="mt-1 space-y-1">
+                        {g.options.map((o) => (
+                          <label key={o.method} className="flex items-center justify-between gap-2 text-stone-700">
+                            <span className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name={`ship-${gi}`}
+                                checked={selected.method === o.method}
+                                onChange={() => chooseMethod(gi, o.method)}
+                              />
+                              <span>{o.method}</span>
+                            </span>
+                            <span>{o.cost === 0 ? "Free" : usd(o.cost)}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex justify-between text-stone-600">
+                        <span>Shipping</span>
+                        <span>{selected.cost === 0 ? "Free" : usd(selected.cost)}</span>
+                      </div>
+                    )}
                   </div>
-                ))}
-                <div className="flex justify-between text-stone-600">
-                  <span>Shipping</span>
-                  <span>{usd(g.shippingCost)}</span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             <div className="space-y-1 border-t border-stone-200 pt-2">
               <div className="flex justify-between text-stone-600"><span>Items</span><span>{usd(summary.itemsSubtotal)}</span></div>
-              <div className="flex justify-between text-stone-600"><span>Shipping</span><span>{usd(summary.shippingTotal)}</span></div>
-              <div className="flex justify-between font-medium text-stone-900"><span>Total before tax</span><span>{usd(summary.total)}</span></div>
+              <div className="flex justify-between text-stone-600"><span>Shipping</span><span>{usd(computedShipping)}</span></div>
+              <div className="flex justify-between font-medium text-stone-900"><span>Total before tax</span><span>{usd(computedTotal)}</span></div>
               <p className="text-xs text-stone-500">Tax is calculated at payment.</p>
             </div>
 
@@ -169,7 +216,7 @@ export default function CheckoutClient({ view }: { view: CartView }) {
 
       {showPayment && canPay && (
         <div className="md:col-span-2">
-          <CartPaymentForm address={address} />
+          <CartPaymentForm address={address} selections={selections} />
         </div>
       )}
     </div>

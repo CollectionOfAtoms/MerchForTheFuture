@@ -56,14 +56,24 @@ export interface ShippingQuoteItem {
   sourceImageUrl?: string;
 }
 
+/** One selectable shipping method for a group (cost in the quote's currency). */
+export interface ShippingOption {
+  /** Stable, buyer-presentable method name (e.g. "Standard", "Spring USA"). */
+  method: string;
+  /** Cost in the quote's `currency`. */
+  cost: number;
+}
+
 /** A shipping quote for one provider group (one shipment). Provider-currency. */
 export interface ShippingQuote {
-  /** The chosen shipping method id (e.g. "standard"). */
+  /** The default (cheapest) method name — back-compat + the pre-selected choice. */
   shippingMethod: string;
-  /** Shipping cost in `currency`. */
+  /** Default shipping cost in `currency` (matches `shippingMethod`). */
   shippingCost: number;
   /** ISO 4217 currency the quote is expressed in (e.g. "USD", "GBP"). */
   currency: string;
+  /** All buyer-selectable methods (deliverable only). Defaults to the single one. */
+  options?: ShippingOption[];
   providerMetadata?: Record<string, unknown>;
 }
 
