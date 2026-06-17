@@ -60,9 +60,10 @@ export default async function FulfillmentPage({ params, searchParams }: PageProp
   const shippingConfirmed = !!order.shippingLine1;
   const isPaid = order.status !== "PENDING" && order.status !== "CANCELLED";
   const isCancelled = order.status === "CANCELLED";
-  // Payment first: show Stripe section whenever not yet paid; collect shipping after.
-  const needsPayment = !isCancelled && !isPaid;
-  const needsShipping = isPaid && !shippingConfirmed;
+  // Address before payment (US-MFTF-12.4 retrofit): collect shipping first, then
+  // show the Stripe section only once an address is on file.
+  const needsShipping = !isCancelled && !shippingConfirmed;
+  const needsPayment = !isCancelled && shippingConfirmed && !isPaid;
 
   const defaultAddress = sessionUser.id
     ? await prisma.userAddress.findFirst({ where: { userId: sessionUser.id, isDefault: true } })
@@ -71,7 +72,7 @@ export default async function FulfillmentPage({ params, searchParams }: PageProp
   return (
     <div className="mx-auto max-w-lg px-6 py-12 space-y-8">
       <h1 className="text-2xl font-semibold text-stone-900">
-        {isPaid && shippingConfirmed ? "Order Confirmed" : isPaid ? "Almost Done" : "Complete Your Order"}
+        {isPaid ? "Order Confirmed" : needsShipping ? "Shipping Address" : "Complete Your Order"}
       </h1>
 
       {/* Artwork summary */}
@@ -103,7 +104,7 @@ export default async function FulfillmentPage({ params, searchParams }: PageProp
         </section>
       )}
 
-      {/* Step 1: Payment */}
+      {/* Step 2: Payment — shown only once a shipping address is on file */}
       {needsPayment && (
         <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm space-y-4">
           <h2 className="text-sm font-semibold text-stone-700">Payment</h2>
@@ -111,7 +112,7 @@ export default async function FulfillmentPage({ params, searchParams }: PageProp
         </section>
       )}
 
-      {/* Step 2: Shipping — collected after payment */}
+      {/* Step 1: Shipping — collected before payment (US-MFTF-12.4 retrofit) */}
       {needsShipping && (
         <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm space-y-4">
           <h2 className="text-sm font-semibold text-stone-700">Shipping Address</h2>
