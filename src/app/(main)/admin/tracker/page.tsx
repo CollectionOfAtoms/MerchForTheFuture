@@ -5,7 +5,7 @@ interface Story {
   id: string;
   epic: string;
   title: string;
-  status: "Not Started" | "Test Written" | "In Progress" | "Passed" | "Complete" | "Deferred" | "Dropped";
+  status: "Not Started" | "Test Written" | "In Progress" | "Passed" | "Complete" | "Deferred" | "Dropped" | "Tests Passing — pending live confirmation";
   testWrittenDate: string | null;
   testWrittenCommit: string | null;
   testPassedDate: string | null;
@@ -35,6 +35,7 @@ const STATUS_CONFIG = {
   "Complete": { label: "Complete", bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
   "Deferred": { label: "Deferred", bg: "bg-sky-50", text: "text-sky-600", dot: "bg-sky-300" },
   "Dropped": { label: "Dropped", bg: "bg-red-50", text: "text-red-400", dot: "bg-red-300" },
+  "Tests Passing — pending live confirmation": { label: "Tests passing · live-confirm pending", bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-400" },
 } as const;
 
 function groupByEpic(stories: Story[]): Record<string, Story[]> {
