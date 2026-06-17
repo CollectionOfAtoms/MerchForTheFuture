@@ -105,6 +105,126 @@ export async function cartItemCount(cartId: string): Promise<number> {
   return agg._sum.quantity ?? 0;
 }
 
+// ── Normalized cart view (US-MFTF-11.4) ──────────────────────────────────────
+
+export interface CartLineItem {
+  id: string;
+  kind: CartItemKind;
+  title: string;
+  /** Human-readable selection (e.g. "White · M" or "Fine Art Paper · 16x24"). */
+  selectionSummary: string;
+  thumbnailUrl: string | null;
+  unitPrice: number;
+  quantity: number;
+  lineTotal: number;
+}
+
+export interface CartView {
+  items: CartLineItem[];
+  subtotal: number;
+  itemCount: number;
+}
+
+const MATERIAL_LABELS: Record<string, string> = {
+  FAP: "Fine Art Paper",
+  CAN: "Stretched Canvas",
+};
+
+/** Derive a buyer-facing "material · size" summary from a Prodigi SKU. */
+function printSummary(sku: string): string {
+  const parts = sku.split("-");
+  const material = MATERIAL_LABELS[parts[1]] ?? parts[1] ?? "Print";
+  const size = (parts[2] ?? "").replace(/X/i, "x");
+  return size ? `${material} · ${size}` : material;
+}
+
+/**
+ * Normalized, buyer-facing projection of a cart's line items (US-MFTF-11.4).
+ * Apparel rows resolve title/price/thumbnail from the listing without branching
+ * on sourcing mode or provider; print rows use the artwork title/thumbnail and
+ * the display-only `quotedUnitPrice` snapshot stored on the line.
+ */
+export async function getCartView(cartId: string): Promise<CartView> {
+  const items = await prisma.cartItem.findMany({
+    where: { cartId },
+    orderBy: { addedAt: "asc" },
+    include: {
+      apparelListing: {
+        select: {
+          title: true,
+          retailPrice: true,
+          images: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 1 },
+          referencedVariants: { orderBy: { id: "asc" }, take: 1 },
+        },
+      },
+      originalListing: {
+        select: {
+          artwork: {
+            select: {
+              title: true,
+              images: { orderBy: [{ isPrimary: "desc" }, { order: "asc" }], take: 1 },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const lines: CartLineItem[] = items.map((item) => {
+    if (item.itemKind === "APPAREL") {
+      const listing = item.apparelListing;
+      const sel = item.selection as { colorId?: string; sizeLabel?: string };
+      const img = listing?.images[0];
+      const thumbnailUrl =
+        img?.gridUrl ?? img?.displayUrl ?? img?.originalUrl ?? listing?.referencedVariants[0]?.mockupUrl ?? null;
+      const unitPrice = listing ? Number(listing.retailPrice) : 0;
+      const quantity = item.quantity;
+      return {
+        id: item.id,
+        kind: "APPAREL",
+        title: listing?.title ?? "Apparel",
+        selectionSummary: [sel.colorId, sel.sizeLabel].filter(Boolean).join(" · "),
+        thumbnailUrl,
+        unitPrice,
+        quantity,
+        lineTotal: unitPrice * quantity,
+      };
+    }
+
+    const sel = item.selection as { prodigiSku?: string; quotedUnitPrice?: number };
+    const artwork = item.originalListing?.artwork;
+    const img = artwork?.images[0];
+    const thumbnailUrl = img?.gridUrl ?? img?.displayUrl ?? img?.url ?? null;
+    const unitPrice = typeof sel.quotedUnitPrice === "number" ? sel.quotedUnitPrice : 0;
+    const quantity = item.quantity;
+    return {
+      id: item.id,
+      kind: "PRINT",
+      title: artwork?.title ?? "Print",
+      selectionSummary: printSummary(sel.prodigiSku ?? ""),
+      thumbnailUrl,
+      unitPrice,
+      quantity,
+      lineTotal: unitPrice * quantity,
+    };
+  });
+
+  const subtotal = lines.reduce((sum, l) => sum + l.lineTotal, 0);
+  const itemCount = lines.reduce((sum, l) => sum + l.quantity, 0);
+  return { items: lines, subtotal, itemCount };
+}
+
+/**
+ * Resolve a cart item only if it belongs to `cartId` (ownership guard for the
+ * update/remove actions). Returns null when the item does not exist or is owned
+ * by a different cart.
+ */
+export async function findOwnedItem(cartId: string, cartItemId: string): Promise<CartItem | null> {
+  const item = await prisma.cartItem.findUnique({ where: { id: cartItemId } });
+  if (!item || item.cartId !== cartId) return null;
+  return item;
+}
+
 async function touchCart(cartId: string): Promise<void> {
   await prisma.cart.update({ where: { id: cartId }, data: { updatedAt: new Date() } });
 }

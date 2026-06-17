@@ -1686,11 +1686,12 @@
       "id": "US-MFTF-11.4",
       "epic": "Epic MFTF-11: Cart",
       "title": "Cart Page",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-16",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-16",
+      "testPassedCommit": "pending",
+      "notes": "14 tests (7 node + 7 jsdom). /cart server page at src/app/(main)/cart/page.tsx (force-dynamic; reads the visitor's cart via resolveCartForRead). getCartView (src/lib/cart/cart.ts) projects normalized line items: APPAREL title/retailPrice/thumbnail (grid variant, primary-first, referenced-mockup fallback) + 'colorId · sizeLabel' summary (no mode branching); PRINT artwork title/grid thumbnail + quotedUnitPrice snapshot + 'Material · Size' summary derived from the Prodigi SKU; subtotal + total itemCount. CartContents (client) renders rows with a quantity stepper (decrease disabled at qty 1), remove control, line totals, subtotal, 'shipping/tax at checkout' note, and 'Proceed to checkout' -> /checkout; mutations call updateCartItemAction/removeCartItemAction then router.refresh() (badge + totals stay in sync, no full reload). Empty state extracted to CartEmpty (links /shop + /browse). updateCartItemAction/removeCartItemAction enforce ownership via findOwnedItem against the visitor's resolved cart (foreign-cart manipulation rejected; quantity < 1 rejected; no-cart rejected). Added a /checkout placeholder page (404-safe 'coming soon'); the per-order /checkout/[orderId] route for originals/auctions is unrelated and untouched."
     },
     {
       "id": "US-MFTF-11.5",

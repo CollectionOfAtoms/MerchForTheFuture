@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { resolveCartForWrite } from "@/lib/cart/request";
-import { addItem, cartItemCount } from "@/lib/cart/cart";
+import { resolveCartForWrite, resolveCartForRead } from "@/lib/cart/request";
+import { addItem, cartItemCount, findOwnedItem, setItemQuantity, removeItem } from "@/lib/cart/cart";
 import { validateApparelSelection, validatePrintSelection } from "@/lib/cart/validators";
 import { getApparelListingDetail, getApparelListingOwnership } from "@/lib/apparel/detail";
 import { quotePrintUnitPrice } from "@/lib/print/quote";
@@ -123,4 +123,38 @@ async function addPrintToCart(input: AddPrintInput): Promise<AddToCartResult> {
   revalidatePath("/", "layout");
   const count = await cartItemCount(cart.id);
   return { success: true, count };
+}
+
+export type MutateCartResult = { error: string } | { success: true; count: number };
+
+/**
+ * Set a cart line's quantity (min 1), guarded by ownership: the item must belong
+ * to the requesting visitor's cart (US-MFTF-11.4).
+ */
+export async function updateCartItemAction(cartItemId: string, quantity: number): Promise<MutateCartResult> {
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    return { error: "Quantity must be at least 1." };
+  }
+  const cart = await resolveCartForRead();
+  if (!cart) return { error: "Cart not found." };
+  const owned = await findOwnedItem(cart.id, cartItemId);
+  if (!owned) return { error: "Item not found in your cart." };
+
+  await setItemQuantity(cartItemId, quantity);
+  revalidatePath("/", "layout");
+  revalidatePath("/cart");
+  return { success: true, count: await cartItemCount(cart.id) };
+}
+
+/** Remove a cart line, guarded by ownership (US-MFTF-11.4). */
+export async function removeCartItemAction(cartItemId: string): Promise<MutateCartResult> {
+  const cart = await resolveCartForRead();
+  if (!cart) return { error: "Cart not found." };
+  const owned = await findOwnedItem(cart.id, cartItemId);
+  if (!owned) return { error: "Item not found in your cart." };
+
+  await removeItem(cartItemId);
+  revalidatePath("/", "layout");
+  revalidatePath("/cart");
+  return { success: true, count: await cartItemCount(cart.id) };
 }
