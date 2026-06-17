@@ -1653,11 +1653,12 @@
       "id": "US-MFTF-11.1",
       "epic": "Epic MFTF-11: Cart",
       "title": "Cart & CartItem Schema",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-16",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-16",
+      "testPassedCommit": "pending",
+      "notes": "31 tests passing. Added Cart (nullable-unique userId/guestToken), CartItem (polymorphic over CartItemKind APPAREL|PRINT), and the CartItemKind enum to prisma/schema.prisma; pushed to main + test DBs; added CartItem/Cart to resetDatabase TRUNCATE (before User/ApparelListing/OriginalListing). App-layer invariants in src/lib/cart/invariants.ts (exactly one of userId/guestToken; exactly one of apparelListingId/listingId matching itemKind; integer quantity >= 1), mirroring the US-MFTF-5.1 single-FK convention. Per-kind selection validators in src/lib/cart/validators.ts (APPAREL {colorId,sizeLabel}; PRINT {prodigiSku,attributes,quotedUnitPrice}) reject missing/extra keys and wrong types. NAMING NOTE: the spec calls the print-referenced model the artwork 'Listing'; the actual Prisma model is OriginalListing, so CartItem.listingId FKs OriginalListing. COLOUR-IDENTITY NOTE (deviation flagged per handoff): selection.colorId holds the normalized offered-colour identity = colour NAME (the value surfaced by getApparelListingDetail), NOT a ProductTypeColor FK, because referenced (Teemill) colours have no ProductTypeColor row; this is the cross-mode identity validated against the offered set in US-MFTF-11.2."
     },
     {
       "id": "US-MFTF-11.2",
