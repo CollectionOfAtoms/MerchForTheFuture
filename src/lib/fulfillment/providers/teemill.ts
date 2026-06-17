@@ -19,12 +19,54 @@ import { teemillPost, teemillGet, teemillError, teemillDefaultContact } from '..
 // proofing order confirms it. // UNVERIFIED
 const DEFAULT_SHIPPING_METHOD_ID = 'standard';
 
+type Priceish = { amount?: string | number } | string | number | undefined;
+
+interface TeemillShippingMethod {
+  id?: string;
+  name?: string;
+  totalPrice?: Priceish;
+  price?: Priceish;
+  cost?: Priceish;
+  amount?: string | number;
+}
+
 interface TeemillOrderResponse {
   id?: string;
   fulfillments?: Array<{
     id?: string;
-    availableShippingMethods?: Array<{ id?: string; name?: string; totalPrice?: { amount?: string | number } }>;
+    availableShippingMethods?: TeemillShippingMethod[];
   }>;
+}
+
+/** Coerce a number|numeric-string to a finite number, else null. */
+function coerceNumber(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v))) return Number(v);
+  return null;
+}
+
+/**
+ * Pull the shipping cost out of a Teemill shipping method, tolerant of where the
+ * live API actually puts it. Returns null when no numeric price is found (so the
+ * caller can tell "field shape is wrong" apart from a genuine 0). // UNVERIFIED
+ * field paths until a live proofing order.
+ */
+function extractShippingAmount(method: TeemillShippingMethod | undefined): number | null {
+  if (!method) return null;
+  const candidates: unknown[] = [
+    (method.totalPrice as { amount?: unknown })?.amount,
+    method.totalPrice,
+    (method.price as { amount?: unknown })?.amount,
+    method.price,
+    (method.cost as { amount?: unknown })?.amount,
+    method.cost,
+    method.amount,
+  ];
+  for (const c of candidates) {
+    const n = coerceNumber(c);
+    if (n !== null) return n;
+  }
+  return null;
 }
 
 /** Map our normalized address to Teemill's shippingAddress shape. */
@@ -83,12 +125,23 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
     const methods = fulfillment?.availableShippingMethods ?? [];
     const chosen =
       methods.find((m) => m.id === DEFAULT_SHIPPING_METHOD_ID) ?? methods[0];
-    const amount = Number(chosen?.totalPrice?.amount ?? 0);
+    const amount = extractShippingAmount(chosen);
+
+    // Diagnostic: if we couldn't find a price (or DROPSHIPPING_DEBUG is on), dump
+    // the raw response so the actual field shape can be confirmed against the live
+    // API. The shipping-methods shape is // UNVERIFIED until a proofing order.
+    if (amount === null || process.env.DROPSHIPPING_DEBUG) {
+      console.log(
+        `[teemill] quote raw response (methods=${methods.length}, parsedAmount=${amount ?? "none"}):\n` +
+          JSON.stringify(data, null, 2),
+      );
+    }
+
     return {
       // Teemill bills in GBP; the checkout layer converts to USD for the buyer
       // total (the single allowed FX point, for shipping only).
       shippingMethod: chosen?.id ?? DEFAULT_SHIPPING_METHOD_ID,
-      shippingCost: Number.isFinite(amount) ? amount : 0,
+      shippingCost: amount ?? 0,
       currency: 'GBP',
       providerMetadata: { teemillOrderId: data.id, fulfillmentId: fulfillment?.id },
     };
