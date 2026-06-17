@@ -292,7 +292,7 @@ Sizes are not returned by the `/product/options` endpoint (only colors and desig
 | 4 | Is there a sandbox/test mode? | **Resolved** — none; MSW is the only option. |
 | 5 | Does a programmatic mockup endpoint exist? | **Resolved 2026-06-12** — moot; mockups are served in the catalog (`images[].variantIds`). MFTF-8 not needed for Teemill. |
 | 6 | What sizes are available per product type? | **Resolved 2026-06-12** — sizes are variant attributes in `/catalog/products` (XS–XXL on the test product). |
-| 7 | How is `shippingMethodId` chosen at confirm time — always-cheapest or buyer-facing? | **Open** — not yet observed; assumed a stable "standard" method for US-MFTF-12.3. Confirm live. |
+| 7 | How is `shippingMethodId` chosen at confirm time — always-cheapest or buyer-facing? | **Resolved 2026-06-17 (live)** — `POST /orders` returns `fulfillments[].availableShippingMethods[]`, each `{ id (PER-ORDER UUID), name, description, deliveryEstimates, totalPrice: { amount, currencyCode } }`. Names are carrier services (e.g. `Spring Tracked`, `Store Collect`, `Spring USA`); there is **no stable "standard" id**. On the wholesale Orders API **shipping is bundled into the item cost** (item `totalPrice` ≈ £15.63; order-level `shippingPrice` 0.00), so the methods' `totalPrice.amount` are all **`0.00 GBP`** — a genuine £0, not a parse miss. Whole response is **GBP-only** (no currency request param). App logic (`chooseTeemillShippingMethod`): exclude in-store collect, pick cheapest shippable; store the method **name** at quote time and re-resolve to the per-order id at confirm. Still UNVERIFIED: whether an unconfirmed `POST /orders` expires/bills. |
 
 ---
 

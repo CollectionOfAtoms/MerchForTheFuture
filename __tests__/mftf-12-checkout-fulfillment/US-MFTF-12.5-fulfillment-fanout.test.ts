@@ -38,7 +38,7 @@ async function seedCartOrder(buyerId: string, sellerId: string) {
       shippingName: "Jane", shippingLine1: "1 St", shippingCity: "Portland", shippingState: "OR", shippingPostal: "97201", shippingCountry: "US",
     },
   });
-  const teemillFo = await prisma.fulfillmentOrder.create({ data: { orderId: order.id, provider: "teemill", status: "PENDING", shippingMethod: "standard", shippingCost: 3.99 } });
+  const teemillFo = await prisma.fulfillmentOrder.create({ data: { orderId: order.id, provider: "teemill", status: "PENDING", shippingMethod: "Standard", shippingCost: 3.99 } });
   const prodigiFo = await prisma.fulfillmentOrder.create({ data: { orderId: order.id, provider: "prodigi", status: "PENDING", shippingMethod: "Standard", shippingCost: 4.99 } });
   await prisma.orderItem.create({ data: { orderId: order.id, itemKind: "APPAREL", apparelListingId: ref.id, selection: { colorId: "Evergreen", sizeLabel: "M" }, quantity: 1, unitPrice: 32, fulfillmentOrderId: teemillFo.id } });
   await prisma.orderItem.create({ data: { orderId: order.id, itemKind: "PRINT", listingId: print.id, selection: { prodigiSku: "GLOBAL-FAP-16X24", attributes: {}, quotedUnitPrice: 40 }, quantity: 1, unitPrice: 40, fulfillmentOrderId: prodigiFo.id } });

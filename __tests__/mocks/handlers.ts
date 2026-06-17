@@ -155,7 +155,9 @@ const teemillHandlers = [
   ),
   // Step 1 of the two-step Orders flow — returns shipping methods per fulfillment
   // without finalizing (used for quoteShipping in US-MFTF-12.3 and order create in
-  // US-MFTF-12.5). // UNVERIFIED: stable "standard" id (Open Q#7).
+  // US-MFTF-12.5). Shape verified live 2026-06-17: per-order UUID method ids,
+  // carrier-service names (incl. an in-store "Store Collect"), price in
+  // totalPrice.amount (GBP; typically 0.00 since shipping is bundled into item cost).
   http.post("https://api.teemill.com/v1/orders", () =>
     HttpResponse.json(
       {
@@ -164,6 +166,8 @@ const teemillHandlers = [
           {
             id: "mock-fulfillment-id-1",
             availableShippingMethods: [
+              // In-store collect is £0 but must never be auto-selected for a shipped order.
+              { id: "collect-uuid", name: "Store Collect", totalPrice: { amount: "0.00" } },
               { id: "standard", name: "Standard", totalPrice: { amount: "3.99" } },
               { id: "express", name: "Express", totalPrice: { amount: "7.99" } },
             ],

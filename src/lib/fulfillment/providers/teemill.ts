@@ -13,12 +13,6 @@ import {
 } from '../types';
 import { teemillPost, teemillGet, teemillError, teemillDefaultContact } from '../teemill/client';
 
-/** The shipping method id we select at confirm time. */
-// Open Q#7 (docs/teemill-api-notes.md): unverified that a stable "standard" id
-// always exists or whether buyer-facing choice is required. Assumed until a live
-// proofing order confirms it. // UNVERIFIED
-const DEFAULT_SHIPPING_METHOD_ID = 'standard';
-
 type Priceish = { amount?: string | number } | string | number | undefined;
 
 interface TeemillShippingMethod {
@@ -67,6 +61,30 @@ function extractShippingAmount(method: TeemillShippingMethod | undefined): numbe
     if (n !== null) return n;
   }
   return null;
+}
+
+// In-store pickup is never an auto-selectable delivery method for a shipped order.
+const COLLECT_METHOD_RE = /collect|pick[\s-]?up|in[\s-]?store/i;
+
+/**
+ * Choose a shipping method from a fulfillment's options (Open Q#7, resolved live
+ * 2026-06-17): method ids are PER-ORDER UUIDs (not a stable "standard"), names are
+ * carrier services like "Spring Tracked" / "Store Collect" / "Spring USA", and the
+ * price lives in `totalPrice.amount` (GBP). On the wholesale Orders API shipping is
+ * bundled into the item cost, so these are typically £0. We never auto-pick an
+ * in-store-collect option, then take the cheapest, tie-broken by listed order.
+ */
+function chooseTeemillShippingMethod(
+  methods: TeemillShippingMethod[],
+): TeemillShippingMethod | undefined {
+  const shippable = methods.filter((m) => !COLLECT_METHOD_RE.test(m.name ?? ''));
+  const pool = shippable.length > 0 ? shippable : methods;
+  if (pool.length === 0) return undefined;
+  return [...pool].sort(
+    (a, b) =>
+      (extractShippingAmount(a) ?? Number.POSITIVE_INFINITY) -
+      (extractShippingAmount(b) ?? Number.POSITIVE_INFINITY),
+  )[0];
 }
 
 /** Map our normalized address to Teemill's shippingAddress shape. */
@@ -123,13 +141,13 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
     const data = (await resp.json()) as TeemillOrderResponse;
     const fulfillment = data.fulfillments?.[0];
     const methods = fulfillment?.availableShippingMethods ?? [];
-    const chosen =
-      methods.find((m) => m.id === DEFAULT_SHIPPING_METHOD_ID) ?? methods[0];
+    const chosen = chooseTeemillShippingMethod(methods);
     const amount = extractShippingAmount(chosen);
 
     // Diagnostic: if we couldn't find a price (or DROPSHIPPING_DEBUG is on), dump
     // the raw response so the actual field shape can be confirmed against the live
-    // API. The shipping-methods shape is // UNVERIFIED until a proofing order.
+    // API. NB on the wholesale Orders API shipping is bundled into the item cost,
+    // so a genuine 0.00 here is expected (verified live 2026-06-17).
     if (amount === null || process.env.DROPSHIPPING_DEBUG) {
       console.log(
         `[teemill] quote raw response (methods=${methods.length}, parsedAmount=${amount ?? "none"}):\n` +
@@ -138,9 +156,11 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
     }
 
     return {
-      // Teemill bills in GBP; the checkout layer converts to USD for the buyer
-      // total (the single allowed FX point, for shipping only).
-      shippingMethod: chosen?.id ?? DEFAULT_SHIPPING_METHOD_ID,
+      // Method ids are per-order UUIDs, so we store the method NAME (stable across
+      // orders) and re-resolve it to an id on the fulfillment order at confirm time.
+      shippingMethod: chosen?.name ?? '',
+      // Teemill bills in GBP; the checkout layer converts to USD. On the Orders API
+      // shipping is bundled into the item cost, so this is typically 0.
       shippingCost: amount ?? 0,
       currency: 'GBP',
       providerMetadata: { teemillOrderId: data.id, fulfillmentId: fulfillment?.id },
@@ -190,10 +210,16 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
     if (!data.id) {
       throw new Error('Teemill order response missing id');
     }
+    const fulfillment = data.fulfillments?.[0];
     return {
       externalOrderId: data.id,
       estimatedDispatchDate: null,
-      providerMetadata: { fulfillmentId: data.fulfillments?.[0]?.id },
+      // Carry the fulfillment's own shipping methods so confirm can resolve the
+      // per-order method id (ids differ per order; we match the stored name).
+      providerMetadata: {
+        fulfillmentId: fulfillment?.id,
+        availableShippingMethods: fulfillment?.availableShippingMethods ?? [],
+      },
     };
   }
 
@@ -201,10 +227,19 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
     job: FulfillmentJob,
     created: FulfillmentOrderResult,
   ): Promise<FulfillmentOrderResult> {
-    const fulfillmentId = (created.providerMetadata as { fulfillmentId?: string }).fulfillmentId;
-    const shippingMethodId = job.shippingMethod ?? DEFAULT_SHIPPING_METHOD_ID;
+    const meta = created.providerMetadata as {
+      fulfillmentId?: string;
+      availableShippingMethods?: TeemillShippingMethod[];
+    };
+    const methods = meta.availableShippingMethods ?? [];
+    // Resolve the per-order method id: match the stored method name on THIS order's
+    // options (ids are per-order UUIDs), else fall back to the standard chooser.
+    const byName = job.shippingMethod
+      ? methods.find((m) => (m.name ?? '') === job.shippingMethod && !COLLECT_METHOD_RE.test(m.name ?? ''))
+      : undefined;
+    const chosen = byName ?? chooseTeemillShippingMethod(methods);
     const resp = await teemillPost(`/orders/${created.externalOrderId}/confirm`, [
-      { fulfillmentId, shippingMethodId },
+      { fulfillmentId: meta.fulfillmentId, shippingMethodId: chosen?.id },
     ]);
     if (!resp.ok) {
       throw await teemillError(resp, 'order confirm (POST /orders/{id}/confirm)');

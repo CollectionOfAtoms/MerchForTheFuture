@@ -444,3 +444,49 @@ describe("US-MFTF-12.3 — checkout revalidation & per-provider shipping", () =>
     });
   });
 });
+
+// Open Q#7, resolved live 2026-06-17: Teemill method ids are per-order UUIDs, names
+// are carrier services (incl. "Store Collect"), price in totalPrice.amount (GBP),
+// and shipping is bundled into the item cost so it's typically £0.
+describe("Teemill shipping-method selection", () => {
+  const ADDR = { name: "J", line1: "1 St", city: "Portland", postal: "97206", country: "US" };
+
+  function stubTeemillOrder(methods: Array<{ id: string; name: string; amount: string }>) {
+    server.use(
+      http.post("https://api.teemill.com/v1/orders", () =>
+        HttpResponse.json(
+          {
+            id: "o1",
+            fulfillments: [
+              { id: "f1", availableShippingMethods: methods.map((m) => ({ id: m.id, name: m.name, totalPrice: { amount: m.amount } })) },
+            ],
+          },
+          { status: 201 },
+        ),
+      ),
+    );
+  }
+
+  it("never auto-selects in-store collect; picks the cheapest shippable method", async () => {
+    const { TeemillFulfillmentProvider } = await import("@/lib/fulfillment/providers/teemill");
+    stubTeemillOrder([
+      { id: "collect", name: "Store Collect", amount: "0.00" },
+      { id: "std", name: "Standard", amount: "3.99" },
+      { id: "exp", name: "Express", amount: "7.99" },
+    ]);
+    const quote = await new TeemillFulfillmentProvider().quoteShipping([{ variantRef: "vr", quantity: 1 }], ADDR, { email: "b@e.com" });
+    expect(quote.shippingMethod).toBe("Standard");
+    expect(quote.shippingCost).toBe(3.99);
+  });
+
+  it("returns a genuine 0 when the cheapest shippable method is free (shipping bundled into item cost)", async () => {
+    const { TeemillFulfillmentProvider } = await import("@/lib/fulfillment/providers/teemill");
+    stubTeemillOrder([
+      { id: "collect", name: "Store Collect", amount: "0.00" },
+      { id: "usa", name: "Spring USA", amount: "0.00" },
+    ]);
+    const quote = await new TeemillFulfillmentProvider().quoteShipping([{ variantRef: "vr", quantity: 1 }], ADDR, { email: "b@e.com" });
+    expect(quote.shippingMethod).toBe("Spring USA");
+    expect(quote.shippingCost).toBe(0);
+  });
+});
