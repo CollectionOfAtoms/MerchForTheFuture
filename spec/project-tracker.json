@@ -1675,12 +1675,12 @@
       "id": "US-MFTF-11.3",
       "epic": "Epic MFTF-11: Cart",
       "title": "Add Print to Cart",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Modifies behavior of Passed story US-15.4 (print order flow becomes add-to-cart); update its test file in the same commit."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-16",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-16",
+      "testPassedCommit": "pending",
+      "notes": "11 new tests + a US-15.4 add-to-cart assertion. addToCartAction gains a PRINT branch (src/app/actions/cart.ts): validates prints enabled + SKU in the seller-curated printProducts set (already aspect-ratio filtered per US-15.6, so membership IS the aspect-ratio check) + listing not ARCHIVED/CANCELLED. Live Prodigi quote helper src/lib/print/quote.ts (POST /quotes; new MSW handler returns a fixed $42/copy, deliberately != the $45 catalog price so tests prove the snapshot is from the quote) snapshots selection.quotedUnitPrice for DISPLAY ONLY (re-quoted at checkout in MFTF-12). addItem now takes an optional dedupeSelection so identical prints dedupe on {prodigiSku,attributes} ignoring the volatile quotedUnitPrice. PrintOptionsSelector reworked: 'Order Print' -> 'Add to cart' (router.refresh updates the nav badge, no full reload); the sign-in gate was removed so guests can add prints (parity with US-MFTF-11.2). DELETED the direct single-item path src/app/actions/print.ts (createPrintOrderAction + /checkout/{orderId} redirect); nothing else imported it. NOTE: the src/lib/print/order.ts createPrintOrder lib is RETAINED (it is the underlying order creator used by checkout/fulfillment and by US-MFTF-3.2/US-8.3 tests) — those tests stay green. US-15.4 INTERPRETATION: 'artwork listing is active' is treated as 'prints enabled and listing not retired' rather than requiring the original to be unsold, preserving the print-independent-of-original principle. US-15.4 TEST TOUCHED: added a describe asserting the page flow now produces a PRINT CartItem with the quoted snapshot and creates no Order; all prior US-15.4 createPrintOrder/fulfillPayment tests unchanged and green."
     },
     {
       "id": "US-MFTF-11.4",

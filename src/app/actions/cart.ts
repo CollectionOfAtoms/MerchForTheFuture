@@ -1,10 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/db";
 import { resolveCartForWrite } from "@/lib/cart/request";
 import { addItem, cartItemCount } from "@/lib/cart/cart";
-import { validateApparelSelection } from "@/lib/cart/validators";
+import { validateApparelSelection, validatePrintSelection } from "@/lib/cart/validators";
 import { getApparelListingDetail, getApparelListingOwnership } from "@/lib/apparel/detail";
+import { quotePrintUnitPrice } from "@/lib/print/quote";
+import type { PrintProduct } from "@/lib/print/listing";
 
 export type AddToCartResult = { error: string } | { success: true; count: number };
 
@@ -15,7 +18,15 @@ export interface AddApparelInput {
   quantity?: number;
 }
 
-export type AddToCartInput = AddApparelInput;
+export interface AddPrintInput {
+  itemKind: "PRINT";
+  listingId: string;
+  prodigiSku: string;
+  attributes?: Record<string, string>;
+  quantity?: number;
+}
+
+export type AddToCartInput = AddApparelInput | AddPrintInput;
 
 /**
  * Add an item to the visitor's cart (US-MFTF-11.2 — apparel; US-MFTF-11.3 extends
@@ -24,9 +35,8 @@ export type AddToCartInput = AddApparelInput;
  * the client can refresh the nav badge without a full reload.
  */
 export async function addToCartAction(input: AddToCartInput): Promise<AddToCartResult> {
-  if (input.itemKind === "APPAREL") {
-    return addApparelToCart(input);
-  }
+  if (input.itemKind === "APPAREL") return addApparelToCart(input);
+  if (input.itemKind === "PRINT") return addPrintToCart(input);
   return { error: "Unsupported item kind." };
 }
 
@@ -61,6 +71,52 @@ async function addApparelToCart(input: AddApparelInput): Promise<AddToCartResult
     itemKind: "APPAREL",
     apparelListingId: input.apparelListingId,
     selection: { colorId, sizeLabel },
+    quantity: input.quantity ?? 1,
+  });
+
+  revalidatePath("/", "layout");
+  const count = await cartItemCount(cart.id);
+  return { success: true, count };
+}
+
+async function addPrintToCart(input: AddPrintInput): Promise<AddToCartResult> {
+  const listing = await prisma.originalListing.findUnique({ where: { id: input.listingId } });
+  // Prints are independent of the original's sold state, so we don't require
+  // ACTIVE; we only require prints be enabled and the listing not retired.
+  if (!listing || !listing.availableForPrint) {
+    return { error: "Prints are not available for this artwork." };
+  }
+  if (listing.status === "ARCHIVED" || listing.status === "CANCELLED") {
+    return { error: "This item is not available for purchase." };
+  }
+
+  // The seller-curated printProducts set is already aspect-ratio filtered
+  // (US-15.6), so membership is the authoritative SKU validity check.
+  const products = (listing.printProducts as unknown as PrintProduct[] | null) ?? [];
+  if (!products.some((p) => p.sku === input.prodigiSku)) {
+    return { error: "That print option is not available for this artwork." };
+  }
+
+  const attributes = input.attributes ?? {};
+  let quotedUnitPrice: number;
+  try {
+    quotedUnitPrice = await quotePrintUnitPrice({ sku: input.prodigiSku, attributes });
+  } catch {
+    return { error: "We couldn't price this print right now. Please try again." };
+  }
+
+  const selection = { prodigiSku: input.prodigiSku, attributes, quotedUnitPrice };
+  const shape = validatePrintSelection(selection);
+  if (!shape.valid) return { error: shape.error };
+
+  const cart = await resolveCartForWrite();
+  await addItem(cart.id, {
+    itemKind: "PRINT",
+    listingId: input.listingId,
+    selection,
+    // De-dupe on SKU + attributes only; the volatile quotedUnitPrice must not
+    // split an otherwise-identical print into two lines.
+    dedupeSelection: { prodigiSku: input.prodigiSku, attributes },
     quantity: input.quantity ?? 1,
   });
 

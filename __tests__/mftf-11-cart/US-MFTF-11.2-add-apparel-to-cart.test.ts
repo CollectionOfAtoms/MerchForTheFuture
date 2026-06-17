@@ -107,7 +107,8 @@ async function seedReferencedListing(sellerId: string, { colors = ["Evergreen", 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("US-MFTF-11.2 — addToCartAction (apparel)", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await resetDatabase();
     mockGuestToken = null;
     vi.clearAllMocks();
     authAsGuest();

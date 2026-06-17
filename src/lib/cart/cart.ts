@@ -31,11 +31,18 @@ export interface AddItemInput {
   listingId?: string | null;
   selection: Prisma.InputJsonValue;
   quantity?: number;
+  /**
+   * Optional subset of `selection` used for de-duplication matching. Defaults to
+   * the full `selection`. Prints pass `{ prodigiSku, attributes }` here so an
+   * identical print de-dupes by SKU + attributes, ignoring the volatile
+   * display-only `quotedUnitPrice` snapshot (US-MFTF-11.3).
+   */
+  dedupeSelection?: Prisma.InputJsonValue;
 }
 
 /**
  * Add an item to a cart, deduplicating on identical
- * (itemKind, listing reference, selection): a matching row has its quantity
+ * (itemKind, listing reference, dedupe selection): a matching row has its quantity
  * incremented instead of inserting a duplicate. Touches `Cart.updatedAt`.
  * Assumes `selection` has already been structurally validated by the caller.
  */
@@ -52,12 +59,14 @@ export async function addItem(cartId: string, input: AddItemInput): Promise<Cart
   });
   if (!invariant.valid) throw new Error(invariant.error);
 
-  // Look for an identical existing line (same kind, same listing ref, same
-  // selection) and merge into it. `selection` equality is a JSON value match.
+  // Look for an identical existing line (same kind, same listing ref, matching
+  // dedupe selection) and merge into it.
+  const dedupe = input.dedupeSelection ?? input.selection;
+  const dedupeKeys = Object.keys(dedupe as Record<string, unknown>);
   const candidates = await prisma.cartItem.findMany({
     where: { cartId, itemKind: input.itemKind, apparelListingId, listingId },
   });
-  const match = candidates.find((c) => selectionsEqual(c.selection, input.selection));
+  const match = candidates.find((c) => selectionsEqual(projectKeys(c.selection, dedupeKeys), dedupe));
 
   const result = match
     ? await prisma.cartItem.update({
@@ -106,6 +115,14 @@ async function touchCart(cartId: string): Promise<void> {
  */
 export function selectionsEqual(a: unknown, b: unknown): boolean {
   return canonical(a) === canonical(b);
+}
+
+/** Pick only `keys` from an object value (used for partial dedupe matching). */
+function projectKeys(value: unknown, keys: string[]): Record<string, unknown> {
+  const source = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of keys) out[k] = source[k];
+  return out;
 }
 
 function canonical(value: unknown): string {
