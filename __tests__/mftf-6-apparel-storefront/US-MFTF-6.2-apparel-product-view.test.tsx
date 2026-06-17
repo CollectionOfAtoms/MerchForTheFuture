@@ -1,8 +1,14 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import ApparelProductView from "@/components/ApparelProductView";
 import type { ApparelDetail } from "@/lib/apparel/detail";
+
+// ApparelProductView wires the "Add to cart" button to the cart server action
+// (US-MFTF-11.2). Mock it so the component test does not pull the server-only
+// action module (auth/prisma/next-headers) into jsdom.
+vi.mock("@/app/actions/cart", () => ({ addToCartAction: vi.fn(async () => ({ success: true, count: 1 })) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 
 afterEach(cleanup);
 

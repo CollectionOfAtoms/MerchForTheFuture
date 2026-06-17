@@ -1664,11 +1664,12 @@
       "id": "US-MFTF-11.2",
       "epic": "Epic MFTF-11: Cart",
       "title": "Add Apparel to Cart",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-16",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-16",
+      "testPassedCommit": "pending",
+      "notes": "23 tests (12 node action + 11 jsdom UI). addToCartAction (src/app/actions/cart.ts) validates listing is ACTIVE (UNLISTED/ARCHIVED/SOLD rejected via getApparelListingOwnership status check, since getApparelListingDetail intentionally also returns UNLISTED for preview), colour offered + size valid against the normalized read-shape (detail.colors[].name / detail.sizes) — never branches on sourcingMode/provider; referenced (Teemill) colours validate identically. Cart core src/lib/cart/cart.ts (pure DB, no next/headers — node-testable): findOrCreate{User,Guest}Cart, addItem with dedupe on (itemKind, listingRef, canonical selection) -> increment quantity + touch updatedAt, cartItemCount. Cookie I/O isolated in src/lib/cart/cookies.ts (httpOnly+secure+lax, 30d) and request resolution in src/lib/cart/request.ts (resolveCartForWrite mints+sets a guest token when absent; getCartCountForRequest is read-only for the nav). Nav cart icon + badge: CartBadge client component seeded by getCartCountForRequest in Nav (one element, visible desktop+mobile); ApparelProductView 'Add to cart' wired (disabled until colour+size) -> calls action -> router.refresh() updates the badge with no full reload, shows 'Added to cart'. Touched US-MFTF-6.2 component test to mock @/app/actions/cart + next/navigation (ApparelProductView now imports the server action); still green."
     },
     {
       "id": "US-MFTF-11.3",

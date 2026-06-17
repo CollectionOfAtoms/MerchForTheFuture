@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { ApparelDetail } from "@/lib/apparel/detail";
+import { addToCartAction } from "@/app/actions/cart";
 
 /**
  * Buyer-facing apparel product view: lifestyle/mockup carousel, colour picker,
@@ -20,6 +22,10 @@ export default function ApparelProductView({ detail }: { detail: ApparelDetail }
   const [colorIndex, setColorIndex] = useState<number | null>(null);
   const [size, setSize] = useState<string | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [added, setAdded] = useState(false);
+  const router = useRouter();
 
   const price = detail.retailPrice.toLocaleString("en-US", {
     style: "currency",
@@ -29,7 +35,29 @@ export default function ApparelProductView({ detail }: { detail: ApparelDetail }
 
   const hasImages = detail.images.length > 0;
   const activeImage = hasImages ? detail.images[Math.min(imageIndex, detail.images.length - 1)] : null;
-  const canAddToCart = colorIndex !== null && size !== null;
+  const canAddToCart = colorIndex !== null && size !== null && !isPending;
+
+  function handleAddToCart() {
+    if (colorIndex === null || size === null) return;
+    setError(null);
+    setAdded(false);
+    const colorId = detail.colors[colorIndex].name;
+    startTransition(async () => {
+      const result = await addToCartAction({
+        itemKind: "APPAREL",
+        apparelListingId: detail.id,
+        selection: { colorId, sizeLabel: size },
+      });
+      if ("error" in result) {
+        setError(result.error);
+      } else {
+        setAdded(true);
+        // Re-render the server nav so the cart badge reflects the new count
+        // without a full page reload.
+        router.refresh();
+      }
+    });
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
@@ -149,20 +177,33 @@ export default function ApparelProductView({ detail }: { detail: ApparelDetail }
             </div>
           )}
 
-          {/* Add to cart — stubbed until MFTF-11 wires the cart */}
+          {/* Add to cart (US-MFTF-11.2). Disabled until both colour and size are
+              chosen; the buyer stays on the page and the nav badge updates. */}
           <button
             type="button"
+            onClick={handleAddToCart}
             disabled={!canAddToCart}
+            aria-disabled={!canAddToCart}
             className={`w-full rounded-full py-3 text-sm font-medium transition-colors ${
               canAddToCart
                 ? "bg-stone-900 text-white hover:bg-stone-700"
                 : "cursor-not-allowed bg-stone-200 text-stone-400"
             }`}
           >
-            Add to cart
+            {isPending ? "Adding…" : "Add to cart"}
           </button>
-          {!canAddToCart && (
+          {colorIndex === null || size === null ? (
             <p className="-mt-3 text-center text-xs text-stone-400">Select a color and size to continue</p>
+          ) : null}
+          {added && (
+            <p role="status" className="-mt-3 text-center text-xs font-medium text-emerald-700">
+              Added to cart
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="-mt-3 text-center text-xs text-rose-600">
+              {error}
+            </p>
           )}
         </div>
       </div>
