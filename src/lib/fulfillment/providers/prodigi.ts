@@ -121,11 +121,27 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
         shippingMethod: 'Standard',
         currencyCode: 'USD',
         destinationCountryCode: address.country,
-        items: items.map((i) => ({ sku: i.sku, copies: i.quantity })),
+        // Prodigi prices per print area, so each item must carry attributes +
+        // assets — omitting `assets` 400s the quote.
+        items: items.map((i) => ({
+          sku: i.sku,
+          copies: i.quantity,
+          attributes: {},
+          assets: [{ printArea: 'default' }],
+        })),
       }),
     });
     if (!resp.ok) {
-      throw new Error(`Prodigi quote failed with status ${resp.status}`);
+      const body = await resp.text().catch(() => '');
+      console.error(`[prodigi] quote (POST /quotes) → ${resp.status}: ${body || '(empty body)'}`);
+      let detail = body;
+      try {
+        const parsed = JSON.parse(body) as { message?: string };
+        if (parsed?.message) detail = parsed.message;
+      } catch {
+        /* not JSON */
+      }
+      throw new Error(`Prodigi quote failed (${resp.status})${detail ? `: ${detail}` : ''}`);
     }
     const data = (await resp.json()) as {
       quotes?: Array<{

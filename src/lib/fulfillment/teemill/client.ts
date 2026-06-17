@@ -82,16 +82,20 @@ export async function teemillGet(path: string): Promise<Response> {
 }
 
 /**
- * A syntactically valid contact for the Orders API. Teemill rejects an order
- * create with an empty/invalid email (400), so the shipping-quote step needs a
- * real address even though it never confirms an order. Override per-deploy with
- * TEEMILL_CONTACT_EMAIL / TEEMILL_CONTACT_PHONE; the buyer's own email is used at
- * fulfillment time instead (see provider.fulfill).
+ * The business contact sent to dropshipper Order APIs. Teemill rejects an order
+ * create with an empty or unroutable email (400), and the quote step is an order
+ * create, so this must be a REAL, deliverable address. Set DROPSHIPPING_CONTACT_EMAIL
+ * to an address on a domain you actually own. (TEEMILL_CONTACT_* are kept as
+ * back-compat fallbacks.) The buyer's own email is used as the contact when one is
+ * threaded through; this is the fallback when it isn't.
  */
 export function teemillDefaultContact(): { email: string; phone: string } {
   return {
-    email: process.env.TEEMILL_CONTACT_EMAIL || "orders@merchforthefuture.quest",
-    phone: process.env.TEEMILL_CONTACT_PHONE || "",
+    email:
+      process.env.DROPSHIPPING_CONTACT_EMAIL ||
+      process.env.TEEMILL_CONTACT_EMAIL ||
+      "orders@merchforthefuture.quest",
+    phone: process.env.DROPSHIPPING_CONTACT_PHONE || process.env.TEEMILL_CONTACT_PHONE || "",
   };
 }
 

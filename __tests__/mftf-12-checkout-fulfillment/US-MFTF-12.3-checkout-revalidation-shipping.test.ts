@@ -420,5 +420,27 @@ describe("US-MFTF-12.3 — checkout revalidation & per-provider shipping", () =>
       const result = await createCheckoutAction(ADDRESS);
       expect("error" in result).toBe(true);
     });
+
+    it("sends per-item assets in the Prodigi quote (avoids the 400)", async () => {
+      let body: { items?: Array<{ sku?: string; assets?: unknown[] }> } | null = null;
+      server.use(
+        ...["https://api.prodigi.com/v4.0", "https://api.sandbox.prodigi.com/v4.0"].map((base) =>
+          http.post(`${base}/quotes`, async ({ request }) => {
+            body = (await request.json()) as typeof body;
+            return HttpResponse.json({ quotes: [{ shipmentMethod: "Standard", costSummary: { shipping: { amount: "4.99", currency: "USD" } } }] });
+          }),
+        ),
+      );
+      const seller = await seedUser();
+      const buyer = await seedUser();
+      authAs(buyer.id);
+      const print = await seedPrintListing(seller.id, { price: 40 });
+      const cart = await userCart(buyer.id);
+      await addPrint(cart.id, print.id, "GLOBAL-FAP-16X24", 40);
+
+      await createCheckoutAction(ADDRESS);
+      expect(body!.items?.[0]?.assets).toBeTruthy();
+      expect(Array.isArray(body!.items![0].assets)).toBe(true);
+    });
   });
 });
