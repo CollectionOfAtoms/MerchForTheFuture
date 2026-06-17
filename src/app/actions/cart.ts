@@ -6,7 +6,6 @@ import { resolveCartForWrite, resolveCartForRead } from "@/lib/cart/request";
 import { addItem, cartItemCount, findOwnedItem, setItemQuantity, removeItem } from "@/lib/cart/cart";
 import { validateApparelSelection, validatePrintSelection } from "@/lib/cart/validators";
 import { getApparelListingDetail, getApparelListingOwnership } from "@/lib/apparel/detail";
-import { quotePrintUnitPrice } from "@/lib/print/quote";
 import type { PrintProduct } from "@/lib/print/listing";
 
 export type AddToCartResult = { error: string } | { success: true; count: number };
@@ -93,18 +92,17 @@ async function addPrintToCart(input: AddPrintInput): Promise<AddToCartResult> {
   // The seller-curated printProducts set is already aspect-ratio filtered
   // (US-15.6), so membership is the authoritative SKU validity check.
   const products = (listing.printProducts as unknown as PrintProduct[] | null) ?? [];
-  if (!products.some((p) => p.sku === input.prodigiSku)) {
+  const product = products.find((p) => p.sku === input.prodigiSku);
+  if (!product) {
     return { error: "That print option is not available for this artwork." };
   }
 
+  // Snapshot the seller's retail price — the price the buyer saw on the artwork
+  // page is exactly what the cart must show. (Prodigi's fulfilment *cost* is a
+  // separate margin/checkout concern handled at checkout in MFTF-12, not the
+  // buyer-facing display price.)
   const attributes = input.attributes ?? {};
-  let quotedUnitPrice: number;
-  try {
-    quotedUnitPrice = await quotePrintUnitPrice({ sku: input.prodigiSku, attributes });
-  } catch {
-    return { error: "We couldn't price this print right now. Please try again." };
-  }
-
+  const quotedUnitPrice = product.price;
   const selection = { prodigiSku: input.prodigiSku, attributes, quotedUnitPrice };
   const shape = validatePrintSelection(selection);
   if (!shape.valid) return { error: shape.error };

@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { prisma, resetDatabase } from "../helpers/db";
-import { quotePrintUnitPrice } from "@/lib/print/quote";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -21,8 +20,8 @@ vi.mock("@/lib/cart/cookies", () => ({
 const { auth } = await import("@/auth");
 const { addToCartAction } = await import("@/app/actions/cart");
 
-// printProducts price (45) is deliberately different from the MSW Prodigi quote
-// (42) so tests prove the snapshot comes from the live quote, not the catalog.
+// The buyer-facing cart snapshot must equal the seller-set printProducts price
+// (the price shown on the artwork page), NOT a Prodigi fulfilment cost.
 const PRINT_PRODUCTS = [
   { sku: "GLOBAL-FAP-16X24", size: "16x24", price: 45 },
   { sku: "GLOBAL-FAP-20X28", size: "20x28", price: 65 },
@@ -51,15 +50,6 @@ async function seedArtworkListing({
     },
   });
 }
-
-describe("US-MFTF-11.3 — quotePrintUnitPrice (live Prodigi quote, MSW)", () => {
-  it("returns the per-unit USD quote", async () => {
-    expect(await quotePrintUnitPrice({ sku: "GLOBAL-FAP-16X24" })).toBe(42);
-  });
-  it("normalizes a multi-copy quote to a unit price", async () => {
-    expect(await quotePrintUnitPrice({ sku: "GLOBAL-FAP-16X24", copies: 3 })).toBe(42);
-  });
-});
 
 describe("US-MFTF-11.3 — addToCartAction (print)", () => {
   beforeEach(async () => {
@@ -91,7 +81,7 @@ describe("US-MFTF-11.3 — addToCartAction (print)", () => {
     expect(result).toHaveProperty("error");
   });
 
-  it("adds a print to a guest cart with a quotedUnitPrice snapshot from the live quote", async () => {
+  it("adds a print to a guest cart snapshotting the seller's retail price (matches the artwork page)", async () => {
     const listing = await seedArtworkListing();
     const result = await addToCartAction({ itemKind: "PRINT", listingId: listing.id, prodigiSku: "GLOBAL-FAP-16X24" });
     expect(result).toEqual({ success: true, count: 1 });
@@ -101,15 +91,23 @@ describe("US-MFTF-11.3 — addToCartAction (print)", () => {
     expect(items[0].itemKind).toBe("PRINT");
     expect(items[0].listingId).toBe(listing.id);
     expect(items[0].apparelListingId).toBeNull();
-    // Snapshot is the live quote (42), NOT the seller printProducts price (45).
+    // Snapshot is the seller-set printProducts price (45) — the price the buyer
+    // saw on the artwork page — not a Prodigi fulfilment cost.
     expect(items[0].selection).toEqual({
       prodigiSku: "GLOBAL-FAP-16X24",
       attributes: {},
-      quotedUnitPrice: 42,
+      quotedUnitPrice: 45,
     });
   });
 
-  it("increments quantity for an identical print even if re-quoted (dedupes on SKU + attributes)", async () => {
+  it("snapshots each SKU's own seller price", async () => {
+    const listing = await seedArtworkListing();
+    await addToCartAction({ itemKind: "PRINT", listingId: listing.id, prodigiSku: "GLOBAL-FAP-20X28" });
+    const item = await prisma.cartItem.findFirst();
+    expect((item!.selection as { quotedUnitPrice: number }).quotedUnitPrice).toBe(65);
+  });
+
+  it("increments quantity for an identical print (dedupes on SKU + attributes)", async () => {
     const listing = await seedArtworkListing();
     await addToCartAction({ itemKind: "PRINT", listingId: listing.id, prodigiSku: "GLOBAL-FAP-16X24" });
     const result = await addToCartAction({ itemKind: "PRINT", listingId: listing.id, prodigiSku: "GLOBAL-FAP-16X24" });

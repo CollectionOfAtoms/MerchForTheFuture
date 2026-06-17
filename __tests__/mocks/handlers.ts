@@ -74,23 +74,6 @@ const prodigiHandlers = PRODIGI_BASES.flatMap((base) => [
       order: { id: "ord-test-mock", status: { stage: "InProgress" } },
     })
   ),
-  // Quote endpoint (US-MFTF-11.3) — fixed unit cost of $42.00/copy, deliberately
-  // distinct from the seller-set printProducts price so tests can prove the cart
-  // snapshot came from the live quote, not the catalog.
-  http.post(`${base}/quotes`, async ({ request }) => {
-    const body = (await request.json().catch(() => ({}))) as { items?: { copies?: number }[] };
-    const copies = body?.items?.[0]?.copies ?? 1;
-    return HttpResponse.json({
-      quotes: [
-        {
-          costSummary: {
-            items: { amount: (42 * copies).toFixed(2), currency: "USD" },
-            shipping: { amount: "0.00", currency: "USD" },
-          },
-        },
-      ],
-    });
-  }),
   http.get(`${base}/orders/:orderId`, ({ params }) =>
     HttpResponse.json({
       order: {

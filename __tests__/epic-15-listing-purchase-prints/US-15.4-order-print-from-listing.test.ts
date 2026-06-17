@@ -256,7 +256,8 @@ describe("US-15.4 → US-MFTF-11.3 — Add a print to the cart from the listing 
     expect(items[0].itemKind).toBe("PRINT");
     expect(items[0].listingId).toBe(listingId);
     expect((items[0].selection as { prodigiSku: string }).prodigiSku).toBe("GLOBAL-FAP-16x12");
-    expect((items[0].selection as { quotedUnitPrice: number }).quotedUnitPrice).toBe(42);
+    // Cart snapshot = seller's printProducts price (45), matching the page.
+    expect((items[0].selection as { quotedUnitPrice: number }).quotedUnitPrice).toBe(45);
 
     // The page flow no longer creates a direct single-item order.
     expect(await prisma.order.count()).toBe(0);

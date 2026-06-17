@@ -11,9 +11,10 @@ import { addToCartAction } from "@/app/actions/cart";
  * normalized read-shape, so it renders identically for both sourcing modes and
  * never references a provider name or `sourcingMode`.
  *
- * Selecting a colour does NOT change the photos — lifestyle photography is not
- * colour-specific. The real cart wiring lands in MFTF-11; here the button is
- * present but disabled until both a colour and a size are selected.
+ * Selecting a colour jumps the carousel to that colour's mockup when one exists
+ * (referenced listings carry one image per colour); lifestyle-photo listings
+ * have no colour-tagged images, so the carousel stays put. Manual carousel
+ * navigation never changes the selected colour or size.
  *
  * Uses plain `<img>` because referenced listings fall back to Teemill mockups
  * served from `images.podos.io`, which is not in the `next/image` allowlist.
@@ -36,6 +37,16 @@ export default function ApparelProductView({ detail }: { detail: ApparelDetail }
   const hasImages = detail.images.length > 0;
   const activeImage = hasImages ? detail.images[Math.min(imageIndex, detail.images.length - 1)] : null;
   const canAddToCart = colorIndex !== null && size !== null && !isPending;
+
+  function selectColor(i: number) {
+    setColorIndex(i);
+    // If a per-colour mockup exists for this colour (referenced listings carry
+    // one image per colour), jump the carousel to it. Lifestyle-photo listings
+    // have no colour-tagged images, so the carousel stays put. Manual carousel
+    // navigation never changes the selected colour/size.
+    const match = detail.images.findIndex((img) => img.colorName === detail.colors[i].name);
+    if (match >= 0) setImageIndex(match);
+  }
 
   function handleAddToCart() {
     if (colorIndex === null || size === null) return;
@@ -123,7 +134,7 @@ export default function ApparelProductView({ detail }: { detail: ApparelDetail }
                     <button
                       type="button"
                       key={`${color.name}-${i}`}
-                      onClick={() => setColorIndex(i)}
+                      onClick={() => selectColor(i)}
                       aria-pressed={selected}
                       aria-label={color.name}
                       title={color.name}
