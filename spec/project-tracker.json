@@ -1697,11 +1697,12 @@
       "id": "US-MFTF-11.5",
       "epic": "Epic MFTF-11: Cart",
       "title": "Guest Cart Merge on Authentication",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-16",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-16",
+      "testPassedCommit": "pending",
+      "notes": "6 tests (core merge + wiring). mergeGuestCartIntoUser(guestToken, userId) in src/lib/cart/cart.ts: union of items, summing quantities on identical (itemKind, listing ref, dedupe identity) by reusing addItem (so prints merge on SKU+attributes, ignoring the volatile quotedUnitPrice, exactly like add-to-cart); then deletes the guest cart row. Idempotent — replay finds no guest cart and is a no-op. WIRING DECISION (deviates from the plan's 'merge inside signIn/signUpAction before redirect'): merge runs in the NextAuth events.signIn callback (src/auth.ts) instead, because the AC says merge on a SUCCESSFUL login — events.signIn fires only after authorize() succeeds, so a wrong-password attempt never pollutes a victim's cart, and it covers BOTH credential login and signup (signUpAction calls signIn) with one hook, leaving the BUG-6-tuned redirect:true flow untouched. mergeGuestCartOnAuth(userId) lives in src/lib/cart/merge.ts (imports cookies+cart, NOT @/auth, to avoid an import cycle with auth.ts); reads the guest cookie, merges, clears the cookie. The event is best-effort (try/catch) so a cart failure never breaks auth. No change needed to signInAction/signUpAction."
     },
     {
       "id": "US-MFTF-11.6",

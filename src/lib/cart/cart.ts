@@ -229,6 +229,49 @@ async function touchCart(cartId: string): Promise<void> {
   await prisma.cart.update({ where: { id: cartId }, data: { updatedAt: new Date() } });
 }
 
+/** The de-dupe identity for a line, by kind (prints ignore the volatile price). */
+function dedupeForKind(itemKind: CartItemKind, selection: unknown): Prisma.InputJsonValue {
+  if (itemKind === "PRINT") {
+    const s = (selection ?? {}) as { prodigiSku?: string; attributes?: unknown };
+    return { prodigiSku: s.prodigiSku ?? "", attributes: (s.attributes as Prisma.InputJsonValue) ?? {} };
+  }
+  return selection as Prisma.InputJsonValue;
+}
+
+/**
+ * Merge a guest cart into a user's cart (US-MFTF-11.5). Union of items; lines with
+ * an identical (itemKind, listing reference, de-dupe selection) have their
+ * quantities summed; the guest cart row is then deleted (cascading its items).
+ *
+ * Idempotent: because the guest cart is deleted at the end, replaying the merge
+ * with the same token finds nothing and is a no-op. Reuses `addItem`, so the
+ * de-dupe identity matches add-to-cart exactly (prints merge on SKU + attributes,
+ * ignoring the volatile `quotedUnitPrice`).
+ */
+export async function mergeGuestCartIntoUser(guestToken: string, userId: string): Promise<void> {
+  const guestCart = await prisma.cart.findUnique({
+    where: { guestToken },
+    include: { items: { orderBy: { addedAt: "asc" } } },
+  });
+  if (!guestCart) return;
+
+  if (guestCart.items.length > 0) {
+    const userCart = await findOrCreateUserCart(userId);
+    for (const gi of guestCart.items) {
+      await addItem(userCart.id, {
+        itemKind: gi.itemKind,
+        apparelListingId: gi.apparelListingId,
+        listingId: gi.listingId,
+        selection: gi.selection as Prisma.InputJsonValue,
+        quantity: gi.quantity,
+        dedupeSelection: dedupeForKind(gi.itemKind, gi.selection),
+      });
+    }
+  }
+
+  await prisma.cart.delete({ where: { id: guestCart.id } });
+}
+
 /**
  * Stable equality for two `selection` JSON values: deep-equal on a canonical
  * key-sorted serialization, so `{a,b}` and `{b,a}` dedupe to the same line.
