@@ -107,10 +107,38 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
   // ── MFTF-12 (implementations land in 12.3 / 12.5 / 12.6) ──────────────────
 
   async quoteShipping(
-    _items: ShippingQuoteItem[],
-    _address: FulfillmentShippingAddress,
+    items: ShippingQuoteItem[],
+    address: FulfillmentShippingAddress,
   ): Promise<ShippingQuote> {
-    throw new Error('ProdigiFulfillmentProvider.quoteShipping: not yet implemented');
+    // Prodigi quotes return cost in the requested currency, so we ask for USD —
+    // no FX needed for the buyer total.
+    const resp = await fetch(`${this.base}/quotes`, {
+      method: 'POST',
+      headers: { 'X-API-Key': this.apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        shippingMethod: 'Standard',
+        currencyCode: 'USD',
+        destinationCountryCode: address.country,
+        items: items.map((i) => ({ sku: i.sku, copies: i.quantity })),
+      }),
+    });
+    if (!resp.ok) {
+      throw new Error(`Prodigi quote failed with status ${resp.status}`);
+    }
+    const data = (await resp.json()) as {
+      quotes?: Array<{
+        shipmentMethod?: string;
+        costSummary?: { shipping?: { amount?: string | number; currency?: string } };
+      }>;
+    };
+    const quote = data.quotes?.[0];
+    const amount = Number(quote?.costSummary?.shipping?.amount ?? 0);
+    return {
+      shippingMethod: quote?.shipmentMethod ?? 'Standard',
+      shippingCost: Number.isFinite(amount) ? amount : 0,
+      currency: quote?.costSummary?.shipping?.currency ?? 'USD',
+      providerMetadata: data as Record<string, unknown>,
+    };
   }
 
   async checkFulfillmentStatus(_q: FulfillmentStatusQuery): Promise<FulfillmentStatusResult> {

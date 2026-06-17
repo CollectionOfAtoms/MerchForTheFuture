@@ -55,3 +55,40 @@ export async function initiateBuyNowAction(listingId: string): Promise<ActionRes
 
   redirect(`/checkout/${orderId}`);
 }
+
+// ─── Cart checkout (US-MFTF-12.3) ─────────────────────────────────────────────
+
+import { buildCheckoutSummary } from "@/lib/checkout/summary";
+import type { CheckoutSummary } from "@/lib/checkout/types";
+import type { FulfillmentShippingAddress } from "@/lib/fulfillment/types";
+
+export type CreateCheckoutResult = { error: string } | { summary: CheckoutSummary };
+
+/**
+ * Re-validate the buyer's cart against live data and quote shipping per provider
+ * for the given destination address (US-MFTF-12.3). Returns a summary; when
+ * `summary.status === "changed"` the buyer must re-confirm before a Stripe session
+ * is created (US-MFTF-12.4). Does not mutate orders — only prunes stale cart items.
+ */
+export async function createCheckoutAction(
+  address: FulfillmentShippingAddress,
+): Promise<CreateCheckoutResult> {
+  const session = await auth();
+  const user = session?.user as { id?: string } | undefined;
+  if (!user?.id) return { error: "Unauthorized" };
+
+  if (!address?.line1 || !address?.city || !address?.postal || !address?.country) {
+    return { error: "A complete shipping address is required to calculate shipping." };
+  }
+
+  const cart = await prisma.cart.findUnique({
+    where: { userId: user.id },
+    include: { _count: { select: { items: true } } },
+  });
+  if (!cart || cart._count.items === 0) {
+    return { error: "Your cart is empty." };
+  }
+
+  const summary = await buildCheckoutSummary(cart.id, address);
+  return { summary };
+}

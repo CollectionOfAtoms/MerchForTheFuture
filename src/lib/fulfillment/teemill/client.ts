@@ -80,3 +80,18 @@ export async function teemillGet(path: string): Promise<Response> {
     cache: "no-store",
   });
 }
+
+/** Authenticated POST against the Teemill Orders API (order create / confirm). */
+export async function teemillPost(path: string, body: unknown): Promise<Response> {
+  const project = encodeURIComponent(getTeemillProject());
+  const sep = path.includes("?") ? "&" : "?";
+  return fetch(`${TEEMILL_API_BASE}${path}${sep}project=${project}`, {
+    method: "POST",
+    headers: {
+      Authorization: getTeemillApiKey(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+}

@@ -74,6 +74,21 @@ const prodigiHandlers = PRODIGI_BASES.flatMap((base) => [
       order: { id: "ord-test-mock", status: { stage: "InProgress" } },
     })
   ),
+  // Prodigi quote endpoint (US-MFTF-12.3). Costs are returned in the requested
+  // currency (USD), so no FX is applied to Prodigi shipping.
+  http.post(`${base}/quotes`, () =>
+    HttpResponse.json({
+      quotes: [
+        {
+          shipmentMethod: "Standard",
+          costSummary: {
+            items: { amount: "0.00", currency: "USD" },
+            shipping: { amount: "4.99", currency: "USD" },
+          },
+        },
+      ],
+    })
+  ),
   http.get(`${base}/orders/:orderId`, ({ params }) =>
     HttpResponse.json({
       order: {
@@ -137,6 +152,26 @@ const emailHandlers = [
 const teemillHandlers = [
   http.get("https://api.teemill.com/v1/catalog/products", () =>
     HttpResponse.json(buildPoweredByPlantsCatalog())
+  ),
+  // Step 1 of the two-step Orders flow — returns shipping methods per fulfillment
+  // without finalizing (used for quoteShipping in US-MFTF-12.3 and order create in
+  // US-MFTF-12.5). // UNVERIFIED: stable "standard" id (Open Q#7).
+  http.post("https://api.teemill.com/v1/orders", () =>
+    HttpResponse.json(
+      {
+        id: "mock-order-id-123",
+        fulfillments: [
+          {
+            id: "mock-fulfillment-id-1",
+            availableShippingMethods: [
+              { id: "standard", name: "Standard", totalPrice: { amount: "3.99" } },
+              { id: "express", name: "Express", totalPrice: { amount: "7.99" } },
+            ],
+          },
+        ],
+      },
+      { status: 201 }
+    )
   ),
 ];
 

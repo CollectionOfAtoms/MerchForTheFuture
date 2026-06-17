@@ -1,29 +1,37 @@
-import Link from "next/link";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { resolveCartForRead } from "@/lib/cart/request";
+import { getCartView } from "@/lib/cart/cart";
+import CheckoutClient from "@/components/CheckoutClient";
 
 export const metadata: Metadata = {
   title: "Checkout — Merch for the Future",
 };
 
+// Per-visitor and price-sensitive — never cache.
+export const dynamic = "force-dynamic";
+
 /**
- * Placeholder cart-checkout route (US-MFTF-11.4). The multi-item Stripe checkout
- * lands in Epic MFTF-12; until then "Proceed to checkout" reaches this 404-safe
- * "coming soon" page rather than a dead link. (The per-order /checkout/[orderId]
- * flow for originals/auctions is unrelated and unaffected.)
+ * Cart checkout (US-MFTF-12.3). Requires authentication: the guest cart survives
+ * sign-in via the US-MFTF-11.5 merge, so an unauthenticated buyer is sent to
+ * sign-in with a return-to and lands back here with their cart intact. Collects
+ * the shipping address before payment so per-provider shipping can be quoted into
+ * the total (US-MFTF-12.4).
  */
-export default function CheckoutComingSoonPage() {
+export default async function CheckoutPage() {
+  const session = await auth();
+  const user = session?.user as { id?: string } | undefined;
+  if (!user?.id) redirect(`/sign-in?callbackUrl=/checkout`);
+
+  const cart = await resolveCartForRead();
+  const view = cart ? await getCartView(cart.id) : { items: [], subtotal: 0, itemCount: 0 };
+  if (view.items.length === 0) redirect("/cart");
+
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16 text-center">
-      <h1 className="text-2xl font-semibold text-stone-900">Checkout is coming soon</h1>
-      <p className="mt-3 text-stone-600">
-        Cart checkout isn&apos;t quite ready yet. Your cart is saved — come back shortly to complete your order.
-      </p>
-      <Link
-        href="/cart"
-        className="mt-6 inline-block rounded-full border border-stone-300 px-5 py-2.5 text-sm font-medium text-stone-700 transition-colors hover:border-stone-500"
-      >
-        Back to cart
-      </Link>
+    <main className="mx-auto max-w-3xl px-6 py-10">
+      <h1 className="text-2xl font-semibold text-stone-900">Checkout</h1>
+      <CheckoutClient view={view} />
     </main>
   );
 }
