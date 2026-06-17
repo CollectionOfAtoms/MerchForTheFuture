@@ -1,8 +1,14 @@
-import type {
+import {
   FulfillmentProvider,
-  FulfillmentOrderParams,
-  FulfillmentOrderResult,
-  FulfillmentStatus,
+  type FulfillmentOrderParams,
+  type FulfillmentOrderResult,
+  type FulfillmentStatus,
+  type FulfillmentJob,
+  type ShippingQuote,
+  type ShippingQuoteItem,
+  type FulfillmentShippingAddress,
+  type FulfillmentStatusQuery,
+  type FulfillmentStatusResult,
 } from '../types';
 
 interface ProdigiOrderResponse {
@@ -22,7 +28,7 @@ interface ProdigiGetOrderResponse {
   };
 }
 
-export class ProdigiFulfillmentProvider implements FulfillmentProvider {
+export class ProdigiFulfillmentProvider extends FulfillmentProvider {
   name = 'prodigi';
 
   private get base(): string {
@@ -96,5 +102,22 @@ export class ProdigiFulfillmentProvider implements FulfillmentProvider {
       case 'Cancelled':  return 'CANCELLED';
       default:           return 'ERROR';
     }
+  }
+
+  // ── MFTF-12 (implementations land in 12.3 / 12.5 / 12.6) ──────────────────
+
+  async quoteShipping(
+    _items: ShippingQuoteItem[],
+    _address: FulfillmentShippingAddress,
+  ): Promise<ShippingQuote> {
+    throw new Error('ProdigiFulfillmentProvider.quoteShipping: not yet implemented');
+  }
+
+  async checkFulfillmentStatus(_q: FulfillmentStatusQuery): Promise<FulfillmentStatusResult> {
+    throw new Error('ProdigiFulfillmentProvider.checkFulfillmentStatus: not yet implemented');
+  }
+
+  protected async createProviderOrder(_job: FulfillmentJob): Promise<FulfillmentOrderResult> {
+    throw new Error('ProdigiFulfillmentProvider.createProviderOrder: not yet implemented');
   }
 }

@@ -1719,12 +1719,12 @@
       "id": "US-MFTF-12.1",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "FulfillmentProvider Abstract Base Class",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Structural refactor of code from Passed stories US-MFTF-3.1\u20133.3 (interface \u2192 abstract base class); their tests must pass unchanged."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "FulfillmentProvider is now an abstract class (was an interface) with a concrete fulfill() template method (validateJob \u2192 createProviderOrder \u2192 confirmProviderOrder) and new abstract quoteShipping()/checkFulfillmentStatus(); two-step confirm is a default-no-op hook Teemill overrides. Prodigi/Teemill extend it; the new MFTF-12 methods are stubbed (filled in 12.3/12.5/12.6). Factory returns base-class-typed instances; per-providerKey routing deferred to 12.3 (still routes by listingType). A subclass omitting any abstract method fails tsc \u2014 verified by a @ts-expect-error type-level fixture. Touches Passed US-MFTF-3.1\u20133.3: their test files were re-run green unchanged (51 tests across mftf-3 + 12.1). createFulfillmentOrder narrowed to Pick<FulfillmentProvider,'name'|'createOrder'> so Epic 14 US-14.8 structural mocks stay valid."
     },
     {
       "id": "US-MFTF-12.2",

@@ -1,6 +1,9 @@
 import type { FulfillmentProvider, FulfillmentOrderParams, FulfillmentOrderResult } from "./types";
 import { sendFulfillmentErrorEmail } from "@/lib/payments/email";
 
+/** The minimal provider surface `createFulfillmentOrder` depends on. */
+type SingleItemCreator = Pick<FulfillmentProvider, "name" | "createOrder">;
+
 /**
  * Calls provider.createOrder() and, if it throws, sends an "Action required"
  * alert to the seller before re-throwing.
@@ -14,7 +17,7 @@ import { sendFulfillmentErrorEmail } from "@/lib/payments/email";
  */
 export async function createFulfillmentOrder(
   orderId: string,
-  provider: FulfillmentProvider,
+  provider: SingleItemCreator,
   params: FulfillmentOrderParams,
 ): Promise<FulfillmentOrderResult> {
   try {
