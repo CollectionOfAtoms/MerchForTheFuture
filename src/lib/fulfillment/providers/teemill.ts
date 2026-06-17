@@ -9,6 +9,7 @@ import {
   type FulfillmentShippingAddress,
   type FulfillmentStatusQuery,
   type FulfillmentStatusResult,
+  type QuoteContact,
 } from '../types';
 import { teemillPost, teemillGet, teemillError, teemillDefaultContact } from '../teemill/client';
 
@@ -56,16 +57,21 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
   async quoteShipping(
     items: ShippingQuoteItem[],
     address: FulfillmentShippingAddress,
+    contact?: QuoteContact,
   ): Promise<ShippingQuote> {
     // Step 1 of Teemill's two-step Orders flow: POST /orders returns available
     // shipping methods per fulfillment WITHOUT finalizing the order (confirm is
     // step 2, done at fulfillment time in 12.5). This is the quote.
     // // UNVERIFIED: whether an unconfirmed POST /orders ever expires or bills —
     // needs a live proofing order to confirm (gates 12.3 "Passed").
+    const fallback = teemillDefaultContact();
     const resp = await teemillPost('/orders', {
       // A valid contact is required even for the quote — Teemill 400s on an empty
-      // email. The buyer's real email is used at fulfillment time.
-      contactInformation: teemillDefaultContact(),
+      // or unroutable email. Use the buyer's real email; fall back only if absent.
+      contactInformation: {
+        email: contact?.email || fallback.email,
+        phone: contact?.phone || fallback.phone,
+      },
       shippingAddress: toTeemillAddress(address),
       items: items.map((i) => ({ variantRef: i.variantRef, quantity: i.quantity })),
     });

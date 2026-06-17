@@ -76,7 +76,7 @@ export async function createCheckoutAction(
   address: FulfillmentShippingAddress,
 ): Promise<CreateCheckoutResult> {
   const session = await auth();
-  const user = session?.user as { id?: string } | undefined;
+  const user = session?.user as { id?: string; email?: string } | undefined;
   if (!user?.id) return { error: "Unauthorized" };
 
   if (!address?.line1 || !address?.city || !address?.postal || !address?.country) {
@@ -92,7 +92,7 @@ export async function createCheckoutAction(
   }
 
   try {
-    const summary = await buildCheckoutSummary(cart.id, address);
+    const summary = await buildCheckoutSummary(cart.id, address, { email: user.email });
     return { summary };
   } catch (err) {
     console.error("[checkout] shipping quote failed", err);
@@ -126,7 +126,7 @@ export async function createCartCheckoutSessionAction(
   opts: { confirmed?: boolean } = {},
 ): Promise<CartCheckoutSessionResult> {
   const session = await auth();
-  const user = session?.user as { id?: string } | undefined;
+  const user = session?.user as { id?: string; email?: string } | undefined;
   if (!user?.id) return { error: "Unauthorized" };
 
   if (!address?.line1 || !address?.city || !address?.postal || !address?.country) {
@@ -140,7 +140,7 @@ export async function createCartCheckoutSessionAction(
   if (!cart || cart._count.items === 0) return { error: "Your cart is empty." };
 
   try {
-    const plan = await planCheckout(cart.id, address);
+    const plan = await planCheckout(cart.id, address, { email: user.email });
     if (plan.groups.length === 0) {
       return { error: "None of the items in your cart are still available." };
     }

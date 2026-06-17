@@ -3,7 +3,7 @@
  * `planCheckout`: relabels provider groups as "Shipment 1 / 2" and strips the
  * provider key + quote items so nothing identifies the dropshipper.
  */
-import type { FulfillmentShippingAddress } from "@/lib/fulfillment/types";
+import type { FulfillmentShippingAddress, QuoteContact } from "@/lib/fulfillment/types";
 import { planCheckout, type CheckoutPlan } from "./plan";
 import type { CheckoutSummary } from "./types";
 
@@ -34,6 +34,7 @@ export function summarizePlan(plan: CheckoutPlan): CheckoutSummary {
 export async function buildCheckoutSummary(
   cartId: string,
   address: FulfillmentShippingAddress,
+  contact?: QuoteContact,
 ): Promise<CheckoutSummary> {
-  return summarizePlan(await planCheckout(cartId, address));
+  return summarizePlan(await planCheckout(cartId, address, contact));
 }

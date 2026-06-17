@@ -9,6 +9,7 @@ import {
   type FulfillmentShippingAddress,
   type FulfillmentStatusQuery,
   type FulfillmentStatusResult,
+  type QuoteContact,
 } from '../types';
 
 interface ProdigiOrderResponse {
@@ -109,6 +110,7 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
   async quoteShipping(
     items: ShippingQuoteItem[],
     address: FulfillmentShippingAddress,
+    _contact?: QuoteContact,
   ): Promise<ShippingQuote> {
     // Prodigi quotes return cost in the requested currency, so we ask for USD —
     // no FX needed for the buyer total.

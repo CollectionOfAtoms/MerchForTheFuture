@@ -67,6 +67,12 @@ export interface ShippingQuote {
   providerMetadata?: Record<string, unknown>;
 }
 
+/** Buyer contact passed to the shipping quote (Teemill requires a valid email). */
+export interface QuoteContact {
+  email?: string | null;
+  phone?: string | null;
+}
+
 /** Everything a provider needs to fulfill one shipment (one provider group). */
 export interface FulfillmentJob {
   items: ShippingQuoteItem[];
@@ -105,10 +111,13 @@ export abstract class FulfillmentProvider {
   abstract createOrder(params: FulfillmentOrderParams): Promise<FulfillmentOrderResult>;
   abstract getOrderStatus(externalOrderId: string): Promise<FulfillmentStatus>;
 
-  /** Quote shipping for a group of items to an address (checkout, 12.3). */
+  /** Quote shipping for a group of items to an address (checkout, 12.3). The
+   * buyer's contact is passed through because some providers (Teemill) require a
+   * valid email even on the quote-step order. */
   abstract quoteShipping(
     items: ShippingQuoteItem[],
     address: FulfillmentShippingAddress,
+    contact?: QuoteContact,
   ): Promise<ShippingQuote>;
 
   /** Detect shipment status (Prodigi webhook / Teemill polling, 12.6). */

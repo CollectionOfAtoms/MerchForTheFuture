@@ -6,7 +6,7 @@
  * (`session.ts`) uses them to create FulfillmentOrder + OrderItem rows.
  */
 import { getProviderByKey } from "@/lib/fulfillment";
-import type { FulfillmentShippingAddress } from "@/lib/fulfillment/types";
+import type { FulfillmentShippingAddress, QuoteContact } from "@/lib/fulfillment/types";
 import { getExchangeRate } from "@/lib/tax/currency";
 import { revalidateCheckout } from "./revalidate";
 import type { KeptItem, RemovedItem, PriceChange } from "./types";
@@ -47,6 +47,7 @@ function round2(n: number): number {
 export async function planCheckout(
   cartId: string,
   address: FulfillmentShippingAddress,
+  contact?: QuoteContact,
 ): Promise<CheckoutPlan> {
   const { kept, removed, priceChanges } = await revalidateCheckout(cartId);
 
@@ -66,6 +67,7 @@ export async function planCheckout(
         const quote = await provider.quoteShipping(
           items.map((i) => i.quoteItem),
           address,
+          contact,
         );
         // Single FX point — shipping only (the item base is never FX-converted).
         // // UNVERIFIED rate until a live Teemill proofing order confirms amounts.

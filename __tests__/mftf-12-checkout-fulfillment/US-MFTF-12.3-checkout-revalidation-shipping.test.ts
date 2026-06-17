@@ -16,7 +16,7 @@ const { createCheckoutAction } = await import("@/app/actions/checkout");
 const { auth } = await import("@/auth");
 
 function authAs(userId: string) {
-  vi.mocked(auth).mockResolvedValue({ user: { id: userId, roles: ["BUYER"] } } as never);
+  vi.mocked(auth).mockResolvedValue({ user: { id: userId, email: `${userId}@example.com`, roles: ["BUYER"] } } as never);
 }
 function authAsGuest() {
   vi.mocked(auth).mockResolvedValue(null as never);
@@ -397,6 +397,8 @@ describe("US-MFTF-12.3 — checkout revalidation & per-provider shipping", () =>
       await createCheckoutAction(ADDRESS);
       expect(body!.contactInformation?.email).toBeTruthy();
       expect(body!.contactInformation!.email).toContain("@");
+      // The authenticated buyer's own email is threaded into the quote.
+      expect(body!.contactInformation!.email).toBe(`${buyer.id}@example.com`);
     });
 
     it("returns a friendly error (does not throw) when Teemill rejects the quote with a 400", async () => {
