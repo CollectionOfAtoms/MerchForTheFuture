@@ -60,6 +60,9 @@ enum OrderStatus {
 enum OrderListingType {
   ORIGINAL
   PRINT
+  /// Multi-item cart checkout (US-MFTF-12.4). Such orders carry OrderItem +
+  /// FulfillmentOrder rows and leave the single-listing FKs null.
+  CART
 }
 
 /// Status of one per-provider shipment within a multi-item cart order (US-MFTF-12.2).

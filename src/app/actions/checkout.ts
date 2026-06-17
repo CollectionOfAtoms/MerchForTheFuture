@@ -58,7 +58,9 @@ export async function initiateBuyNowAction(listingId: string): Promise<ActionRes
 
 // ─── Cart checkout (US-MFTF-12.3) ─────────────────────────────────────────────
 
-import { buildCheckoutSummary } from "@/lib/checkout/summary";
+import { buildCheckoutSummary, summarizePlan } from "@/lib/checkout/summary";
+import { planCheckout } from "@/lib/checkout/plan";
+import { createCartCheckout } from "@/lib/checkout/session";
 import type { CheckoutSummary } from "@/lib/checkout/types";
 import type { FulfillmentShippingAddress } from "@/lib/fulfillment/types";
 
@@ -91,4 +93,46 @@ export async function createCheckoutAction(
 
   const summary = await buildCheckoutSummary(cart.id, address);
   return { summary };
+}
+
+export type CartCheckoutSessionResult =
+  | { error: string }
+  | { requiresConfirmation: true; summary: CheckoutSummary }
+  | { clientSecret: string; orderId: string };
+
+/**
+ * Create the embedded Stripe Checkout session for the buyer's cart (US-MFTF-12.4).
+ * Re-validates and re-quotes; if anything changed and the buyer hasn't confirmed,
+ * returns `requiresConfirmation` (no order is created). Otherwise creates the
+ * Order(PENDING) + OrderItem + FulfillmentOrder rows and returns the session
+ * client secret for the embedded checkout.
+ */
+export async function createCartCheckoutSessionAction(
+  address: FulfillmentShippingAddress,
+  opts: { confirmed?: boolean } = {},
+): Promise<CartCheckoutSessionResult> {
+  const session = await auth();
+  const user = session?.user as { id?: string } | undefined;
+  if (!user?.id) return { error: "Unauthorized" };
+
+  if (!address?.line1 || !address?.city || !address?.postal || !address?.country) {
+    return { error: "A complete shipping address is required to calculate shipping." };
+  }
+
+  const cart = await prisma.cart.findUnique({
+    where: { userId: user.id },
+    include: { _count: { select: { items: true } } },
+  });
+  if (!cart || cart._count.items === 0) return { error: "Your cart is empty." };
+
+  const plan = await planCheckout(cart.id, address);
+  if (plan.groups.length === 0) {
+    return { error: "None of the items in your cart are still available." };
+  }
+  if (plan.status === "changed" && !opts.confirmed) {
+    return { requiresConfirmation: true, summary: summarizePlan(plan) };
+  }
+
+  const result = await createCartCheckout(user.id, cart.id, address, plan);
+  return { clientSecret: result.clientSecret, orderId: result.orderId };
 }

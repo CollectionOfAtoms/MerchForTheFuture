@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { stripe } from "./stripe";
 import { sendPurchaseConfirmation } from "./email";
+import { clearUserCart } from "@/lib/cart/cart";
 
 const PLATFORM_FEE_RATE = 0.10;
 const STRIPE_RATE = 0.029;
@@ -42,6 +43,14 @@ async function runFulfillment(orderId: string, chargeRef: string): Promise<void>
       ? [prisma.originalListing.update({ where: { id: order.originalListingId }, data: { status: "SOLD" } })]
       : []),
   ]);
+
+  // Cart checkout (US-MFTF-12.4): empty the buyer's cart on payment. Per-shipment
+  // fulfillment fan-out through each FulfillmentOrder is dispatched in US-MFTF-12.5.
+  if (order.listingType === "CART") {
+    await clearUserCart(order.buyerId);
+    await sendPurchaseConfirmation(order.id);
+    return;
+  }
 
   if (order.listingType === "PRINT" && order.originalListingId) {
     const listing = await prisma.originalListing.findUnique({

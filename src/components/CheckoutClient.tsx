@@ -5,6 +5,7 @@ import type { CartView } from "@/lib/cart/cart";
 import type { CheckoutSummary } from "@/lib/checkout/types";
 import type { FulfillmentShippingAddress } from "@/lib/fulfillment/types";
 import { createCheckoutAction } from "@/app/actions/checkout";
+import CartPaymentForm from "@/components/CartPaymentForm";
 
 const usd = (n: number) => `$${n.toFixed(2)}`;
 
@@ -32,11 +33,13 @@ export default function CheckoutClient({ view }: { view: CartView }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
 
   function set<K extends keyof FulfillmentShippingAddress>(key: K, value: string) {
     setAddress((a) => ({ ...a, [key]: value }));
     setSummary(null);
     setAcknowledged(false);
+    setShowPayment(false);
   }
 
   async function calculate(e: React.FormEvent) {
@@ -150,16 +153,25 @@ export default function CheckoutClient({ view }: { view: CartView }) {
               </label>
             )}
 
-            <button
-              type="button"
-              disabled={!canPay}
-              className="w-full rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-700 disabled:opacity-50"
-            >
-              Proceed to payment
-            </button>
+            {!showPayment && (
+              <button
+                type="button"
+                disabled={!canPay}
+                onClick={() => setShowPayment(true)}
+                className="w-full rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-700 disabled:opacity-50"
+              >
+                Proceed to payment
+              </button>
+            )}
           </div>
         )}
       </aside>
+
+      {showPayment && canPay && (
+        <div className="md:col-span-2">
+          <CartPaymentForm address={address} />
+        </div>
+      )}
     </div>
   );
 }
