@@ -1653,62 +1653,67 @@
       "id": "US-MFTF-11.1",
       "epic": "Epic MFTF-11: Cart",
       "title": "Cart & CartItem Schema",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-16",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-16",
+      "testPassedCommit": "pending",
+      "notes": "31 tests passing. Added Cart (nullable-unique userId/guestToken), CartItem (polymorphic over CartItemKind APPAREL|PRINT), and the CartItemKind enum to prisma/schema.prisma; pushed to main + test DBs; added CartItem/Cart to resetDatabase TRUNCATE (before User/ApparelListing/OriginalListing). App-layer invariants in src/lib/cart/invariants.ts (exactly one of userId/guestToken; exactly one of apparelListingId/listingId matching itemKind; integer quantity >= 1), mirroring the US-MFTF-5.1 single-FK convention. Per-kind selection validators in src/lib/cart/validators.ts (APPAREL {colorId,sizeLabel}; PRINT {prodigiSku,attributes,quotedUnitPrice}) reject missing/extra keys and wrong types. NAMING NOTE: the spec calls the print-referenced model the artwork 'Listing'; the actual Prisma model is OriginalListing, so CartItem.listingId FKs OriginalListing. COLOUR-IDENTITY NOTE (deviation flagged per handoff): selection.colorId holds the normalized offered-colour identity = colour NAME (the value surfaced by getApparelListingDetail), NOT a ProductTypeColor FK, because referenced (Teemill) colours have no ProductTypeColor row; this is the cross-mode identity validated against the offered set in US-MFTF-11.2."
     },
     {
       "id": "US-MFTF-11.2",
       "epic": "Epic MFTF-11: Cart",
       "title": "Add Apparel to Cart",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-16",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-16",
+      "testPassedCommit": "pending",
+      "notes": "23 tests (12 node action + 11 jsdom UI). addToCartAction (src/app/actions/cart.ts) validates listing is ACTIVE (UNLISTED/ARCHIVED/SOLD rejected via getApparelListingOwnership status check, since getApparelListingDetail intentionally also returns UNLISTED for preview), colour offered + size valid against the normalized read-shape (detail.colors[].name / detail.sizes) — never branches on sourcingMode/provider; referenced (Teemill) colours validate identically. Cart core src/lib/cart/cart.ts (pure DB, no next/headers — node-testable): findOrCreate{User,Guest}Cart, addItem with dedupe on (itemKind, listingRef, canonical selection) -> increment quantity + touch updatedAt, cartItemCount. Cookie I/O isolated in src/lib/cart/cookies.ts (httpOnly+secure+lax, 30d) and request resolution in src/lib/cart/request.ts (resolveCartForWrite mints+sets a guest token when absent; getCartCountForRequest is read-only for the nav). Nav cart icon + badge: CartBadge client component seeded by getCartCountForRequest in Nav (one element, visible desktop+mobile); ApparelProductView 'Add to cart' wired (disabled until colour+size) -> calls action -> router.refresh() updates the badge with no full reload, shows 'Added to cart'. Touched US-MFTF-6.2 component test to mock @/app/actions/cart + next/navigation (ApparelProductView now imports the server action); still green. UX TWEAK (post-review): selecting a colour now jumps the carousel to that colour's per-colour mockup when one exists (referenced listings carry one image per colour, tagged by colorName); lifestyle-photo listings have no colour-tagged images so the carousel stays put, and manual carousel navigation never changes the selected colour/size. Updated ApparelProductView + added 6.2 component tests."
     },
     {
       "id": "US-MFTF-11.3",
       "epic": "Epic MFTF-11: Cart",
       "title": "Add Print to Cart",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Modifies behavior of Passed story US-15.4 (print order flow becomes add-to-cart); update its test file in the same commit."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-16",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-16",
+      "testPassedCommit": "pending",
+      "notes": "11 new tests + a US-15.4 add-to-cart assertion. addToCartAction gains a PRINT branch (src/app/actions/cart.ts): validates prints enabled + SKU in the seller-curated printProducts set (already aspect-ratio filtered per US-15.6, so membership IS the aspect-ratio check) + listing not ARCHIVED/CANCELLED. REVISED post-review (price-source fix): selection.quotedUnitPrice now snapshots the SELLER's printProducts[].price — the exact price the buyer saw on the artwork page — so the cart price matches the product page. The earlier live-Prodigi-quote approach was wrong: the Prodigi /quotes figure is a fulfilment COST, not the buyer's retail price; surfacing it made the cart show a different number than the page. src/lib/print/quote.ts + its MSW /quotes handler were removed (the authoritative cost re-quote/margin check belongs to checkout, MFTF-12, not buyer display). addItem now takes an optional dedupeSelection so identical prints dedupe on {prodigiSku,attributes} ignoring the volatile quotedUnitPrice. PrintOptionsSelector reworked: 'Order Print' -> 'Add to cart' (router.refresh updates the nav badge, no full reload); the sign-in gate was removed so guests can add prints (parity with US-MFTF-11.2). DELETED the direct single-item path src/app/actions/print.ts (createPrintOrderAction + /checkout/{orderId} redirect); nothing else imported it. NOTE: the src/lib/print/order.ts createPrintOrder lib is RETAINED (it is the underlying order creator used by checkout/fulfillment and by US-MFTF-3.2/US-8.3 tests) — those tests stay green. US-15.4 INTERPRETATION: 'artwork listing is active' is treated as 'prints enabled and listing not retired' rather than requiring the original to be unsold, preserving the print-independent-of-original principle. US-15.4 TEST TOUCHED: added a describe asserting the page flow now produces a PRINT CartItem with the quoted snapshot and creates no Order; all prior US-15.4 createPrintOrder/fulfillPayment tests unchanged and green."
     },
     {
       "id": "US-MFTF-11.4",
       "epic": "Epic MFTF-11: Cart",
       "title": "Cart Page",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-16",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-16",
+      "testPassedCommit": "pending",
+      "notes": "14 tests (7 node + 7 jsdom). /cart server page at src/app/(main)/cart/page.tsx (force-dynamic; reads the visitor's cart via resolveCartForRead). getCartView (src/lib/cart/cart.ts) projects normalized line items: APPAREL title/retailPrice/thumbnail (grid variant, primary-first, referenced-mockup fallback) + 'colorId · sizeLabel' summary (no mode branching); PRINT artwork title/grid thumbnail + quotedUnitPrice snapshot + 'Material · Size' summary derived from the Prodigi SKU; subtotal + total itemCount. CartContents (client) renders rows with a quantity stepper (decrease disabled at qty 1), remove control, line totals, subtotal, 'shipping/tax at checkout' note, and 'Proceed to checkout' -> /checkout; mutations call updateCartItemAction/removeCartItemAction then router.refresh() (badge + totals stay in sync, no full reload). Empty state extracted to CartEmpty (links /shop + /browse). updateCartItemAction/removeCartItemAction enforce ownership via findOwnedItem against the visitor's resolved cart (foreign-cart manipulation rejected; quantity < 1 rejected; no-cart rejected). Added a /checkout placeholder page (404-safe 'coming soon'); the per-order /checkout/[orderId] route for originals/auctions is unrelated and untouched."
     },
     {
       "id": "US-MFTF-11.5",
       "epic": "Epic MFTF-11: Cart",
       "title": "Guest Cart Merge on Authentication",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-16",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-16",
+      "testPassedCommit": "pending",
+      "notes": "6 tests (core merge + wiring). mergeGuestCartIntoUser(guestToken, userId) in src/lib/cart/cart.ts: union of items, summing quantities on identical (itemKind, listing ref, dedupe identity) by reusing addItem (so prints merge on SKU+attributes, ignoring the volatile quotedUnitPrice, exactly like add-to-cart); then deletes the guest cart row. Idempotent — replay finds no guest cart and is a no-op. WIRING DECISION (deviates from the plan's 'merge inside signIn/signUpAction before redirect'): merge runs in the NextAuth events.signIn callback (src/auth.ts) instead, because the AC says merge on a SUCCESSFUL login — events.signIn fires only after authorize() succeeds, so a wrong-password attempt never pollutes a victim's cart, and it covers BOTH credential login and signup (signUpAction calls signIn) with one hook, leaving the BUG-6-tuned redirect:true flow untouched. mergeGuestCartOnAuth(userId) lives in src/lib/cart/merge.ts (imports cookies+cart, NOT @/auth, to avoid an import cycle with auth.ts); reads the guest cookie, merges, clears the cookie. The event is best-effort (try/catch) so a cart failure never breaks auth. No change needed to signInAction/signUpAction."
     },
     {
       "id": "US-MFTF-11.6",
       "epic": "Epic MFTF-11: Cart",
       "title": "Guest Cart Cleanup Cron",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-16",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-16",
+      "testPassedCommit": "pending",
+      "notes": "5 tests. cleanupStaleGuestCarts (src/lib/cart/cleanup.ts) bulk-deletes carts with guestToken set AND updatedAt < now-30d in a single deleteMany (no per-row loop; cascades CartItem) and never matches user carts (guestToken null). Route GET /api/cron/cleanup-carts mirrors the close-auctions Bearer CRON_SECRET guard (401 on missing/wrong token, 200 + {deleted} on success). vercel.json schedules it daily at '0 3 * * *' — Hobby-compatible (daily-or-slower); deliberately NOT sub-daily (that is CHORE-1 / Pro). Tests backdate Cart.updatedAt via raw SQL (it is @updatedAt-managed) and assert only the 31-day guest cart is removed while a 29-day guest cart and a 400-day USER cart survive."
     },
     {
       "id": "US-MFTF-12.1",

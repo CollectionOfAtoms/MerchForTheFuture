@@ -62,6 +62,15 @@ enum OrderListingType {
   PRINT
 }
 
+/// Polymorphic line-item kind for the shopping cart (US-MFTF-11.1). APPAREL items
+/// reference an `ApparelListing`; PRINT items reference the artwork `OriginalListing`
+/// they are printed from. Each kind has its own `selection` validator
+/// (`src/lib/cart/validators.ts`).
+enum CartItemKind {
+  APPAREL
+  PRINT
+}
+
 enum NotificationType {
   OUTBID
   AUCTION_WON
@@ -97,6 +106,7 @@ model User {
   notifications   Notification[]
   addresses       UserAddress[]
   apparelListings ApparelListing[]
+  cart            Cart?
 
   @@index([email])
 }
@@ -230,6 +240,7 @@ model OriginalListing {
   artwork Artwork  @relation(fields: [artworkId], references: [id], onDelete: Cascade)
   auction Auction?
   orders  Order[]
+  cartItems CartItem[]
 
   @@index([status])
   @@index([availableForPrint])
@@ -435,6 +446,7 @@ model ApparelListing {
   images            ApparelListingImage[]
   referencedVariants ReferencedVariant[]
   orders            Order[]
+  cartItems         CartItem[]
 
   @@index([sellerId])
   @@index([status])
@@ -509,4 +521,49 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
+}
+
+// ─── Cart (MFTF-11) ───────────────────────────────────────────────────────────
+
+/// A shopping cart for a guest or an authenticated buyer (US-MFTF-11.1). Exactly
+/// one of `userId` / `guestToken` is non-null — enforced at the application layer
+/// (`src/lib/cart/invariants.ts`), consistent with the US-MFTF-5.1 single-FK
+/// convention. Guest carts are keyed by an httpOnly-cookie token; on login/signup
+/// the guest cart merges into the user cart (US-MFTF-11.5) and is deleted. A daily
+/// cron prunes guest carts inactive 30+ days off `updatedAt` (US-MFTF-11.6), so
+/// every mutation must touch `updatedAt`.
+model Cart {
+  id         String   @id @default(cuid())
+  userId     String?  @unique
+  guestToken String?  @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user  User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  @@index([guestToken])
+}
+
+/// A polymorphic cart line item (US-MFTF-11.1). `itemKind` selects which listing
+/// reference is set: APPAREL → `apparelListingId`; PRINT → `listingId` (the artwork
+/// `OriginalListing` the print is made from). Exactly one reference is non-null and
+/// must match `itemKind` (app-layer invariant). `selection` is a per-kind JSON
+/// payload validated by `src/lib/cart/validators.ts`
+/// (APPAREL → { colorId, sizeLabel }; PRINT → { prodigiSku, attributes, quotedUnitPrice }).
+model CartItem {
+  id               String       @id @default(cuid())
+  cartId           String
+  itemKind         CartItemKind
+  apparelListingId String?
+  listingId        String?
+  selection        Json
+  quantity         Int          @default(1)
+  addedAt          DateTime     @default(now())
+
+  cart            Cart             @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  apparelListing  ApparelListing?  @relation(fields: [apparelListingId], references: [id])
+  originalListing OriginalListing? @relation(fields: [listingId], references: [id])
+
+  @@index([cartId])
 }

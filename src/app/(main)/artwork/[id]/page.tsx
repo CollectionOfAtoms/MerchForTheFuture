@@ -212,7 +212,6 @@ export default async function ArtworkDetailPage({ params }: PageProps) {
               <PrintOptionsSelector
                 listingId={orig.listingId}
                 printProducts={orig.printProducts as { sku: string; size: string; price: number; mockupUrl?: string | null }[]}
-                isLoggedIn={isLoggedIn}
               />
             </section>
           )}

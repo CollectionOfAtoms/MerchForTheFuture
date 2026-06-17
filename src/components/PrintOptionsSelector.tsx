@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createPrintOrderAction } from "@/app/actions/print";
+import { addToCartAction } from "@/app/actions/cart";
 
 interface PrintProduct {
   sku: string;
@@ -14,7 +14,6 @@ interface PrintProduct {
 interface PrintOptionsSelectorProps {
   listingId: string;
   printProducts: PrintProduct[];
-  isLoggedIn: boolean;
 }
 
 const MATERIAL_LABELS: Record<string, string> = {
@@ -37,7 +36,7 @@ function getMaterials(products: PrintProduct[]): string[] {
   return order;
 }
 
-export default function PrintOptionsSelector({ listingId, printProducts, isLoggedIn }: PrintOptionsSelectorProps) {
+export default function PrintOptionsSelector({ listingId, printProducts }: PrintOptionsSelectorProps) {
   const materials = getMaterials(printProducts);
   const [selectedMaterial, setSelectedMaterial] = useState(materials[0] ?? "FAP");
 
@@ -45,6 +44,7 @@ export default function PrintOptionsSelector({ listingId, printProducts, isLogge
   const [selectedSku, setSelectedSku] = useState(materialProducts[0]?.sku ?? printProducts[0]?.sku ?? "");
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [added, setAdded] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -56,30 +56,23 @@ export default function PrintOptionsSelector({ listingId, printProducts, isLogge
 
   const selectedProduct = printProducts.find((p) => p.sku === selectedSku) ?? materialProducts[0];
 
-  if (!isLoggedIn) {
-    return (
-      <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-500">
-        <p className="font-medium text-stone-700">Order a Print</p>
-        <p className="mt-1 text-xs">Sign in to order a print of this artwork.</p>
-        <a
-          href="/sign-in"
-          className="mt-3 inline-block rounded-full bg-stone-900 px-4 py-2 text-xs font-medium text-white hover:bg-stone-700 transition-colors"
-        >
-          Sign In to Order
-        </a>
-      </div>
-    );
-  }
-
-  function handleOrder() {
+  function handleAddToCart() {
     if (!selectedProduct) return;
     setError(null);
+    setAdded(false);
     startTransition(async () => {
-      const result = await createPrintOrderAction(listingId, selectedProduct.sku, selectedProduct.size, quantity);
+      const result = await addToCartAction({
+        itemKind: "PRINT",
+        listingId,
+        prodigiSku: selectedProduct.sku,
+        quantity,
+      });
       if ("error" in result) {
         setError(result.error);
       } else {
-        router.push(`/checkout/${result.orderId}`);
+        setAdded(true);
+        // Refresh the server nav so the cart badge updates without a full reload.
+        router.refresh();
       }
     });
   }
@@ -166,15 +159,16 @@ export default function PrintOptionsSelector({ listingId, printProducts, isLogge
         />
       </div>
 
-      {error && <p className="text-xs text-rose-600">{error}</p>}
+      {error && <p role="alert" className="text-xs text-rose-600">{error}</p>}
+      {added && <p role="status" className="text-xs font-medium text-emerald-700">Added to cart</p>}
 
       <button
         type="button"
-        onClick={handleOrder}
+        onClick={handleAddToCart}
         disabled={isPending || !selectedProduct}
         className="w-full rounded-full bg-stone-900 py-2.5 text-sm font-medium text-white hover:bg-stone-700 transition-colors disabled:opacity-50"
       >
-        {isPending ? "Processing…" : "Order Print"}
+        {isPending ? "Adding…" : "Add to cart"}
       </button>
     </div>
   );
