@@ -1708,11 +1708,12 @@
       "id": "US-MFTF-11.6",
       "epic": "Epic MFTF-11: Cart",
       "title": "Guest Cart Cleanup Cron",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-16",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-16",
+      "testPassedCommit": "pending",
+      "notes": "5 tests. cleanupStaleGuestCarts (src/lib/cart/cleanup.ts) bulk-deletes carts with guestToken set AND updatedAt < now-30d in a single deleteMany (no per-row loop; cascades CartItem) and never matches user carts (guestToken null). Route GET /api/cron/cleanup-carts mirrors the close-auctions Bearer CRON_SECRET guard (401 on missing/wrong token, 200 + {deleted} on success). vercel.json schedules it daily at '0 3 * * *' — Hobby-compatible (daily-or-slower); deliberately NOT sub-daily (that is CHORE-1 / Pro). Tests backdate Cart.updatedAt via raw SQL (it is @updatedAt-managed) and assert only the 31-day guest cart is removed while a 29-day guest cart and a 400-day USER cart survive."
     },
     {
       "id": "US-MFTF-12.1",

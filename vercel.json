@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/payment-deadlines",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-carts",
+      "schedule": "0 3 * * *"
     }
   ]
 }
