@@ -10,7 +10,7 @@ import {
   type FulfillmentStatusQuery,
   type FulfillmentStatusResult,
 } from '../types';
-import { teemillPost, teemillGet } from '../teemill/client';
+import { teemillPost, teemillGet, teemillError, teemillDefaultContact } from '../teemill/client';
 
 /** The shipping method id we select at confirm time. */
 // Open Q#7 (docs/teemill-api-notes.md): unverified that a stable "standard" id
@@ -63,12 +63,14 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
     // // UNVERIFIED: whether an unconfirmed POST /orders ever expires or bills —
     // needs a live proofing order to confirm (gates 12.3 "Passed").
     const resp = await teemillPost('/orders', {
-      contactInformation: { email: '', phone: '' },
+      // A valid contact is required even for the quote — Teemill 400s on an empty
+      // email. The buyer's real email is used at fulfillment time.
+      contactInformation: teemillDefaultContact(),
       shippingAddress: toTeemillAddress(address),
       items: items.map((i) => ({ variantRef: i.variantRef, quantity: i.quantity })),
     });
     if (!resp.ok) {
-      throw new Error(`Teemill quote (POST /orders) failed with status ${resp.status}`);
+      throw await teemillError(resp, 'shipping quote (POST /orders)');
     }
     const data = (await resp.json()) as TeemillOrderResponse;
     const fulfillment = data.fulfillments?.[0];
@@ -113,13 +115,17 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
   // ── fulfill() steps (US-MFTF-12.5) — two-step: create then confirm ─────────
 
   protected async createProviderOrder(job: FulfillmentJob): Promise<FulfillmentOrderResult> {
+    const fallback = teemillDefaultContact();
     const resp = await teemillPost('/orders', {
-      contactInformation: { email: job.contact?.email ?? '', phone: job.contact?.phone ?? '' },
+      contactInformation: {
+        email: job.contact?.email || fallback.email,
+        phone: job.contact?.phone || fallback.phone,
+      },
       shippingAddress: toTeemillAddress(job.shippingAddress),
       items: job.items.map((i) => ({ variantRef: i.variantRef, quantity: i.quantity })),
     });
     if (!resp.ok) {
-      throw new Error(`Teemill order create (POST /orders) failed with status ${resp.status}`);
+      throw await teemillError(resp, 'order create (POST /orders)');
     }
     const data = (await resp.json()) as TeemillOrderResponse;
     if (!data.id) {
@@ -142,7 +148,7 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
       { fulfillmentId, shippingMethodId },
     ]);
     if (!resp.ok) {
-      throw new Error(`Teemill order confirm failed with status ${resp.status}`);
+      throw await teemillError(resp, 'order confirm (POST /orders/{id}/confirm)');
     }
     return created;
   }

@@ -91,8 +91,22 @@ export async function createCheckoutAction(
     return { error: "Your cart is empty." };
   }
 
-  const summary = await buildCheckoutSummary(cart.id, address);
-  return { summary };
+  try {
+    const summary = await buildCheckoutSummary(cart.id, address);
+    return { summary };
+  } catch (err) {
+    console.error("[checkout] shipping quote failed", err);
+    return { error: shippingErrorMessage(err) };
+  }
+}
+
+/** Turn a provider/quote failure into a buyer-facing message (no provider name). */
+function shippingErrorMessage(err: unknown): string {
+  const raw = err instanceof Error ? err.message : "";
+  if (/timed out/i.test(raw)) {
+    return "We couldn't calculate shipping in time. Please try again in a moment.";
+  }
+  return "We couldn't calculate shipping for one or more items right now. Please try again shortly.";
 }
 
 export type CartCheckoutSessionResult =
@@ -125,14 +139,19 @@ export async function createCartCheckoutSessionAction(
   });
   if (!cart || cart._count.items === 0) return { error: "Your cart is empty." };
 
-  const plan = await planCheckout(cart.id, address);
-  if (plan.groups.length === 0) {
-    return { error: "None of the items in your cart are still available." };
-  }
-  if (plan.status === "changed" && !opts.confirmed) {
-    return { requiresConfirmation: true, summary: summarizePlan(plan) };
-  }
+  try {
+    const plan = await planCheckout(cart.id, address);
+    if (plan.groups.length === 0) {
+      return { error: "None of the items in your cart are still available." };
+    }
+    if (plan.status === "changed" && !opts.confirmed) {
+      return { requiresConfirmation: true, summary: summarizePlan(plan) };
+    }
 
-  const result = await createCartCheckout(user.id, cart.id, address, plan);
-  return { clientSecret: result.clientSecret, orderId: result.orderId };
+    const result = await createCartCheckout(user.id, cart.id, address, plan);
+    return { clientSecret: result.clientSecret, orderId: result.orderId };
+  } catch (err) {
+    console.error("[checkout] session creation failed", err);
+    return { error: shippingErrorMessage(err) };
+  }
 }

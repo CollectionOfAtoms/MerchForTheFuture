@@ -375,5 +375,48 @@ describe("US-MFTF-12.3 — checkout revalidation & per-provider shipping", () =>
         expect(result.summary.groups).toHaveLength(1);
       }
     });
+
+    it("sends a non-empty contact email in the Teemill quote (avoids the 400)", async () => {
+      let body: { contactInformation?: { email?: string } } | null = null;
+      server.use(
+        http.post("https://api.teemill.com/v1/orders", async ({ request }) => {
+          body = (await request.json()) as typeof body;
+          return HttpResponse.json(
+            { id: "t-1", fulfillments: [{ id: "f-1", availableShippingMethods: [{ id: "standard", name: "Standard", totalPrice: { amount: "3.99" } }] }] },
+            { status: 201 },
+          );
+        }),
+      );
+      const seller = await seedUser();
+      const buyer = await seedUser();
+      authAs(buyer.id);
+      const ref = await seedReferencedListing(seller.id, { colors: ["Evergreen"], sizes: ["M"] });
+      const cart = await userCart(buyer.id);
+      await addApparel(cart.id, ref.id, { colorId: "Evergreen", sizeLabel: "M" });
+
+      await createCheckoutAction(ADDRESS);
+      expect(body!.contactInformation?.email).toBeTruthy();
+      expect(body!.contactInformation!.email).toContain("@");
+    });
+
+    it("returns a friendly error (does not throw) when Teemill rejects the quote with a 400", async () => {
+      server.use(
+        ...["https://api.prodigi.com/v4.0", "https://api.sandbox.prodigi.com/v4.0"].map((base) =>
+          http.post(`${base}/quotes`, () => HttpResponse.json({ quotes: [{ shipmentMethod: "Standard", costSummary: { shipping: { amount: "4.99", currency: "USD" } } }] })),
+        ),
+        http.post("https://api.teemill.com/v1/orders", () =>
+          HttpResponse.json({ message: "Invalid contact email." }, { status: 400 }),
+        ),
+      );
+      const seller = await seedUser();
+      const buyer = await seedUser();
+      authAs(buyer.id);
+      const ref = await seedReferencedListing(seller.id, { colors: ["Evergreen"], sizes: ["M"] });
+      const cart = await userCart(buyer.id);
+      await addApparel(cart.id, ref.id, { colorId: "Evergreen", sizeLabel: "M" });
+
+      const result = await createCheckoutAction(ADDRESS);
+      expect("error" in result).toBe(true);
+    });
   });
 });

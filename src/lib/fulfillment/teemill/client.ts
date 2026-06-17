@@ -81,6 +81,38 @@ export async function teemillGet(path: string): Promise<Response> {
   });
 }
 
+/**
+ * A syntactically valid contact for the Orders API. Teemill rejects an order
+ * create with an empty/invalid email (400), so the shipping-quote step needs a
+ * real address even though it never confirms an order. Override per-deploy with
+ * TEEMILL_CONTACT_EMAIL / TEEMILL_CONTACT_PHONE; the buyer's own email is used at
+ * fulfillment time instead (see provider.fulfill).
+ */
+export function teemillDefaultContact(): { email: string; phone: string } {
+  return {
+    email: process.env.TEEMILL_CONTACT_EMAIL || "orders@merchforthefuture.quest",
+    phone: process.env.TEEMILL_CONTACT_PHONE || "",
+  };
+}
+
+/**
+ * Build a descriptive Error from a failed Teemill response, capturing the body
+ * (Teemill returns `{ "message": "..." }` on 400) so the real reason is visible in
+ * logs and surfaced to the caller instead of a bare status code.
+ */
+export async function teemillError(resp: Response, context: string): Promise<Error> {
+  const body = await resp.text().catch(() => "");
+  let detail = body;
+  try {
+    const parsed = JSON.parse(body) as { message?: string };
+    if (parsed?.message) detail = parsed.message;
+  } catch {
+    /* body was not JSON — keep the raw text */
+  }
+  console.error(`[teemill] ${context} → ${resp.status}: ${body || "(empty body)"}`);
+  return new Error(`Teemill ${context} failed (${resp.status})${detail ? `: ${detail}` : ""}`);
+}
+
 /** Authenticated POST against the Teemill Orders API (order create / confirm). */
 export async function teemillPost(path: string, body: unknown): Promise<Response> {
   const project = encodeURIComponent(getTeemillProject());
