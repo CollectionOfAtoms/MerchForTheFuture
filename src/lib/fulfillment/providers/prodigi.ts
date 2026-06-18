@@ -123,13 +123,14 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
         // service tier (Budget/Standard/Express/Overnight) for buyer selection.
         currencyCode: 'USD',
         destinationCountryCode: address.country,
-        // Prodigi prices per print area, so each item must carry attributes +
-        // assets — omitting `assets` 400s the quote.
+        // Prodigi prices per variant + print area. Designed apparel must carry
+        // size/colour attributes and its print area ("front"); prints carry no
+        // attributes and use the "default" print area (their SKU encodes the size).
         items: items.map((i) => ({
           sku: i.sku,
           copies: i.quantity,
-          attributes: {},
-          assets: [{ printArea: 'default' }],
+          attributes: i.attributes ?? {},
+          assets: [{ printArea: i.printArea ?? 'default' }],
         })),
       }),
     });
@@ -218,7 +219,10 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
           sku: i.sku,
           copies: i.quantity,
           sizing: 'fillPrintArea',
-          assets: i.sourceImageUrl ? [{ printArea: 'default', url: i.sourceImageUrl }] : [],
+          // Designed apparel needs size/colour attributes; the design asset goes on
+          // the item's print area ("front" for apparel, "default" for prints).
+          ...(i.attributes ? { attributes: i.attributes } : {}),
+          assets: i.sourceImageUrl ? [{ printArea: i.printArea ?? 'default', url: i.sourceImageUrl }] : [],
         })),
       }),
     });

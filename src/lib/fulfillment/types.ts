@@ -54,6 +54,14 @@ export interface ShippingQuoteItem {
   sku?: string;
   variantRef?: string;
   sourceImageUrl?: string;
+  /**
+   * Provider attributes that identify the variant (Prodigi designed apparel
+   * requires size + colour in the provider's raw spelling, e.g. { size: "2xl",
+   * color: "white" }). Omitted for prints, whose SKU already encodes the size.
+   */
+  attributes?: Record<string, string>;
+  /** Print area for the design asset (Prodigi apparel = "front"; prints = "default"). */
+  printArea?: string;
 }
 
 /** One selectable shipping method for a group (cost in the quote's currency). */

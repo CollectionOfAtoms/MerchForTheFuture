@@ -490,3 +490,52 @@ describe("Teemill shipping-method selection", () => {
     expect(quote.shippingCost).toBe(0);
   });
 });
+
+// Designed (Prodigi) apparel: the quote item must carry size/colour attributes in
+// Prodigi's RAW spelling + the "front" print area (Prodigi 400s otherwise).
+describe("designed apparel Prodigi quote", () => {
+  async function seedDesignedListing(sellerId: string) {
+    const pt = await prisma.productType.create({
+      data: {
+        name: `Tee ${crypto.randomUUID()}`,
+        fulfillmentProvider: "PRODIGI",
+        providerSkuBase: "BELLA-3001",
+        colors: { create: [{ colorName: "white", providerColorCode: "white", colorImageUrl: null }] },
+        // sizeLabel stored canonical, providerSizeCode raw (as the sync writes it).
+        sizes: { create: [{ sizeLabel: "XXL", providerSizeCode: "2xl", sortOrder: 0 }] },
+      },
+      include: { colors: true },
+    });
+    return prisma.apparelListing.create({
+      data: {
+        sellerId, sourcingMode: "DESIGNED", productTypeId: pt.id, title: "Designed Tee", retailPrice: 35,
+        status: "ACTIVE", designImageUrl: "https://blob/design.png",
+        colors: { create: pt.colors.map((c) => ({ productTypeColorId: c.id, isOffered: true })) },
+      },
+    });
+  }
+
+  it("sends size/colour attributes (raw spelling) and the 'front' print area", async () => {
+    let body: { items?: Array<{ attributes?: Record<string, string>; assets?: Array<{ printArea?: string }> }> } | null = null;
+    server.use(
+      ...["https://api.prodigi.com/v4.0", "https://api.sandbox.prodigi.com/v4.0"].map((base) =>
+        http.post(`${base}/quotes`, async ({ request }) => {
+          body = (await request.json()) as typeof body;
+          return HttpResponse.json({ quotes: [{ shipmentMethod: "Standard", costSummary: { shipping: { amount: "5.99", currency: "USD" } } }] });
+        }),
+      ),
+    );
+    const seller = await seedUser();
+    const buyer = await seedUser();
+    authAs(buyer.id);
+    const listing = await seedDesignedListing(seller.id);
+    const cart = await userCart(buyer.id);
+    await addApparel(cart.id, listing.id, { colorId: "white", sizeLabel: "XXL" });
+
+    const result = await createCheckoutAction(ADDRESS);
+    expect("summary" in result).toBe(true);
+    const item = body!.items![0];
+    expect(item.attributes).toEqual({ size: "2xl", color: "white" });
+    expect(item.assets?.[0]?.printArea).toBe("front");
+  });
+});

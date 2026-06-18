@@ -9,6 +9,7 @@
  */
 import { prisma } from "@/lib/db";
 import { getApparelListingDetail } from "@/lib/apparel/detail";
+import { canonicalSizeLabel } from "@/lib/apparel/sizes";
 import { ingestTeemillProduct } from "@/lib/fulfillment/teemill/ingest";
 import type { KeptItem, RemovedItem, PriceChange, RevalidationResult } from "./types";
 
@@ -41,7 +42,14 @@ export async function revalidateCheckout(cartId: string): Promise<RevalidationRe
           sourcingMode: true,
           providerKey: true,
           providerProductRef: true,
-          productType: { select: { fulfillmentProvider: true, providerSkuBase: true } },
+          productType: {
+            select: {
+              fulfillmentProvider: true,
+              providerSkuBase: true,
+              sizes: { select: { sizeLabel: true, providerSizeCode: true } },
+              colors: { select: { colorName: true, providerColorCode: true } },
+            },
+          },
           referencedVariants: true,
         },
       },
@@ -127,8 +135,21 @@ export async function revalidateCheckout(cartId: string): Promise<RevalidationRe
         }
         quoteItem = { variantRef: cached.variantRef, quantity: item.quantity };
       } else {
-        // Designed apparel → Prodigi; the provider SKU base identifies the blank.
-        quoteItem = { sku: listing.productType?.providerSkuBase ?? "", quantity: item.quantity };
+        // Designed apparel → Prodigi. The blank SKU + the buyer's size/colour in
+        // Prodigi's RAW spelling (providerSizeCode/providerColorCode) + the design's
+        // print area ("front") are all required by Prodigi's quote/order validation.
+        const pt = listing.productType;
+        const rawColor =
+          pt?.colors.find((c) => c.colorName === colorId)?.providerColorCode ?? colorId;
+        const rawSize =
+          pt?.sizes.find((s) => canonicalSizeLabel(s.sizeLabel) === sizeLabel)?.providerSizeCode ??
+          sizeLabel.toLowerCase();
+        quoteItem = {
+          sku: pt?.providerSkuBase ?? "",
+          quantity: item.quantity,
+          attributes: { size: rawSize, color: rawColor },
+          printArea: "front",
+        };
       }
 
       const providerKey = isReferenced
