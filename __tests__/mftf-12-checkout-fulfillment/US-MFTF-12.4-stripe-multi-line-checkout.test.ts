@@ -126,7 +126,7 @@ describe("US-MFTF-12.4 — multi-line Stripe checkout session", () => {
       expect(order!.stripeSessionId).toBe(result.sessionId);
     });
 
-    it("sends one Stripe line per item + one per shipment group, with Stripe Tax enabled", async () => {
+    it("sends one Stripe line per item + one per shipment group (tax deferred to Epic 5)", async () => {
       const captured = captureStripe();
       const buyer = await seedUser();
       const seller = await seedUser();
@@ -134,7 +134,8 @@ describe("US-MFTF-12.4 — multi-line Stripe checkout session", () => {
 
       await createCartCheckout(buyer.id, cart.id, ADDRESS);
       const body = decodeURIComponent(captured.get());
-      expect(body).toContain("automatic_tax");
+      // automatic_tax is OFF until Epic 5 (Stripe requires per-price tax_behavior).
+      expect(body).toContain("automatic_tax[enabled]=false");
       // Item unit amounts in cents: $32 apparel, $40 print.
       expect(body).toContain("3200");
       expect(body).toContain("4000");

@@ -124,7 +124,11 @@ export async function createCartCheckout(
     ui_mode: "embedded_page" as any,
     line_items: lineItems,
     mode: "payment",
-    automatic_tax: { enabled: true },
+    // TODO(Epic 5 — Tax Calculation): re-enable Stripe automatic_tax. It requires a
+    // `tax_behavior` on every price + product tax categories + tax registration, so
+    // it's deferred to Epic 5; until then checkout proceeds with no tax line
+    // (Order.taxAmount stays 0). Flip via STRIPE_TAX_ENABLED once Epic 5 lands.
+    automatic_tax: { enabled: process.env.STRIPE_TAX_ENABLED === "true" },
     return_url: `${baseUrl}/orders/${order.id}/confirmation?session_id={CHECKOUT_SESSION_ID}`,
     metadata: { orderId: order.id },
   });
