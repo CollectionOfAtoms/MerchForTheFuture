@@ -7,6 +7,7 @@
  */
 import { prisma } from "@/lib/db";
 import { getProviderByKey } from "@/lib/fulfillment";
+import { canonicalSizeLabel } from "@/lib/apparel/sizes";
 import type { FulfillmentJob, ShippingQuoteItem, FulfillmentShippingAddress } from "@/lib/fulfillment/types";
 
 const foInclude = {
@@ -27,7 +28,15 @@ const foInclude = {
       apparelListing: {
         select: {
           sourcingMode: true,
-          productType: { select: { providerSkuBase: true } },
+          // The clean design file to print onto the blank (designed/Prodigi).
+          designImageUrl: true,
+          productType: {
+            select: {
+              providerSkuBase: true,
+              sizes: { select: { sizeLabel: true, providerSizeCode: true } },
+              colors: { select: { colorName: true, providerColorCode: true } },
+            },
+          },
           referencedVariants: { select: { variantRef: true, colorName: true, sizeLabel: true } },
         },
       },
@@ -67,8 +76,20 @@ function toQuoteItem(item: LoadedFulfillmentOrder["items"][number]): ShippingQuo
       // Referenced (Teemill) — order by the cached variantRef.
       return { variantRef: variant.variantRef, quantity: item.quantity };
     }
-    // Designed (Prodigi) — the provider SKU base identifies the blank.
-    return { sku: listing?.productType?.providerSkuBase ?? "", quantity: item.quantity };
+    // Designed (Prodigi) — blank SKU + size/colour in raw provider spelling + the
+    // clean design printed on the "front" area. Without these Prodigi 400s the order.
+    const pt = listing?.productType;
+    const rawColor = pt?.colors.find((c) => c.colorName === sel.colorId)?.providerColorCode ?? sel.colorId ?? "";
+    const rawSize =
+      pt?.sizes.find((s) => canonicalSizeLabel(s.sizeLabel) === sel.sizeLabel)?.providerSizeCode ??
+      (sel.sizeLabel ?? "").toLowerCase();
+    return {
+      sku: pt?.providerSkuBase ?? "",
+      quantity: item.quantity,
+      attributes: { size: rawSize, color: rawColor },
+      printArea: "front",
+      sourceImageUrl: listing?.designImageUrl ?? undefined,
+    };
   }
   // PRINT (Prodigi).
   const sel = item.selection as { prodigiSku?: string };

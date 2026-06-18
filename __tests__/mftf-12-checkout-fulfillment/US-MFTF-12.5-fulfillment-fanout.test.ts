@@ -126,3 +126,53 @@ describe("US-MFTF-12.5 — post-payment fulfillment fan-out", () => {
     expect(teemill!.providerOrderId).toBeTruthy();
   });
 });
+
+// Designed (Prodigi) apparel must reach Prodigi with size/colour attributes + the
+// design printed on "front" — otherwise the order 400s and the design never lands.
+describe("designed apparel fulfillment (design onto the product)", () => {
+  function captureProdigiOrder(): { get: () => { items?: Array<{ sku?: string; attributes?: Record<string, string>; assets?: Array<{ printArea?: string; url?: string }> }> } | null } {
+    let body: { items?: Array<{ sku?: string; attributes?: Record<string, string>; assets?: Array<{ printArea?: string; url?: string }> }> } | null = null;
+    server.use(
+      ...["https://api.prodigi.com/v4.0", "https://api.sandbox.prodigi.com/v4.0"].map((base) =>
+        http.post(`${base}/orders`, async ({ request }) => {
+          body = (await request.json()) as typeof body;
+          return HttpResponse.json({ order: { id: "prodigi-order-1" } }, { status: 200 });
+        }),
+      ),
+    );
+    return { get: () => body };
+  }
+
+  it("sends the blank SKU, size/colour attributes, and the design asset on the front", async () => {
+    const captured = captureProdigiOrder();
+    const buyer = await seedUser();
+    const seller = await seedUser();
+
+    const pt = await prisma.productType.create({
+      data: {
+        name: `Tee ${crypto.randomUUID()}`, fulfillmentProvider: "PRODIGI", providerSkuBase: "BELLA-3001",
+        colors: { create: [{ colorName: "white", providerColorCode: "white", colorImageUrl: null }] },
+        sizes: { create: [{ sizeLabel: "XXL", providerSizeCode: "2xl", sortOrder: 0 }] },
+      },
+    });
+    const listing = await prisma.apparelListing.create({
+      data: { sellerId: seller.id, sourcingMode: "DESIGNED", productTypeId: pt.id, title: "Designed Tee", retailPrice: 35, status: "ACTIVE", designImageUrl: "https://blob/design.png" },
+    });
+    const order = await prisma.order.create({
+      data: { buyerId: buyer.id, listingType: "CART", status: "PAID", subtotal: 35, totalAmount: 40, shippingName: "Jane", shippingLine1: "1 St", shippingCity: "Portland", shippingState: "OR", shippingPostal: "97201", shippingCountry: "US" },
+    });
+    const fo = await prisma.fulfillmentOrder.create({ data: { orderId: order.id, provider: "prodigi", status: "PENDING", shippingMethod: "Standard", shippingCost: 5.99 } });
+    await prisma.orderItem.create({ data: { orderId: order.id, itemKind: "APPAREL", apparelListingId: listing.id, selection: { colorId: "white", sizeLabel: "XXL" }, quantity: 1, unitPrice: 35, fulfillmentOrderId: fo.id } });
+
+    await dispatchOrderFulfillment(order.id);
+
+    const confirmed = await prisma.fulfillmentOrder.findUnique({ where: { id: fo.id } });
+    expect(confirmed!.status).toBe("CONFIRMED");
+    expect(confirmed!.providerOrderId).toBe("prodigi-order-1");
+
+    const item = captured.get()!.items![0];
+    expect(item.sku).toBe("BELLA-3001");
+    expect(item.attributes).toEqual({ size: "2xl", color: "white" });
+    expect(item.assets?.[0]).toEqual({ printArea: "front", url: "https://blob/design.png" });
+  });
+});
