@@ -42,6 +42,17 @@
   },
   "stories": [
     {
+      "id": "BUG-11",
+      "epic": "Infrastructure",
+      "title": "Designed apparel listings offer no size options (Add to cart disabled)",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "Reported 2026-06-17. Designed (Prodigi) listings showed no sizes → Add to cart permanently disabled (referenced/Teemill unaffected). Cause: toSizes() (src/lib/apparel/detail.ts) read ProductType.sizes (ProductTypeSizeOption rows), which are only created by the admin add-size action; when size whitelisting was dropped that step went unused, so the list was empty. Fix: provider-sourced sizes per blank (new src/lib/apparel/sizes.ts, keyed by ProductType.providerSkuBase, mirroring the verified-static PRINT_CATALOG pattern; scripts/probe-prodigi-catalog.ts extended to capture apparel sizes via /v4.0/products/{sku}) with an XS–XXL fallback so every blank stays orderable; explicit admin size rows still honored if present. One read-path change; no schema change/migration. Fixes both the product page and checkout revalidation (shared getApparelListingDetail). Committed on feat/epic-mftf-12 per founder (folded into PR #11) though unrelated to MFTF-12. FOLLOW-UPS: (1) run the probe to populate real per-blank runs (default XS–XXL until then); (2) pre-existing — designed fulfillment sends only providerSkuBase, so the chosen size/color are not yet encoded into the Prodigi SKU at order time (fanout.ts/revalidate.ts)."
+    },
+    {
       "id": "BUG-8",
       "epic": "Infrastructure",
       "title": "NavDropdown obscured by listing cards on browse page",

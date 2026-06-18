@@ -1,10 +1,16 @@
 /**
- * Probe Prodigi's API to discover which fine art paper and canvas SKUs are valid.
+ * Probe Prodigi's API to discover valid print SKUs and apparel blank sizes.
  *
  * Usage:
+ *   # Print catalog (FAP + CAN):
  *   PRODIGI_API_KEY=your_key npx tsx scripts/probe-prodigi-catalog.ts
  *
- * Outputs a ready-to-paste PRINT_CATALOG constant for src/lib/print/listing.ts.
+ *   # Apparel blank sizes — pass each designed ProductType.providerSkuBase:
+ *   PRODIGI_API_KEY=your_key npx tsx scripts/probe-prodigi-catalog.ts RNA1 TOTE ...
+ *
+ * Prints: outputs a ready-to-paste PRINT_CATALOG for src/lib/print/listing.ts.
+ * Apparel: outputs ready-to-paste APPAREL_SIZE_CATALOG entries for
+ *   src/lib/apparel/sizes.ts (keyed by providerSkuBase).
  *
  * Prodigi exposes no catalog-listing endpoint; this script queries
  * /v4.0/products/{sku} for each candidate and keeps the 200s.
@@ -15,6 +21,10 @@ interface ProdigiProductResponse {
     sku: string;
     description: string;
     productDimensions: { width: number; height: number; units: string };
+    // Apparel blanks expose available attribute values and/or per-variant
+    // attributes. // UNVERIFIED shape — confirm field paths on first live run.
+    attributes?: Record<string, string[]>;
+    variants?: Array<{ attributes?: Record<string, string> }>;
   };
 }
 
@@ -102,7 +112,50 @@ async function probeBatch(
   return results;
 }
 
+/**
+ * Extract a blank's size run from a Prodigi product response. Tries the
+ * attribute-values map first, then unique per-variant size attributes.
+ * // UNVERIFIED field paths — adjust once confirmed against the live response.
+ */
+function extractSizes(product: NonNullable<ProdigiProductResponse["product"]>): string[] {
+  const fromAttrs = product.attributes?.size ?? product.attributes?.Size;
+  if (Array.isArray(fromAttrs) && fromAttrs.length > 0) return fromAttrs;
+  const fromVariants = (product.variants ?? [])
+    .map((v) => v.attributes?.size ?? v.attributes?.Size)
+    .filter((s): s is string => typeof s === "string" && s.length > 0);
+  return [...new Set(fromVariants)];
+}
+
+async function probeApparelSizes(blankSkus: string[]) {
+  console.log("\nProbing apparel blank sizes…");
+  const entries: Array<{ sku: string; sizes: string[] }> = [];
+  for (const sku of blankSkus) {
+    process.stdout.write(`  ${sku} … `);
+    const product = await probe(sku);
+    if (product) {
+      const sizes = extractSizes(product);
+      console.log(sizes.length > 0 ? `✓ ${sizes.join(", ")}` : "✓ (no sizes found — check field paths)");
+      entries.push({ sku, sizes });
+    } else {
+      console.log("✗");
+    }
+    await new Promise((r) => setTimeout(r, 550));
+  }
+
+  console.log("\n\n// ── Generated APPAREL_SIZE_CATALOG entries (paste into src/lib/apparel/sizes.ts) ──\n");
+  for (const e of entries) {
+    console.log(`  ${JSON.stringify(e.sku)}: [${e.sizes.map((s) => JSON.stringify(s)).join(", ")}],`);
+  }
+}
+
 async function main() {
+  // Apparel mode: any CLI args are treated as designed-blank SKUs to probe.
+  const blankSkus = process.argv.slice(2).filter((a) => !a.startsWith("-"));
+  if (blankSkus.length > 0) {
+    await probeApparelSizes(blankSkus);
+    return;
+  }
+
   console.log("Probing Fine Art Paper SKUs…");
   const fap = await probeBatch("GLOBAL-FAP", FAP_CANDIDATES);
 
