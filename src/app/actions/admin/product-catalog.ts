@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { syncDesignedSizesFromProdigi } from "@/lib/apparel/sync-sizes";
+import { syncDesignedAttributesFromProdigi } from "@/lib/apparel/sync-prodigi";
 
 type ActionResult = { id: string } | { error: string };
-type SyncSizesResult = { error: string } | { synced: number; total: number };
+type SyncResult = { error: string } | { synced: number; total: number };
 
 async function requireAdmin(): Promise<string | null> {
   const session = await auth();
@@ -135,16 +135,16 @@ export async function toggleProductTypeColorAction(colorId: string, _active: boo
   return { id: color.id };
 }
 
-// ─── syncDesignedSizesAction ──────────────────────────────────────────────────
-// One-click sync of ALL designed (Prodigi) product-type sizes from the live
-// Prodigi catalog into ProductTypeSizeOption rows. Prodigi has no bulk-list
-// endpoint, so this enumerates our own designed product types and fetches each
-// blank — no manual SKU list. Safe to re-run; also cron-friendly.
+// ─── syncDesignedFromProdigiAction ────────────────────────────────────────────
+// One-click sync of ALL designed (Prodigi) product types' sizes AND colours from
+// the live Prodigi catalog. Prodigi has no bulk-list endpoint, so this enumerates
+// our own designed product types and fetches each blank — no manual SKU list.
+// Safe to re-run (sizes replaced; colours added additively); also cron-friendly.
 
-export async function syncDesignedSizesAction(): Promise<SyncSizesResult> {
+export async function syncDesignedFromProdigiAction(): Promise<SyncResult> {
   if (!(await requireAdmin())) return { error: "Unauthorized" };
 
-  const result = await syncDesignedSizesFromProdigi();
+  const result = await syncDesignedAttributesFromProdigi();
   revalidatePath("/admin/products");
   return { synced: result.synced.length, total: result.total };
 }

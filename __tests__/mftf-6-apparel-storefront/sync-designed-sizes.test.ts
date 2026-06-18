@@ -3,20 +3,20 @@ import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
 import { prisma, resetDatabase } from "../helpers/db";
 
-const { syncDesignedSizesFromProdigi, extractProdigiSizes } = await import("@/lib/apparel/sync-sizes");
+const { syncDesignedAttributesFromProdigi, extractProdigiSizes, extractProdigiColors } = await import("@/lib/apparel/sync-prodigi");
 const { getApparelListingDetail } = await import("@/lib/apparel/detail");
 
 const PRODIGI_BASES = ["https://api.prodigi.com/v4.0", "https://api.sandbox.prodigi.com/v4.0"];
 
-/** Stub Prodigi GET /products/:sku, returning sizes per blank (or 404 for unknown). */
-function stubProdigiProducts(sizesBySku: Record<string, string[] | null>) {
+/** Stub Prodigi GET /products/:sku with sizes (+ optional colours) per blank (404 for unknown). */
+function stubProdigiProducts(bySku: Record<string, { size?: string[]; color?: string[] } | null>) {
   server.use(
     ...PRODIGI_BASES.map((base) =>
       http.get(`${base}/products/:sku`, ({ params }) => {
         const sku = String(params.sku);
-        const sizes = sizesBySku[sku];
-        if (sizes == null) return HttpResponse.json({ message: "not found" }, { status: 404 });
-        return HttpResponse.json({ product: { sku, attributes: { size: sizes } } });
+        const attrs = bySku[sku];
+        if (attrs == null) return HttpResponse.json({ message: "not found" }, { status: 404 });
+        return HttpResponse.json({ product: { sku, attributes: attrs } });
       }),
     ),
   );
@@ -33,7 +33,7 @@ async function seedDesignedType(providerSkuBase: string) {
   return { pt, listing };
 }
 
-describe("syncDesignedSizesFromProdigi", () => {
+describe("syncDesignedAttributesFromProdigi", () => {
   afterEach(async () => {
     await resetDatabase();
   });
@@ -44,31 +44,58 @@ describe("syncDesignedSizesFromProdigi", () => {
     expect(extractProdigiSizes(null)).toEqual([]);
   });
 
-  it("syncs all designed blanks in one pass and persists ProductTypeSizeOption rows", async () => {
-    stubProdigiProducts({ "BLANK-TEE": ["S", "M", "L", "XL"], "BLANK-HOODIE": ["M", "L", "XL", "XXL"] });
-    const tee = await seedDesignedType("BLANK-TEE");
-    const hoodie = await seedDesignedType("BLANK-HOODIE");
+  it("extractProdigiColors reads attributes.colour/color, else unique variant colours", () => {
+    expect(extractProdigiColors({ attributes: { colour: ["White", "Black"] } })).toEqual(["White", "Black"]);
+    expect(extractProdigiColors({ variants: [{ attributes: { color: "Navy" } }, { attributes: { color: "Navy" } }] })).toEqual(["Navy"]);
+    expect(extractProdigiColors(null)).toEqual([]);
+  });
 
-    const result = await syncDesignedSizesFromProdigi();
+  it("syncs sizes and colours for all designed blanks in one pass", async () => {
+    stubProdigiProducts({
+      "BLANK-TEE": { size: ["S", "M", "L", "XL"], color: ["White", "Black", "Navy"] },
+      "BLANK-HOODIE": { size: ["M", "L", "XL", "XXL"], color: ["Heather", "Black"] },
+    });
+    const tee = await seedDesignedType("BLANK-TEE");
+    await seedDesignedType("BLANK-HOODIE");
+
+    const result = await syncDesignedAttributesFromProdigi();
     expect(result.total).toBe(2);
     expect(result.synced).toHaveLength(2);
 
-    // Sizes now come from the synced rows via the normal read path.
+    // Sizes flow through the read path…
     const teeDetail = await getApparelListingDetail(tee.listing.id);
     expect(teeDetail!.sizes).toEqual(["S", "M", "L", "XL"]);
-    const hoodieDetail = await getApparelListingDetail(hoodie.listing.id);
-    expect(hoodieDetail!.sizes).toEqual(["M", "L", "XL", "XXL"]);
+    // …and colours are now available on the product type for the listing picker.
+    const teeColors = await prisma.productTypeColor.findMany({ where: { productTypeId: tee.pt.id }, orderBy: { colorName: "asc" } });
+    expect(teeColors.map((c) => c.colorName)).toEqual(["Black", "Navy", "White"]);
   });
 
-  it("leaves a blank untouched (keeps the default fallback) when Prodigi returns nothing", async () => {
+  it("adds colours additively without deleting ones a listing already offers", async () => {
+    // First sync seeds White/Black; a listing offers Black; second sync adds Navy
+    // and must NOT delete Black (ApparelListingColor FK).
+    stubProdigiProducts({ "BLANK-TEE": { size: ["M"], color: ["White", "Black"] } });
+    const { pt } = await seedDesignedType("BLANK-TEE");
+    await syncDesignedAttributesFromProdigi();
+    const black = await prisma.productTypeColor.findFirstOrThrow({ where: { productTypeId: pt.id, colorName: "Black" } });
+    const seller = await prisma.user.create({ data: { email: `s2-${crypto.randomUUID()}@t.com`, roles: ["SELLER"] as never } });
+    const listing = await prisma.apparelListing.create({ data: { sellerId: seller.id, sourcingMode: "DESIGNED", productTypeId: pt.id, title: "Y", retailPrice: 28, status: "ACTIVE", designImageUrl: "https://b/d.png" } });
+    await prisma.apparelListingColor.create({ data: { apparelListingId: listing.id, productTypeColorId: black.id, isOffered: true } });
+
+    stubProdigiProducts({ "BLANK-TEE": { size: ["M"], color: ["White", "Black", "Navy"] } });
+    await syncDesignedAttributesFromProdigi(); // must not throw on the FK'd Black row
+
+    const colors = await prisma.productTypeColor.findMany({ where: { productTypeId: pt.id } });
+    expect(new Set(colors.map((c) => c.colorName))).toEqual(new Set(["White", "Black", "Navy"]));
+  });
+
+  it("leaves a blank untouched (size fallback) when Prodigi returns nothing", async () => {
     stubProdigiProducts({ "BLANK-UNKNOWN": null }); // 404
     const { listing } = await seedDesignedType("BLANK-UNKNOWN");
 
-    const result = await syncDesignedSizesFromProdigi();
+    const result = await syncDesignedAttributesFromProdigi();
     expect(result.synced).toHaveLength(0);
     expect(result.skipped).toHaveLength(1);
 
-    // No rows written → toSizes falls back to the default run (still orderable).
     const detail = await getApparelListingDetail(listing.id);
     expect(detail!.sizes).toEqual(["XS", "S", "M", "L", "XL", "XXL"]);
   });
@@ -78,7 +105,7 @@ describe("syncDesignedSizesFromProdigi", () => {
     await prisma.productType.create({
       data: { name: `Teemill ${crypto.randomUUID()}`, fulfillmentProvider: "TEEMILL", providerSkuBase: "RNA1" },
     });
-    const result = await syncDesignedSizesFromProdigi();
+    const result = await syncDesignedAttributesFromProdigi();
     expect(result.total).toBe(0);
   });
 });

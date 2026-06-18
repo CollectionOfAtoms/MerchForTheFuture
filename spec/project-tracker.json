@@ -42,6 +42,17 @@
   },
   "stories": [
     {
+      "id": "BUG-12",
+      "epic": "Infrastructure",
+      "title": "Designed (Prodigi) product types have no colours — can't create a Prodigi designed listing",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "Reported 2026-06-17. Sibling of BUG-11: createProductTypeAction seeds ProductTypeColor rows only from teemillColorsJson, so PRODIGI product types had zero colours; the seller new-listing colour picker (productType.colors) was empty and publish stayed disabled (canSubmit requires offeredForType.size > 0). Fix: extended the Prodigi sync (renamed src/lib/apparel/sync-sizes.ts → sync-prodigi.ts; syncDesignedAttributesFromProdigi) to also pull COLOURS from /v4.0/products/{sku} and create ProductTypeColor rows ADDITIVELY (create missing by name only — ApparelListingColor holds a required, non-cascade FK to ProductTypeColor, so deleting would break referential integrity). Admin button relabelled 'Sync from Prodigi' (syncDesignedFromProdigiAction); syncs sizes + colours in one pass. Name-only colours render as selectable buttons (swatch optional). // UNVERIFIED: Prodigi attribute field paths + colour swatch/hex (ProductTypeColor has colorImageUrl only, no hex column) — colours sync as names (colorImageUrl null) until a live raw inspection confirms a swatch field; the raw product is logged when nothing parses or DROPSHIPPING_DEBUG is set. Folded into PR #11."
+    },
+    {
       "id": "BUG-11",
       "epic": "Infrastructure",
       "title": "Designed apparel listings offer no size options (Add to cart disabled)",
