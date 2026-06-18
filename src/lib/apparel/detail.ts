@@ -6,6 +6,7 @@ import {
   referencedListingImages,
 } from "@/lib/apparel/referenced";
 import { getApparelSizesForBlank } from "@/lib/apparel/sizes";
+import { colorNameToHex } from "@/lib/apparel/color-hex";
 
 /**
  * A swatch in the buyer-facing colour picker, normalized across sourcing modes:
@@ -71,7 +72,9 @@ function toColors(listing: RawDetail): ApparelDetailColor[] {
   }
   return listing.colors.map((c) => ({
     name: c.productTypeColor.colorName,
-    hex: null,
+    // Provider gives names only; derive an approximate hex so the swatch renders.
+    // A swatch image (if uploaded) still wins in the picker.
+    hex: colorNameToHex(c.productTypeColor.colorName),
     swatchImageUrl: c.productTypeColor.colorImageUrl,
   }));
 }

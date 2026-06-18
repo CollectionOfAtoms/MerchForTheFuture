@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { updateProductTypeAction } from "@/app/actions/admin/product-catalog";
 import BlankImageUploader from "@/components/admin/BlankImageUploader";
 import SyncProductButton from "@/components/admin/SyncProductButton";
+import { colorNameToHex } from "@/lib/apparel/color-hex";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -221,6 +222,7 @@ export default async function EditProductTypePage({ params }: Props) {
               <div className="flex flex-wrap gap-2">
                 {pt.colors.map((c) => {
                   const imgUrl = resolveColorImage(c.colorName, c.colorImageUrl);
+                  const hex = colorNameToHex(c.colorName);
                   return (
                     <div key={c.id} className="group relative pb-1">
                       {imgUrl ? (
@@ -229,6 +231,12 @@ export default async function EditProductTypePage({ params }: Props) {
                           src={imgUrl}
                           alt={c.colorName}
                           className="h-12 w-12 rounded-lg object-cover border border-stone-200 bg-stone-200"
+                        />
+                      ) : hex ? (
+                        <div
+                          className="h-12 w-12 rounded-lg border border-stone-200"
+                          style={{ backgroundColor: hex }}
+                          title={c.colorName}
                         />
                       ) : (
                         <div

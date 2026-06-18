@@ -5,6 +5,7 @@ import { upload } from "@vercel/blob/client";
 import { createApparelListingAction } from "@/app/actions/apparel";
 import { DesignFilePreview } from "@/components/seller/DesignFilePreview";
 import type { ApparelProductTypeOption } from "@/lib/apparel/listings";
+import { colorNameToHex } from "@/lib/apparel/color-hex";
 
 const FIELD =
   "rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-stone-400 focus:outline-none w-full";
@@ -257,7 +258,10 @@ export default function NewApparelListingForm({
                   isOn ? "border-stone-900 bg-stone-50" : "border-transparent opacity-50 hover:opacity-100"
                 }`}
               >
-                <span className="h-14 w-14 overflow-hidden rounded-lg bg-stone-100">
+                <span
+                  className="h-14 w-14 overflow-hidden rounded-lg bg-stone-100"
+                  style={!c.colorImageUrl && colorNameToHex(c.colorName) ? { backgroundColor: colorNameToHex(c.colorName)! } : undefined}
+                >
                   {c.colorImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={c.colorImageUrl} alt={c.colorName} className="h-full w-full object-cover" />
