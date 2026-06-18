@@ -102,7 +102,12 @@ export async function createCheckoutAction(
 
 /** Turn a provider/quote failure into a buyer-facing message (no provider name). */
 function shippingErrorMessage(err: unknown): string {
-  const raw = err instanceof Error ? err.message : "";
+  const raw = err instanceof Error ? err.message : String(err ?? "");
+  // Pre-production: surface the real reason so failures aren't masked while we
+  // harden the live integrations. Production buyers get the friendly message.
+  if (process.env.NODE_ENV !== "production" && raw) {
+    return `Checkout failed: ${raw}`;
+  }
   if (/timed out/i.test(raw)) {
     return "We couldn't calculate shipping in time. Please try again in a moment.";
   }

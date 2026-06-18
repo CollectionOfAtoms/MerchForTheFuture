@@ -18,6 +18,42 @@ export interface CartCheckoutResult {
   plan: CheckoutPlan;
 }
 
+export interface StripeLineItem {
+  price_data: { currency: string; product_data: { name: string }; unit_amount: number };
+  quantity: number;
+}
+
+/**
+ * Build the Stripe line items for a cart plan: one per cart item, plus one per
+ * shipment group whose shipping cost is > 0. Free shipping (e.g. Teemill bundles
+ * shipping into the item cost → $0) adds NO line item — Stripe rejects a $0
+ * unit_amount line, and a "$0 shipping" row is noise anyway.
+ */
+export function buildCartLineItems(plan: CheckoutPlan): StripeLineItem[] {
+  const itemLines: StripeLineItem[] = plan.groups.flatMap((g) =>
+    g.items.map((i) => ({
+      price_data: {
+        currency: "usd",
+        product_data: { name: `${i.title} (${i.selectionSummary})`.trim() },
+        unit_amount: Math.round(i.unitPrice * 100),
+      },
+      quantity: i.quantity,
+    })),
+  );
+  const shippingLines: StripeLineItem[] = plan.groups
+    .map((g, index) => ({ g, index }))
+    .filter(({ g }) => g.shippingCost > 0)
+    .map(({ g, index }) => ({
+      price_data: {
+        currency: "usd",
+        product_data: { name: `Shipment ${index + 1} — shipping` },
+        unit_amount: Math.round(g.shippingCost * 100),
+      },
+      quantity: 1,
+    }));
+  return [...itemLines, ...shippingLines];
+}
+
 export async function createCartCheckout(
   buyerId: string,
   cartId: string,
@@ -81,26 +117,7 @@ export async function createCartCheckout(
   });
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-  const lineItems = [
-    ...plan.groups.flatMap((g) =>
-      g.items.map((i) => ({
-        price_data: {
-          currency: "usd",
-          product_data: { name: `${i.title} (${i.selectionSummary})`.trim() },
-          unit_amount: Math.round(i.unitPrice * 100),
-        },
-        quantity: i.quantity,
-      })),
-    ),
-    ...plan.groups.map((_, index) => ({
-      price_data: {
-        currency: "usd",
-        product_data: { name: `Shipment ${index + 1} — shipping` },
-        unit_amount: Math.round(plan.groups[index].shippingCost * 100),
-      },
-      quantity: 1,
-    })),
-  ];
+  const lineItems = buildCartLineItems(plan);
 
   const session = await stripe.checkout.sessions.create({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
