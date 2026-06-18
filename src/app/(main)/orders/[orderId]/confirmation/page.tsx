@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { resolveSessionFulfillment } from "@/lib/payments/webhook";
 import { getOrderShipmentsView } from "@/lib/checkout/shipments";
 import OrderShipments from "@/components/OrderShipments";
+import RefreshOnMount from "@/components/RefreshOnMount";
 
 interface PageProps {
   params: Promise<{ orderId: string }>;
@@ -41,6 +42,9 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pa
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
+      {/* The cart was emptied during this render; refresh once so the nav cart
+          badge (rendered in the layout before the clear) updates to 0. */}
+      {order.status === "PAID" && <RefreshOnMount />}
       <div className="text-center">
         <h1 className="text-2xl font-semibold text-stone-900">Thank you — your order is in!</h1>
         <p className="mt-3 text-stone-600">
