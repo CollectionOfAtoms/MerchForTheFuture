@@ -120,8 +120,9 @@ export async function createCartCheckout(
   const lineItems = buildCartLineItems(plan);
 
   const session = await stripe.checkout.sessions.create({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ui_mode: "embedded_page" as any,
+    // This stack's Stripe (apiVersion …dahlia) names the embedded UI mode
+    // "embedded_page" (not "embedded"); it's a valid UiMode literal here.
+    ui_mode: "embedded_page",
     line_items: lineItems,
     mode: "payment",
     // TODO(Epic 5 — Tax Calculation): re-enable Stripe automatic_tax. It requires a
@@ -134,6 +135,20 @@ export async function createCartCheckout(
   });
 
   await prisma.order.update({ where: { id: order.id }, data: { stripeSessionId: session.id } });
+
+  // Diagnostic: confirm the session is a usable embedded session (has a
+  // client_secret). A missing client_secret → the embedded checkout shows a
+  // generic "Something went wrong" with no client error.
+  if (process.env.DROPSHIPPING_DEBUG) {
+    console.log("[checkout] stripe session created", {
+      id: session.id,
+      ui_mode: session.ui_mode,
+      status: session.status,
+      hasClientSecret: !!session.client_secret,
+      lineItemCount: lineItems.length,
+      total: plan.total,
+    });
+  }
 
   return { orderId: order.id, clientSecret: session.client_secret!, sessionId: session.id, plan };
 }
