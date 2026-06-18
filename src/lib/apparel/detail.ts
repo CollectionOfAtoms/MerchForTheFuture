@@ -5,7 +5,7 @@ import {
   referencedListingSizes,
   referencedListingImages,
 } from "@/lib/apparel/referenced";
-import { getApparelSizesForBlank } from "@/lib/apparel/sizes";
+import { getApparelSizesForBlank, normalizeSizes } from "@/lib/apparel/sizes";
 import { colorNameToHex } from "@/lib/apparel/color-hex";
 
 /**
@@ -88,7 +88,10 @@ function toSizes(listing: RawDetail): string[] {
   // whitelist sizes). Without this, a product type with no size rows yielded an
   // empty list and disabled "Add to cart".
   const explicit = (listing.productType?.sizes ?? []).map((s) => s.sizeLabel);
-  if (explicit.length > 0) return explicit;
+  // Canonicalise spelling + sort smallest→largest (providers return e.g. lowercase
+  // "m"/"2xl" in arbitrary order), so display is always standard regardless of how
+  // rows were stored.
+  if (explicit.length > 0) return normalizeSizes(explicit);
   return getApparelSizesForBlank(listing.productType?.providerSkuBase);
 }
 

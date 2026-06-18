@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { prisma, resetDatabase } from "../helpers/db";
 
 const { getApparelListingDetail } = await import("@/lib/apparel/detail");
-const { getApparelSizesForBlank, DEFAULT_APPAREL_SIZES } = await import("@/lib/apparel/sizes");
+const { getApparelSizesForBlank, DEFAULT_APPAREL_SIZES, canonicalSizeLabel, normalizeSizes } = await import("@/lib/apparel/sizes");
 
 async function seedSeller() {
   return prisma.user.create({ data: { email: `seller-${crypto.randomUUID()}@test.com`, name: "S", roles: ["SELLER"] as never } });
@@ -55,6 +55,26 @@ describe("Designed apparel size options (BUG: add-to-cart disabled)", () => {
     const listing = await seedDesigned(seller.id, ["S", "M", "L"]);
     const detail = await getApparelListingDetail(listing.id);
     expect(detail!.sizes).toEqual(["S", "M", "L"]);
+  });
+
+  describe("size normalization", () => {
+    it("canonicalSizeLabel maps provider spellings to standard labels", () => {
+      expect(canonicalSizeLabel("m")).toBe("M");
+      expect(canonicalSizeLabel("2xl")).toBe("XXL");
+      expect(canonicalSizeLabel("XS")).toBe("XS");
+      expect(canonicalSizeLabel("3xl")).toBe("3XL");
+    });
+    it("normalizeSizes canonicalises, de-dupes, and sorts smallest → largest", () => {
+      expect(normalizeSizes(["xl", "s", "2xl", "m", "xs"])).toEqual(["XS", "S", "M", "XL", "XXL"]);
+      expect(normalizeSizes(["m", "M", "medium"])).toEqual(["M"]);
+    });
+    it("offered designed sizes render canonical + sorted regardless of stored order", async () => {
+      const seller = await seedSeller();
+      // Stored lowercase + out of order (as Prodigi might pre-canonicalisation).
+      const listing = await seedDesigned(seller.id, ["xl", "m", "s"]);
+      const detail = await getApparelListingDetail(listing.id);
+      expect(detail!.sizes).toEqual(["S", "M", "XL"]);
+    });
   });
 
   describe("getApparelSizesForBlank", () => {

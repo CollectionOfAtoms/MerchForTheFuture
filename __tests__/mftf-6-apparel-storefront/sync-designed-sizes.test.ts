@@ -60,10 +60,11 @@ describe("syncDesignedAttributesFromProdigi", () => {
     expect(extractProdigiColors(null)).toEqual([]);
   });
 
-  it("syncs sizes and colours for all designed blanks in one pass", async () => {
+  it("syncs sizes and colours for all designed blanks in one pass (canonical + sorted)", async () => {
     stubProdigiProducts({
-      "BLANK-TEE": { size: ["S", "M", "L", "XL"], color: ["White", "Black", "Navy"] },
-      "BLANK-HOODIE": { size: ["M", "L", "XL", "XXL"], color: ["Heather", "Black"] },
+      // Prodigi returns lowercase, arbitrary order — must come out canonical + sorted.
+      "BLANK-TEE": { size: ["xl", "s", "2xl", "m", "xs"], color: ["White", "Black", "Navy"] },
+      "BLANK-HOODIE": { size: ["m", "l", "xl", "2xl"], color: ["Heather", "Black"] },
     });
     const tee = await seedDesignedType("BLANK-TEE");
     await seedDesignedType("BLANK-HOODIE");
@@ -72,9 +73,9 @@ describe("syncDesignedAttributesFromProdigi", () => {
     expect(result.total).toBe(2);
     expect(result.synced).toHaveLength(2);
 
-    // Sizes flow through the read path…
+    // Sizes flow through the read path — canonical labels, smallest → largest.
     const teeDetail = await getApparelListingDetail(tee.listing.id);
-    expect(teeDetail!.sizes).toEqual(["S", "M", "L", "XL"]);
+    expect(teeDetail!.sizes).toEqual(["XS", "S", "M", "XL", "XXL"]);
     // …and colours are now available on the product type for the listing picker.
     const teeColors = await prisma.productTypeColor.findMany({ where: { productTypeId: tee.pt.id }, orderBy: { colorName: "asc" } });
     expect(teeColors.map((c) => c.colorName)).toEqual(["Black", "Navy", "White"]);

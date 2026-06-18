@@ -14,6 +14,7 @@
  * have no colours until synced. Run on demand (admin button) or a cron.
  */
 import { prisma } from "@/lib/db";
+import { canonicalSizeLabel, sizeRank } from "@/lib/apparel/sizes";
 
 const PRODIGI_BASE = process.env.PRODIGI_API_BASE_URL ?? "https://api.prodigi.com/v4.0";
 
@@ -114,12 +115,17 @@ async function syncOneType(type: { id: string; providerSkuBase: string | null })
     return { ok: false, reason: "no attributes returned" };
   }
 
-  // Sizes: replace wholesale (no FK references them).
+  // Sizes: replace wholesale (no FK references them). Store the canonical display
+  // label ("M", "XXL") and the rank-based order; keep the raw provider spelling in
+  // providerSizeCode (that's what a future fulfillment SKU will need).
   if (attrs.sizes.length > 0) {
+    const ranked = [...new Set(attrs.sizes)]
+      .map((raw) => ({ raw, label: canonicalSizeLabel(raw), rank: sizeRank(raw) }))
+      .sort((a, b) => a.rank - b.rank);
     await prisma.$transaction([
       prisma.productTypeSizeOption.deleteMany({ where: { productTypeId: type.id } }),
       prisma.productTypeSizeOption.createMany({
-        data: attrs.sizes.map((s, i) => ({ productTypeId: type.id, sizeLabel: s, providerSizeCode: s, sortOrder: i })),
+        data: ranked.map((s, i) => ({ productTypeId: type.id, sizeLabel: s.label, providerSizeCode: s.raw, sortOrder: i })),
       }),
     ]);
   }
