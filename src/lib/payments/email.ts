@@ -114,6 +114,123 @@ export async function sendAuctionLostEmail(userId: string, artwork: Artwork): Pr
 
 // ─── Purchase Confirmation ────────────────────────────────────────────────────
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+const PRINT_MATERIALS: Record<string, string> = { FAP: "Fine Art Paper", CAN: "Stretched Canvas" };
+function printSelectionSummary(sku: string): string {
+  const parts = sku.split("-");
+  const material = PRINT_MATERIALS[parts[1]] ?? parts[1] ?? "Print";
+  const size = (parts[2] ?? "").replace(/X/i, "x");
+  return size ? `${material} · ${size}` : material;
+}
+
+/**
+ * Itemized confirmation for a multi-item cart order (US-MFTF-12.4). Lists each item
+ * with its thumbnail, selection, quantity and line total; shows a shipping line so
+ * subtotal + shipping + tax = total; and formats the shipping address as a label.
+ * No provider/dropshipper names. Used by the PAID webhook for CART orders.
+ */
+export async function sendCartPurchaseConfirmation(orderId: string): Promise<void> {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      buyer: true,
+      fulfillmentOrders: { select: { shippingCost: true } },
+      orderItems: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          apparelListing: {
+            select: {
+              title: true,
+              images: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 1 },
+              referencedVariants: { orderBy: { id: "asc" }, take: 1 },
+            },
+          },
+          originalListing: {
+            select: {
+              artwork: { select: { title: true, images: { orderBy: [{ isPrimary: "desc" }, { order: "asc" }], take: 1 } } },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!order) return;
+
+  const rows = order.orderItems.map((it) => {
+    let title: string;
+    let thumb: string | null;
+    let selection: string;
+    if (it.itemKind === "APPAREL") {
+      const l = it.apparelListing;
+      const sel = it.selection as { colorId?: string; sizeLabel?: string };
+      const img = l?.images[0];
+      thumb = img?.gridUrl ?? img?.displayUrl ?? img?.originalUrl ?? l?.referencedVariants[0]?.mockupUrl ?? null;
+      title = l?.title ?? "Apparel";
+      selection = [sel.colorId, sel.sizeLabel].filter(Boolean).join(" · ");
+    } else {
+      const a = it.originalListing?.artwork;
+      const sel = it.selection as { prodigiSku?: string };
+      const img = a?.images[0];
+      thumb = img?.gridUrl ?? img?.displayUrl ?? img?.url ?? null;
+      title = a?.title ?? "Print";
+      selection = printSelectionSummary(sel.prodigiSku ?? "");
+    }
+    const lineTotal = Number(it.unitPrice) * it.quantity;
+    return { title, thumb, selection, quantity: it.quantity, lineTotal };
+  });
+
+  const shipping = order.fulfillmentOrders.reduce((s, f) => s + Number(f.shippingCost), 0);
+  const itemRows = rows
+    .map(
+      (r) => `
+      <tr>
+        <td style="padding:8px 0;width:56px">${r.thumb ? `<img src="${r.thumb}" alt="" width="48" height="48" style="width:48px;height:48px;border-radius:8px;object-fit:cover;background:#f5f5f4" />` : ""}</td>
+        <td style="padding:8px 8px;font-size:14px;color:#1c1917">${escapeHtml(r.title)}${r.selection ? `<br/><span style="color:#78716c;font-size:12px">${escapeHtml(r.selection)}</span>` : ""}<br/><span style="color:#78716c;font-size:12px">Qty ${r.quantity}</span></td>
+        <td style="padding:8px 0;text-align:right;font-size:14px;color:#1c1917;white-space:nowrap">$${r.lineTotal.toFixed(2)}</td>
+      </tr>`,
+    )
+    .join("");
+
+  const addressLines = [
+    order.shippingName,
+    order.shippingLine1,
+    order.shippingLine2,
+    [order.shippingCity, order.shippingState].filter(Boolean).join(", ") + (order.shippingPostal ? ` ${order.shippingPostal}` : ""),
+    order.shippingCountry,
+  ]
+    .map((l) => (l ?? "").trim())
+    .filter((l) => l.length > 0)
+    .map((l) => escapeHtml(l))
+    .join("<br/>");
+
+  const totalsRow = (label: string, value: string, bold = false) =>
+    `<tr><td colspan="2" style="padding:6px 0;font-size:14px;${bold ? "font-weight:600;" : "color:#78716c;"}">${label}</td><td style="padding:6px 0;text-align:right;font-size:14px;${bold ? "font-weight:600;" : ""}">${value}</td></tr>`;
+
+  await mailersend({
+    to: order.buyer.email,
+    subject: `Order confirmed — #${order.id.slice(-8).toUpperCase()}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1c1917">
+        <p style="font-size:18px;font-weight:600;margin-bottom:4px">Payment received — thank you!</p>
+        <p style="color:#78716c;margin-top:0">Order #${order.id.slice(-8).toUpperCase()}</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0">${itemRows}</table>
+        <table style="width:100%;border-collapse:collapse;border-top:1px solid #e7e5e4;margin-top:8px">
+          ${totalsRow("Subtotal", `$${Number(order.subtotal).toFixed(2)}`)}
+          ${totalsRow("Shipping", shipping > 0 ? `$${shipping.toFixed(2)}` : "Free")}
+          ${totalsRow("Tax", `$${Number(order.taxAmount).toFixed(2)}`)}
+          ${totalsRow("Total", `$${Number(order.totalAmount).toFixed(2)}`, true)}
+        </table>
+        <p style="text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;font-size:11px;margin:20px 0 4px">Shipping to</p>
+        <p style="color:#1c1917;font-size:14px;line-height:1.5;margin:0">${addressLines}</p>
+        <a href="${BASE_URL}/buyer/orders/${order.id}" style="display:inline-block;margin-top:20px;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View your order →</a>
+      </div>
+    `,
+  });
+}
+
 export async function sendPurchaseConfirmation(orderId: string): Promise<void> {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -176,6 +293,65 @@ export async function sendShippingNotificationEmail(orderId: string): Promise<vo
         ${primaryImage ? `<img src="${primaryImage.url}" alt="${artworkTitle}" style="width:100%;border-radius:8px;margin:16px 0" />` : ""}
         ${trackingInfo}
         <a href="${BASE_URL}/orders/${orderId}/fulfill" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View order →</a>
+      </div>
+    `,
+  });
+}
+
+// ─── Per-shipment shipped notification (US-MFTF-12.6) ─────────────────────────
+
+/**
+ * Email the buyer when one shipment of a multi-item cart order ships. Lists only
+ * that shipment's items and its tracking — never the provider/dropshipper name.
+ * The send path is identical regardless of how dispatch was detected (poll vs.
+ * webhook).
+ */
+export async function sendShipmentShippedEmail(fulfillmentOrderId: string): Promise<void> {
+  const fo = await prisma.fulfillmentOrder.findUnique({
+    where: { id: fulfillmentOrderId },
+    include: {
+      order: {
+        select: {
+          id: true,
+          buyer: { select: { email: true } },
+          fulfillmentOrders: { select: { id: true } },
+        },
+      },
+      items: {
+        include: {
+          apparelListing: { select: { title: true } },
+          originalListing: { select: { artwork: { select: { title: true } } } },
+        },
+      },
+    },
+  });
+  if (!fo) return;
+
+  const total = fo.order.fulfillmentOrders.length;
+  const index = fo.order.fulfillmentOrders.findIndex((f) => f.id === fo.id) + 1;
+  const shipmentLabel = total > 1 ? `Shipment ${index} of ${total}` : "Your order";
+
+  const itemLines = fo.items
+    .map((it) => {
+      const title = it.itemKind === "APPAREL" ? it.apparelListing?.title : it.originalListing?.artwork?.title;
+      return `<li>${title ?? "Item"} × ${it.quantity}</li>`;
+    })
+    .join("");
+
+  const trackingInfo =
+    fo.carrier && fo.trackingNumber
+      ? `<p style="color:#78716c;font-size:14px">Carrier: ${fo.carrier}<br/>Tracking: ${fo.trackingNumber}</p>`
+      : "";
+
+  await mailersend({
+    to: fo.order.buyer.email,
+    subject: `${shipmentLabel} has shipped`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1c1917">
+        <p style="font-size:18px;font-weight:600;margin-bottom:4px">${shipmentLabel} is on its way</p>
+        <ul style="color:#78716c">${itemLines}</ul>
+        ${trackingInfo}
+        <a href="${BASE_URL}/buyer/orders/${fo.order.id}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View order →</a>
       </div>
     `,
   });

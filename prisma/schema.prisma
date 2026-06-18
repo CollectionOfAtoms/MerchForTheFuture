@@ -60,6 +60,18 @@ enum OrderStatus {
 enum OrderListingType {
   ORIGINAL
   PRINT
+  /// Multi-item cart checkout (US-MFTF-12.4). Such orders carry OrderItem +
+  /// FulfillmentOrder rows and leave the single-listing FKs null.
+  CART
+}
+
+/// Status of one per-provider shipment within a multi-item cart order (US-MFTF-12.2).
+enum FulfillmentOrderStatus {
+  PENDING
+  SUBMITTED
+  CONFIRMED
+  SHIPPED
+  FAILED
 }
 
 /// Polymorphic line-item kind for the shopping cart (US-MFTF-11.1). APPAREL items
@@ -241,6 +253,7 @@ model OriginalListing {
   auction Auction?
   orders  Order[]
   cartItems CartItem[]
+  orderItems OrderItem[]
 
   @@index([status])
   @@index([availableForPrint])
@@ -321,8 +334,61 @@ model Order {
   originalListing OriginalListing?  @relation(fields: [originalListingId], references: [id])
   apparelListing  ApparelListing?   @relation(fields: [apparelListingId], references: [id])
   transaction     Transaction?
+  /// Cart-checkout line items (US-MFTF-12.2). Empty for legacy single-FK orders.
+  orderItems        OrderItem[]
+  /// Per-provider shipment groups (US-MFTF-12.2). Empty for legacy single-FK orders.
+  fulfillmentOrders FulfillmentOrder[]
 
   @@index([buyerId])
+  @@index([status])
+}
+
+/// A line item on a multi-item cart Order (US-MFTF-12.2). Polymorphic over
+/// `CartItemKind` exactly like `CartItem`: APPAREL → `apparelListingId`, PRINT →
+/// `listingId`. App-layer invariant (`src/lib/orders/invariants.ts`): exactly one
+/// FK is non-null. `unitPrice` is the authoritative price captured at checkout.
+model OrderItem {
+  id                 String       @id @default(cuid())
+  orderId            String
+  itemKind           CartItemKind
+  apparelListingId   String?
+  listingId          String?
+  selection          Json
+  quantity           Int          @default(1)
+  unitPrice          Decimal      @db.Decimal(12, 2)
+  fulfillmentOrderId String?
+  createdAt          DateTime     @default(now())
+
+  order            Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  apparelListing   ApparelListing?   @relation(fields: [apparelListingId], references: [id])
+  originalListing  OriginalListing?  @relation(fields: [listingId], references: [id])
+  fulfillmentOrder FulfillmentOrder? @relation(fields: [fulfillmentOrderId], references: [id])
+
+  @@index([orderId])
+  @@index([fulfillmentOrderId])
+}
+
+/// One per-provider shipment group within a cart Order (US-MFTF-12.2). Holds the
+/// resolved provider registry key, the provider's order id, shipment status, the
+/// quoted shipping method/cost, and tracking once shipped.
+model FulfillmentOrder {
+  id              String                 @id @default(cuid())
+  orderId         String
+  provider        String
+  providerOrderId String?
+  status          FulfillmentOrderStatus @default(PENDING)
+  shippingMethod  String?
+  shippingCost    Decimal                @default(0) @db.Decimal(12, 2)
+  trackingNumber  String?
+  carrier         String?
+  notes           String?                @db.Text
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  order Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  items OrderItem[]
+
+  @@index([orderId])
   @@index([status])
 }
 
@@ -447,6 +513,7 @@ model ApparelListing {
   referencedVariants ReferencedVariant[]
   orders            Order[]
   cartItems         CartItem[]
+  orderItems        OrderItem[]
 
   @@index([sellerId])
   @@index([status])

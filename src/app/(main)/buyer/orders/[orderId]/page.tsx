@@ -2,6 +2,8 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { getOrderDetail } from "@/lib/orders";
+import { getOrderShipmentsView } from "@/lib/checkout/shipments";
+import OrderShipments from "@/components/OrderShipments";
 import CancelOrderButton from "./CancelOrderButton";
 import ContactSupportModal from "./ContactSupportModal";
 
@@ -39,6 +41,49 @@ export default async function OrderDetailPage({ params }: Props) {
 
   const order = await getOrderDetail(orderId, user.id!);
   if (!order) notFound();
+
+  // Cart orders (US-MFTF-12.6): render per-shipment groups instead of the
+  // single-item layout — no provider names.
+  if (order.listingType === "CART") {
+    const view = await getOrderShipmentsView(orderId, user.id!);
+    return (
+      <main className="min-h-screen bg-stone-50 py-12">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6">
+          <Link href="/buyer/orders" className="mb-6 inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-800 transition-colors">
+            ← Back to orders
+          </Link>
+          <div className="mt-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-stone-400">Order #{order.id.slice(-8).toUpperCase()}</p>
+              <h1 className="text-lg font-semibold text-stone-900">Your order</h1>
+            </div>
+            <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
+              {view?.aggregateStatus ?? "Processing"}
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-stone-500">Total paid ${Number(order.totalAmount).toLocaleString()}</p>
+
+          <div className="mt-6">{view ? <OrderShipments view={view} /> : null}</div>
+
+          {order.shippingLine1 && (
+            <div className="mt-6 rounded-xl bg-white border border-stone-200 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-stone-400 mb-2">Shipping address</p>
+              <p className="text-sm text-stone-700 leading-relaxed">
+                {order.shippingName}<br />
+                {order.shippingLine1}{order.shippingLine2 && <>, {order.shippingLine2}</>}<br />
+                {order.shippingCity}{order.shippingState && `, ${order.shippingState}`} {order.shippingPostal}<br />
+                {order.shippingCountry}
+              </p>
+            </div>
+          )}
+
+          <div className="mt-6 rounded-2xl border border-stone-200 bg-white px-6 py-4">
+            <ContactSupportModal orderId={order.id} />
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   const orderRef = order.id.slice(-8).toUpperCase();
   const isPending = order.status === "PENDING";

@@ -23,12 +23,12 @@
         "rationale": "Replaces Epic MFTF-7. Multi-line-item Stripe checkout, per-provider order splitting and fan-out."
       },
       {
-        "epic": "Epic MFTF-10: Pre-Launch Checklist",
-        "rationale": "Production readiness; largely human tasks (business registration, live keys, samples)."
+        "epic": "Epic 5: Tax Calculation",
+        "rationale": "Bumped ahead of MFTF-10 by founder decision 2026-06-17 (reordered in this implementation session at the founder's explicit instruction, outside the usual tdd-spec-session): MFTF-12 cart checkout shipped with Stripe automatic_tax disabled (STRIPE_TAX_ENABLED, default false) because Stripe Tax needs per-price tax_behavior + product tax categories + registration. Epic 5 wires that up and re-enables automatic_tax before launch."
       },
       {
-        "epic": "Epic 5: Tax Calculation",
-        "rationale": "Reconcile against current Stripe Tax configuration around launch; some stories may already be satisfied in practice."
+        "epic": "Epic MFTF-10: Pre-Launch Checklist",
+        "rationale": "Production readiness; largely human tasks (business registration, live keys, samples)."
       },
       {
         "epic": "Infrastructure",
@@ -41,6 +41,28 @@
     ]
   },
   "stories": [
+    {
+      "id": "BUG-12",
+      "epic": "Infrastructure",
+      "title": "Designed (Prodigi) product types have no colours — can't create a Prodigi designed listing",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "Reported 2026-06-17. Sibling of BUG-11: createProductTypeAction seeds ProductTypeColor rows only from teemillColorsJson, so PRODIGI product types had zero colours; the seller new-listing colour picker (productType.colors) was empty and publish stayed disabled (canSubmit requires offeredForType.size > 0). Fix: extended the Prodigi sync (renamed src/lib/apparel/sync-sizes.ts → sync-prodigi.ts; syncDesignedAttributesFromProdigi) to also pull COLOURS from /v4.0/products/{sku} and create ProductTypeColor rows ADDITIVELY (create missing by name only — ApparelListingColor holds a required, non-cascade FK to ProductTypeColor, so deleting would break referential integrity). Sync is per-product: 'Sync from Prodigi' button on the product EDIT page (syncProductTypeFromProdigiAction → syncDesignedProductTypeFromProdigi(id)) syncs that one type's sizes + colours, and createProductTypeAction AUTO-SYNCS once on creation of a PRODIGI type (best-effort; never fails creation). The bulk syncDesignedAttributesFromProdigi() is retained (cron-friendly) but no longer wired to UI. Name-only colours render as selectable buttons. COLOUR SHAPE CONFIRMED LIVE (2026-06-17): Prodigi product details expose colour as a lowercase NAME string per variant (variants[].attributes.color e.g. 'navy blue','natural','baby blue') with NO hex/code/swatch image of any kind (also confirmed sizes are lowercase 'xs'..'2xl'). To render colours as colours we derive an approximate hex from the name at read time (src/lib/apparel/color-hex.ts colorNameToHex; keyed to the live lowercase names) — applied in toColors (buyer page hex swatch), the admin product edit page, and the seller new-listing picker; unknown names fall back to a neutral chip, an uploaded colorImageUrl still wins. No schema change (hex derived, not stored). Folded into PR #11. NOTE: the test blank (Bella+Canvas 1010) is 52% cotton / 48% polyester — conflicts with the 100%-cotton brand principle; flagged to founder."
+    },
+    {
+      "id": "BUG-11",
+      "epic": "Infrastructure",
+      "title": "Designed apparel listings offer no size options (Add to cart disabled)",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "Reported 2026-06-17. Designed (Prodigi) listings showed no sizes → Add to cart permanently disabled (referenced/Teemill unaffected). Cause: toSizes() (src/lib/apparel/detail.ts) read ProductType.sizes (ProductTypeSizeOption rows), which are only created by the admin add-size action; when size whitelisting was dropped that step went unused, so the list was empty. Fix: toSizes() reads ProductTypeSizeOption rows (honored if present) and falls back to an XS–XXL default (src/lib/apparel/sizes.ts) so every blank stays orderable. Per-blank truth is provider-sourced and AUTOMATED: syncDesignedSizesFromProdigi() (src/lib/apparel/sync-sizes.ts) enumerates ALL designed (PRODIGI) product types and GETs each blank's sizes from /v4.0/products/{sku} (Prodigi has no bulk-list endpoint, so we drive it from our own providerSkuBase values — no manual SKU list/paste), persisting them as ProductTypeSizeOption rows; exposed as a one-click admin 'Sync sizes' button (syncDesignedSizesAction on /admin/products) and reusable by a cron. // UNVERIFIED Prodigi size field paths (attributes.size / variant attributes) until a live run. No schema change/migration; fixes both the product page and checkout revalidation (shared getApparelListingDetail). Committed on feat/epic-mftf-12 per founder (folded into PR #11) though unrelated to MFTF-12. FOLLOW-UPS: (1) click 'Sync sizes' (or wire the cron) to populate real per-blank runs — default XS–XXL until then; confirm the Prodigi size field paths on first run; (2) pre-existing — designed fulfillment sends only providerSkuBase, so the chosen size/color are not yet encoded into the Prodigi SKU at order time (fanout.ts/revalidate.ts). FOLLOW-UP (2026-06-17): Prodigi sizes arrive lowercase + unordered ('2xl','l','m','s','xl') and were rendering raw. Added a canonical size enum (src/lib/apparel/sizes.ts: canonicalSizeLabel/sizeRank/normalizeSizes) — sync now stores the canonical label ('M','XXL') + raw providerSizeCode + rank order, and toSizes normalizes+sorts at read time so display is always standard and smallest→largest regardless of stored spelling/order. FOLLOW-UP 2 (2026-06-17): designed Prodigi shipping quote 400'd — Prodigi apparel requires per-item attributes {size,color} in RAW provider spelling + assets printArea 'front' (not 'default'); we sent neither. Fixed: ShippingQuoteItem carries attributes + printArea; revalidate resolves raw size from ProductTypeSizeOption.providerSizeCode (matched by canonical label) and raw colour from ProductTypeColor.providerColorCode, and sets printArea 'front'; Prodigi quoteShipping + createProviderOrder forward them (prints unchanged: no attributes, 'default' area). RESOLVED post-payment (2026-06-17): fanout toQuoteItem now resolves the same raw size/colour and attaches the listing's designImageUrl as the asset on the 'front' print area, so Prodigi createProviderOrder sends sku + attributes{size,color} + assets[{printArea:'front',url:design}] — the full designed→Prodigi path (quote → pay → order with the design on the product) works end-to-end. Test asserts the Prodigi order body. Closes the long-standing 'designed fulfillment only sends providerSkuBase' gap. // 'front' assumed for apparel (live-confirmed for the Bella 3001 blank); a blank printing elsewhere would surface via the captured Prodigi error."
+    },
     {
       "id": "BUG-8",
       "epic": "Infrastructure",
@@ -1719,62 +1741,67 @@
       "id": "US-MFTF-12.1",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "FulfillmentProvider Abstract Base Class",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Structural refactor of code from Passed stories US-MFTF-3.1\u20133.3 (interface \u2192 abstract base class); their tests must pass unchanged."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "FulfillmentProvider is now an abstract class (was an interface) with a concrete fulfill() template method (validateJob \u2192 createProviderOrder \u2192 confirmProviderOrder) and new abstract quoteShipping()/checkFulfillmentStatus(); two-step confirm is a default-no-op hook Teemill overrides. Prodigi/Teemill extend it; the new MFTF-12 methods are stubbed (filled in 12.3/12.5/12.6). Factory returns base-class-typed instances; per-providerKey routing deferred to 12.3 (still routes by listingType). A subclass omitting any abstract method fails tsc \u2014 verified by a @ts-expect-error type-level fixture. Touches Passed US-MFTF-3.1\u20133.3: their test files were re-run green unchanged (51 tests across mftf-3 + 12.1). createFulfillmentOrder narrowed to Pick<FulfillmentProvider,'name'|'createOrder'> so Epic 14 US-14.8 structural mocks stay valid."
     },
     {
       "id": "US-MFTF-12.2",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "Multi-Item Order Schema",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "Added OrderItem (reuses CartItemKind; apparelListingId/listingId exactly-one app-layer invariant; selection Json; unitPrice Decimal captured at checkout; nullable fulfillmentOrderId) and FulfillmentOrder (provider key, providerOrderId, status FulfillmentOrderStatus PENDING|SUBMITTED|CONFIRMED|SHIPPED|FAILED, shippingMethod/shippingCost, trackingNumber/carrier, notes). Order keeps its single-FK fields for legacy flows; cart checkouts use OrderItem rows and leave the single FKs null. Invariants in src/lib/orders/invariants.ts (validateOrderItemReference, validateOrderShape). Order cascade-deletes OrderItem/FulfillmentOrder. Applied via prisma db push to both DBs; resetDatabase truncates the new tables. Epic 14/22 order tests re-run green unchanged (legacy shape unaffected)."
     },
     {
       "id": "US-MFTF-12.3",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "Checkout Creation: Cart Revalidation & Per-Provider Shipping",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "Implemented + green against MSW (14 tests). createCheckoutAction re-validates each cart item server-side (designed: ACTIVE + offered colour/size + current retailPrice; referenced: ACTIVE + cached variant present & isOrderable + LIVE stock re-read via Teemill GET /catalog/products > 0 + current USD retailPrice; print: listing ACTIVE + availableForPrint + SKU present + current seller price), removes stale items with human-readable reasons, deletes them from the cart, flags print price drift, and pauses (summary.status='changed') for re-confirm. Groups kept items by resolved provider key (ProductType.fulfillmentProvider designed / ApparelListing.providerKey referenced / prodigi prints) and quotes shipping per group in parallel (10s budget) via provider.quoteShipping() — Teemill step-1 POST /orders (no confirm), Prodigi POST /quotes. Teemill GBP shipping is converted to USD via getExchangeRate (the single FX point, shipping only; item base never converted) per founder decision 2026-06-17. /checkout page requires auth (redirect w/ callbackUrl); collects address before payment (founder decision). HELD at non-Passed (Option B, founder decision 2026-06-17) pending a live Teemill proofing order to confirm: Open Q#7 (stable 'standard' shippingMethodId), Open Q#3 (rate limits — currently live stock re-read per referenced item, cached-snapshot fallback on failure), and whether an unconfirmed POST /orders ever expires/bills. All marked // UNVERIFIED in code. No live API calls in tests (MSW only). Stripe session + the 'Proceed to payment' wiring land in 12.4. The Option-B status string is registered in the US-9.6 VALID_STATUSES set and the /admin/tracker badge config (shared by 12.6). PASSED 2026-06-17: calculate-shipping is live-confirmed end-to-end against the real Teemill + Prodigi APIs (Teemill POST /orders step-1 quote with selectable methods; Prodigi /quotes with size/colour attributes + 'front' print area). Repeated live quotes create unconfirmed Teemill orders without any charge (the charge is at confirm, which is 12.5), so the unconfirmed-POST-/orders concern is resolved and Open Q#7 shipping-method shape is confirmed. Promoted from Option B to Passed. LIVE FIX (2026-06-17): first real Teemill call returned 400 on 'calculate shipping' — the quote request sent an empty contactInformation.email, which Teemill rejects. Fixed: the quote now sends teemillDefaultContact() (valid email, overridable via TEEMILL_CONTACT_EMAIL/PHONE; the buyer's real email is used at fulfillment). Also: teemillError() now captures Teemill's {message} body into the thrown error + server log (was discarded), and createCheckoutAction/createCartCheckoutSessionAction return a friendly {error} instead of throwing so the buyer sees a message. Confirms one of the // UNVERIFIED items (email required); the rest still need a proofing order. FOLLOW-UP (2026-06-17): live retry returned 400 'The contact information.email field is invalid' — the placeholder email was itself rejected (Teemill validates the address). Fixed properly by threading the authenticated buyer's real email into the quote (quoteShipping gained an optional QuoteContact; planCheckout/buildCheckoutSummary pass it; the actions pass session user.email; teemillDefaultContact remains only as a last-resort fallback). Fulfillment already used the buyer email. FOLLOW-UP 2 (2026-06-17): live mixed-cart (tee + print) surfaced two more 400s. (a) Teemill still 400'd 'email invalid' because the session lacked user.email so it fell back to the bogus placeholder domain; the contact fallback now reads DROPSHIPPING_CONTACT_EMAIL (the founder's single dropshipper-contact env var; TEEMILL_CONTACT_* kept as back-compat). (b) Prodigi /quotes 400'd because items omitted assets — fixed by sending attributes:{} + assets:[{printArea:'default'}] per item, and Prodigi's error body is now captured too. Regression tests assert the Prodigi quote sends assets and a Teemill 400 surfaces as {error}. FOLLOW-UP 3 (2026-06-17): Teemill quote parsed to $0 (suspected field-path mismatch vs the // UNVERIFIED shipping-methods shape, not a real free option). Hardened the parser: extractShippingAmount() tries totalPrice/price/cost/amount paths and returns null when none found (vs a genuine 0), and the raw response is logged whenever the amount is unresolved or DROPSHIPPING_DEBUG is set — to confirm the live shape before fixing the path. Awaiting a pasted raw response to finalize. RESOLVED (Open Q#7, live 2026-06-17): the raw response confirmed our parse path (totalPrice.amount) is correct — the £0 is GENUINE: on the wholesale Orders API shipping is bundled into the item cost (item totalPrice 15.63 GBP; order-level shippingPrice 0.00), so availableShippingMethods all return 0.00. Also confirmed: method ids are PER-ORDER UUIDs (no stable 'standard'), names are carrier services ('Spring Tracked'/'Store Collect'/'Spring USA'), and the whole response is GBP-only (no way to request USD — buyer total stays USD via our retail; the GBP wholesale incl. shipping is the deferred margin-watch concern). Code updated: chooseTeemillShippingMethod() excludes in-store 'Store Collect' and picks the cheapest shippable method; the method NAME is stored at quote time and re-resolved to the per-order id at confirm. Remaining for 12.3 'Passed': confirm an unconfirmed POST /orders doesn't expire/bill (still needs a real proofing order). ENHANCEMENT (founder-directed 2026-06-17): buyer-selectable shipping methods per shipment (extends 12.3/12.4 beyond their original 'default/standard method' + 'one shipping line per group' ACs — flag for a spec-session update of the Cart & Checkout Model). quoteShipping now returns options[] (deliverable only — in-store collect excluded); Prodigi omits shippingMethod so /quotes returns every service tier in one call (Budget/Standard/Express/Overnight); plan/summary carry per-group options (USD), cheapest pre-selected; CheckoutClient renders radios per shipment with a live total; the choice (keyed by shipment index, matched by stable method NAME) flows through createCartCheckoutSessionAction → planCheckout → the FulfillmentOrder.shippingMethod/cost and the Stripe shipping line. Tests: provider options (Teemill excl. collect; Prodigi multi-tier), summary exposes tiers, and the chosen tier persists to the FulfillmentOrder + order total."
     },
     {
       "id": "US-MFTF-12.4",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "Multi-Line-Item Stripe Checkout Session",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "createCartCheckout builds one embedded Stripe session (Stripe Tax on via automatic_tax) with one line per cart item + one 'Shipment N — shipping' line per provider group (no provider names), after creating Order(listingType=CART, PENDING) + OrderItem rows (unitPrice captured) + per-provider FulfillmentOrder rows (PENDING, quoted shippingMethod/cost) in a transaction. Added CART to OrderListingType (cart orders leave single-FKs null; legacy if-chains have fallbacks; db push both DBs). Refactored checkout into plan.ts (planCheckout — internal grouping w/ provider keys + quote items) + summary.ts (summarizePlan/buildCheckoutSummary — buyer-facing, strips provider identity). createCartCheckoutSessionAction returns requiresConfirmation when the cart changed and !confirmed (no order created), else clientSecret. Webhook checkout.session.completed: runFulfillment CART branch marks PAID + Transaction + clears the buyer's cart (clearUserCart) + confirmation email; idempotent; fan-out is 12.5. CheckoutClient wires embedded payment (CartPaymentForm); minimal /orders/[orderId]/confirmation page (enriched in 12.6). Epic 21/14 regression green. DEVIATION (founder decision 2026-06-17, reaffirmed): the 'legacy single-item flows unchanged' criterion was intentionally relaxed — address-before-payment was retrofitted to the original/auction buy-now flow IN THIS BRANCH. Single-item checkout is now unified on /orders/[orderId]/fulfill which collects the shipping address BEFORE showing the Stripe payment step (needsShipping=!shippingConfirmed precedes needsPayment=shippingConfirmed&&!isPaid); /checkout/[orderId] forwards there (buy-now still redirects to /checkout/ so Epic 15 stays green); confirmShippingAction already supported PENDING orders so its tests are unchanged. Epic 14/15/21/22 regression green. NOTE: originals are founder-shipped (no dropshipper), so they have no POD shipping cost to capture; the destination-shipping-capture goal is met by the cart flow, so this retrofit is UX-consistency only for originals (shipping stays $0/manual). LIVE FIX (2026-06-17): 'Proceed to checkout' failed because every shipment emitted a Stripe line item including £0/$0 ones (real Teemill shipping is free/bundled) and Stripe rejects a $0 unit_amount line — a path the MSW-stubbed Stripe tests never exercised (they used non-zero shipping). Extracted buildCartLineItems(plan) (exported, unit-tested) which omits shipping lines with cost ≤ 0; item lines unchanged. Also shippingErrorMessage now surfaces the real error in non-production so checkout failures aren't masked by the friendly message. TAX DEFERRED (2026-06-17): the live session then 400'd on Stripe automatic_tax ('prices do not have a tax behavior set') — that's full Stripe Tax setup (per-price tax_behavior + product tax categories + tax registration), i.e. Epic 5 work. Per founder, deferred: automatic_tax is now gated off (STRIPE_TAX_ENABLED, default false) so checkout completes with no tax line (Order.taxAmount stays 0); the original 12.4 AC 'Stripe Tax on' is superseded pending Epic 5. Founder requested bumping Epic 5 up epicOrder.sequence — done 2026-06-17 at founder's explicit instruction. EMBEDDED UI MODE: this stack's Stripe (apiVersion …dahlia) names the embedded checkout UiMode 'embedded_page' (not 'embedded'; 'hosted_page' replaces 'hosted') — it's a valid literal here, so the `as any` cast was dropped. RESOLVED (2026-06-17): the full buyer path works in Stripe TEST mode — cart → calculate shipping → select per-shipment methods → embedded Stripe payment → /orders/[id]/confirmation. Diagnostic confirmed ui_mode 'embedded_page', status 'open', hasClientSecret true, 3 line items, $72.60. The earlier generic 'Something went wrong' (no client error) was a Stripe publishable/secret key mode-or-account mismatch in the local env, NOT a code defect; resolved once both keys were the same account + test mode. The session diagnostic log is retained, gated on DROPSHIPPING_DEBUG. BADGE FIX (2026-06-17): after checkout the cart emptied but the nav cart badge kept the old count until the next navigation — the layout's Nav (getCartCountForRequest) renders BEFORE the confirmation page's resolveSessionFulfillment clears the cart. Added <RefreshOnMount/> (a one-time router.refresh) to the confirmation page when the order is PAID, so the server Nav re-reads the now-empty cart and the badge updates immediately. jsdom test covers it. EMAIL FIX (2026-06-17): cart orders were sent the LEGACY single-item confirmation (sendPurchaseConfirmation) → showed 'Artwork', no item list, and totals that didn't add up (shipping line missing). Added sendCartPurchaseConfirmation: enumerated items with thumbnails + per-line totals, a Shipping line (sum of FulfillmentOrder.shippingCost, or 'Free'), correct subtotal+shipping+tax=total, and a label-formatted multi-line shipping address; no provider names; links to /buyer/orders/[id]. Webhook CART branch now calls it; tests assert items/thumbnails, the shipping line + math, and the multi-line address."
     },
     {
       "id": "US-MFTF-12.5",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "Post-Payment Fulfillment Fan-Out",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Tests Passing — pending live confirmation",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "On PAID, the webhook CART branch calls dispatchOrderFulfillment(orderId) which dispatches each FulfillmentOrder through provider.fulfill() (the 12.1 template). Implemented the fulfill() steps: Prodigi createProviderOrder (multi-item POST /orders; single-step, default no-op confirm); Teemill two-step createProviderOrder (POST /orders) + confirmProviderOrder (POST /orders/{id}/confirm with the quoted shippingMethodId — // UNVERIFIED 'standard', Open Q#7). Per-shipment FAILURE ISOLATION: any error sets that FulfillmentOrder FAILED + notes and does not throw, so siblings proceed. IDEMPOTENT per FulfillmentOrder: skipped once providerOrderId is set (no duplicate provider orders on webhook replay). Admin retry: retryFulfillmentAction (admin-only) + a 'Failed shipments' section with a Retry button on /admin/fulfillment (US-14.5 page). Job items resolve referenced variantRef from the cached ReferencedVariant by colour+size, designed apparel to providerSkuBase, prints to prodigiSku + printSourceImageUrl. Legacy single-item PRINT webhook path left as-is (cart prints now route through the abstraction). MSW: Teemill POST /orders/:id/confirm + GET /orders/:ref added globally. MFTF-3 provider tests re-run green. DOWNGRADED to 'Tests Passing — pending live confirmation' (2026-06-17, founder): actually SUBMITTING an order — Teemill POST /orders → /confirm — charges real money, so the founder is intentionally not running it live yet; live order placement (incl. the designed→Prodigi order with the design asset, fanout buildJobItems) is therefore unverified against the real APIs. Logic is fully green vs MSW; flip to Passed after a real proofing order confirms the two-step confirm + the Prodigi designed order succeed. PLAN (founder, 2026-06-17): live confirmation is intentionally deferred — a live Teemill order costs real money, so the founders will combine it with their FIRST design-proof order (the proof print doubles as the live integration test). Until that order is placed and observed, 12.5 stays at this status. Everything is green vs MSW and the cart→checkout→payment path is live-verified in Stripe test mode."
     },
     {
       "id": "US-MFTF-12.6",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "Buyer Order View with Per-Shipment Status",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Tests Passing — pending live confirmation",
+      "testWrittenDate": "2026-06-17",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-17",
+      "testPassedCommit": "pending",
+      "notes": "Implemented + green against MSW (8 tests incl. a jsdom component test). getOrderShipmentsView groups a cart order's items into 'Shipment N of M' with per-shipment status + tracking and NEVER exposes provider names; OrderShipments component renders it on the confirmation page and the Epic 22 order detail page (CART branch). aggregateOrderStatus → order history shows 'Processing' until all shipments SHIPPED then 'Shipped' (getBuyerOrders CART branch). checkFulfillmentStatus() on the provider abstraction: Prodigi reads shipments[].tracking over its order GET (same data its webhook carries); Teemill polls GET /orders/{orderRef}. checkAndSyncShipments (daily cron /api/cron/teemill-shipments, schedule 0 6 * * *, Hobby-compatible, CRON_SECRET) marks dispatched shipments SHIPPED + tracking/carrier and sends a per-shipment MailerSend email (sendShipmentShippedEmail — only that shipment's items; identical path for poll vs webhook); idempotent (only CONFIRMED+providerOrderId are polled). HELD at non-Passed (Option B, founder decision): Open Q#2 — Teemill webhook support unconfirmed, so shipment status is polling with a '// TODO: replace Teemill polling with webhook once payload shape is confirmed live' marker and the tracking field paths / dispatched-status value marked // UNVERIFIED; needs a live proofing order before Passed. No live API calls in tests (MSW only). PLAN (founder, 2026-06-17): same as 12.5 — shipment-status/polling + the per-shipment SHIPPED email can only be observed after a real order exists, so this is deferred to the founders' first Teemill design-proof order (a live order costs money, so it doubles as a proof print). Buyer order views + aggregate status are verifiable in test mode today; the SHIPPED transition + tracking + email await that first live order."
     },
     {
       "id": "US-MFTF-8.1",

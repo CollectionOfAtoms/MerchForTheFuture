@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { syncDesignedProductTypeFromProdigi } from "@/lib/apparel/sync-prodigi";
 
 type ActionResult = { id: string } | { error: string };
+type SyncResult = { error: string } | { sizes: number; colors: number };
 
 async function requireAdmin(): Promise<string | null> {
   const session = await auth();
@@ -53,6 +55,18 @@ export async function createProductTypeAction(fd: FormData): Promise<ActionResul
       }
     } catch {
       // Malformed JSON — skip color seeding; admin can add colors manually
+    }
+  }
+
+  // Prodigi types have no provider colour JSON to seed from, so pull sizes +
+  // colours from Prodigi immediately (best-effort — never fail creation if the
+  // provider is unreachable; the admin can re-run "Sync from Prodigi" on the
+  // edit page).
+  if (fulfillmentProvider === "PRODIGI") {
+    try {
+      await syncDesignedProductTypeFromProdigi(pt.id);
+    } catch (e) {
+      console.error("[product-catalog] auto-sync on create failed:", e);
     }
   }
 
@@ -131,6 +145,21 @@ export async function toggleProductTypeColorAction(colorId: string, _active: boo
 
   revalidatePath(`/admin/products/${color.productTypeId}`);
   return { id: color.id };
+}
+
+// ─── syncProductTypeFromProdigiAction ─────────────────────────────────────────
+// Per-product: pull THIS designed (Prodigi) product type's sizes + colours from
+// the live Prodigi catalog (sizes replaced; colours added additively). Surfaced as
+// the "Sync from Prodigi" button on the product edit page; also auto-run once at
+// creation (see createProductTypeAction).
+
+export async function syncProductTypeFromProdigiAction(productTypeId: string): Promise<SyncResult> {
+  if (!(await requireAdmin())) return { error: "Unauthorized" };
+
+  const result = await syncDesignedProductTypeFromProdigi(productTypeId);
+  revalidatePath(`/admin/products/${productTypeId}`);
+  if (!result.ok) return { error: result.reason };
+  return { sizes: result.sizes.length, colors: result.colors.length };
 }
 
 // ─── addProductTypeSizeAction ─────────────────────────────────────────────────

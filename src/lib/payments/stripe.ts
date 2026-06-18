@@ -52,8 +52,7 @@ export async function createCheckoutSession(orderId: string): Promise<{
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 
   const session = await stripe.checkout.sessions.create({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ui_mode: "embedded_page" as any,
+    ui_mode: "embedded_page",
     line_items: [
       {
         price_data: {

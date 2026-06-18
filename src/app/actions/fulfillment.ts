@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { sendShippingNotificationEmail, sendPurchaseConfirmation } from "@/lib/payments/email";
 import { getFulfillmentProvider, createFulfillmentOrder } from "@/lib/fulfillment";
+import { retryFulfillmentOrder } from "@/lib/checkout/fanout";
 
 type ActionResult = { error: string } | { success: true };
 
@@ -142,6 +143,18 @@ export async function markShippedAction(orderId: string, formData: FormData): Pr
     (e) => console.error("[markShipped] email failed", e)
   );
 
+  revalidatePath("/admin/fulfillment");
+  return { success: true };
+}
+
+/**
+ * Admin retry for a FAILED per-provider shipment (US-MFTF-12.5). Re-runs
+ * provider.fulfill() for that one FulfillmentOrder; idempotent if it has since
+ * succeeded.
+ */
+export async function retryFulfillmentAction(fulfillmentOrderId: string): Promise<ActionResult> {
+  await requireAdmin();
+  await retryFulfillmentOrder(fulfillmentOrderId);
   revalidatePath("/admin/fulfillment");
   return { success: true };
 }

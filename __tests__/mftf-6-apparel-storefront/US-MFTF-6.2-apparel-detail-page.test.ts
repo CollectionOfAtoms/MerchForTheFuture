@@ -140,13 +140,14 @@ describe("getApparelListingDetail", () => {
     });
   });
 
-  it("projects only offered designed colours as swatches (name + swatch image, no hex)", async () => {
+  it("projects only offered designed colours as swatches (name + swatch image + derived hex)", async () => {
     const seller = await seedSeller();
     const { listing } = await seedDesignedListing(seller.id, { offeredColors: ["White", "Black"], unofferedColors: ["Red"] });
     const detail = await getApparelListingDetail(listing.id);
     expect(detail!.colors.map((c) => c.name).sort()).toEqual(["Black", "White"]);
     const white = detail!.colors.find((c) => c.name === "White")!;
-    expect(white.hex).toBeNull();
+    // Provider gives names only; we derive an approximate hex so swatches render.
+    expect(white.hex).toBe("#ffffff");
     expect(white.swatchImageUrl).toBe("https://blob/swatch-White.png");
   });
 

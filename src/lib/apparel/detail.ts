@@ -5,6 +5,8 @@ import {
   referencedListingSizes,
   referencedListingImages,
 } from "@/lib/apparel/referenced";
+import { getApparelSizesForBlank, normalizeSizes } from "@/lib/apparel/sizes";
+import { colorNameToHex } from "@/lib/apparel/color-hex";
 
 /**
  * A swatch in the buyer-facing colour picker, normalized across sourcing modes:
@@ -70,7 +72,9 @@ function toColors(listing: RawDetail): ApparelDetailColor[] {
   }
   return listing.colors.map((c) => ({
     name: c.productTypeColor.colorName,
-    hex: null,
+    // Provider gives names only; derive an approximate hex so the swatch renders.
+    // A swatch image (if uploaded) still wins in the picker.
+    hex: colorNameToHex(c.productTypeColor.colorName),
     swatchImageUrl: c.productTypeColor.colorImageUrl,
   }));
 }
@@ -79,7 +83,16 @@ function toSizes(listing: RawDetail): string[] {
   if (listing.referencedVariants.length > 0) {
     return referencedListingSizes(listing.referencedVariants);
   }
-  return (listing.productType?.sizes ?? []).map((s) => s.sizeLabel);
+  // Designed (Prodigi): honor explicit admin-curated size rows if any exist, else
+  // use provider-sourced sizes for the blank (the default model — admins no longer
+  // whitelist sizes). Without this, a product type with no size rows yielded an
+  // empty list and disabled "Add to cart".
+  const explicit = (listing.productType?.sizes ?? []).map((s) => s.sizeLabel);
+  // Canonicalise spelling + sort smallest→largest (providers return e.g. lowercase
+  // "m"/"2xl" in arbitrary order), so display is always standard regardless of how
+  // rows were stored.
+  if (explicit.length > 0) return normalizeSizes(explicit);
+  return getApparelSizesForBlank(listing.productType?.providerSkuBase);
 }
 
 function toImages(listing: RawDetail): ApparelDetailImage[] {

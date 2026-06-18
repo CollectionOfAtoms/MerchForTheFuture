@@ -74,6 +74,21 @@ const prodigiHandlers = PRODIGI_BASES.flatMap((base) => [
       order: { id: "ord-test-mock", status: { stage: "InProgress" } },
     })
   ),
+  // Prodigi quote endpoint (US-MFTF-12.3). Costs are returned in the requested
+  // currency (USD), so no FX is applied to Prodigi shipping.
+  http.post(`${base}/quotes`, () =>
+    HttpResponse.json({
+      quotes: [
+        {
+          shipmentMethod: "Standard",
+          costSummary: {
+            items: { amount: "0.00", currency: "USD" },
+            shipping: { amount: "4.99", currency: "USD" },
+          },
+        },
+      ],
+    })
+  ),
   http.get(`${base}/orders/:orderId`, ({ params }) =>
     HttpResponse.json({
       order: {
@@ -137,6 +152,47 @@ const emailHandlers = [
 const teemillHandlers = [
   http.get("https://api.teemill.com/v1/catalog/products", () =>
     HttpResponse.json(buildPoweredByPlantsCatalog())
+  ),
+  // Step 1 of the two-step Orders flow — returns shipping methods per fulfillment
+  // without finalizing (used for quoteShipping in US-MFTF-12.3 and order create in
+  // US-MFTF-12.5). Shape verified live 2026-06-17: per-order UUID method ids,
+  // carrier-service names (incl. an in-store "Store Collect"), price in
+  // totalPrice.amount (GBP; typically 0.00 since shipping is bundled into item cost).
+  http.post("https://api.teemill.com/v1/orders", () =>
+    HttpResponse.json(
+      {
+        id: "mock-order-id-123",
+        fulfillments: [
+          {
+            id: "mock-fulfillment-id-1",
+            availableShippingMethods: [
+              // In-store collect is £0 but must never be auto-selected for a shipped order.
+              { id: "collect-uuid", name: "Store Collect", totalPrice: { amount: "0.00" } },
+              { id: "standard", name: "Standard", totalPrice: { amount: "3.99" } },
+              { id: "express", name: "Express", totalPrice: { amount: "7.99" } },
+            ],
+          },
+        ],
+      },
+      { status: 201 }
+    )
+  ),
+  // Step 2 — confirm (US-MFTF-12.5). // UNVERIFIED status enum.
+  http.post("https://api.teemill.com/v1/orders/:id/confirm", () =>
+    HttpResponse.json({ id: "mock-order-id-123", status: "confirmed" }, { status: 200 })
+  ),
+  // Status polling (US-MFTF-12.6). // UNVERIFIED tracking field paths.
+  http.get("https://api.teemill.com/v1/orders/:orderRef", ({ params }) =>
+    HttpResponse.json({
+      id: params.orderRef,
+      status: "processing",
+      fulfillments: [
+        {
+          id: "mock-fulfillment-id-1",
+          availableShippingMethods: [{ id: "standard", name: "Standard", totalPrice: { amount: "3.99" } }],
+        },
+      ],
+    })
   ),
 ];
 

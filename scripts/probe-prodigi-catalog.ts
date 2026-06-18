@@ -7,7 +7,9 @@
  * Outputs a ready-to-paste PRINT_CATALOG constant for src/lib/print/listing.ts.
  *
  * Prodigi exposes no catalog-listing endpoint; this script queries
- * /v4.0/products/{sku} for each candidate and keeps the 200s.
+ * /v4.0/products/{sku} for each candidate and keeps the 200s. (Designed apparel
+ * blank sizes are synced separately, from the DB, by syncDesignedSizesFromProdigi
+ * in src/lib/apparel/sync-sizes.ts.)
  */
 
 interface ProdigiProductResponse {

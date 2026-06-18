@@ -99,6 +99,21 @@ export async function removeItem(cartItemId: string): Promise<void> {
   await touchCart(item.cartId);
 }
 
+/**
+ * Empty a cart after a successful checkout (US-MFTF-12.4). Deletes all items and
+ * touches the cart row. No-ops when the cart has no items. Idempotent.
+ */
+export async function clearCart(cartId: string): Promise<void> {
+  await prisma.cartItem.deleteMany({ where: { cartId } });
+  await touchCart(cartId);
+}
+
+/** Empty the cart belonging to a user, if any (used by the payment webhook). */
+export async function clearUserCart(userId: string): Promise<void> {
+  const cart = await prisma.cart.findUnique({ where: { userId }, select: { id: true } });
+  if (cart) await clearCart(cart.id);
+}
+
 /** Total quantity across all items in a cart (the nav badge count). */
 export async function cartItemCount(cartId: string): Promise<number> {
   const agg = await prisma.cartItem.aggregate({ where: { cartId }, _sum: { quantity: true } });
