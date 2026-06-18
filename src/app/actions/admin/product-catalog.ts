@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { syncDesignedAttributesFromProdigi } from "@/lib/apparel/sync-prodigi";
+import { syncDesignedProductTypeFromProdigi } from "@/lib/apparel/sync-prodigi";
 
 type ActionResult = { id: string } | { error: string };
-type SyncResult = { error: string } | { synced: number; total: number };
+type SyncResult = { error: string } | { sizes: number; colors: number };
 
 async function requireAdmin(): Promise<string | null> {
   const session = await auth();
@@ -55,6 +55,18 @@ export async function createProductTypeAction(fd: FormData): Promise<ActionResul
       }
     } catch {
       // Malformed JSON — skip color seeding; admin can add colors manually
+    }
+  }
+
+  // Prodigi types have no provider colour JSON to seed from, so pull sizes +
+  // colours from Prodigi immediately (best-effort — never fail creation if the
+  // provider is unreachable; the admin can re-run "Sync from Prodigi" on the
+  // edit page).
+  if (fulfillmentProvider === "PRODIGI") {
+    try {
+      await syncDesignedProductTypeFromProdigi(pt.id);
+    } catch (e) {
+      console.error("[product-catalog] auto-sync on create failed:", e);
     }
   }
 
@@ -135,18 +147,19 @@ export async function toggleProductTypeColorAction(colorId: string, _active: boo
   return { id: color.id };
 }
 
-// ─── syncDesignedFromProdigiAction ────────────────────────────────────────────
-// One-click sync of ALL designed (Prodigi) product types' sizes AND colours from
-// the live Prodigi catalog. Prodigi has no bulk-list endpoint, so this enumerates
-// our own designed product types and fetches each blank — no manual SKU list.
-// Safe to re-run (sizes replaced; colours added additively); also cron-friendly.
+// ─── syncProductTypeFromProdigiAction ─────────────────────────────────────────
+// Per-product: pull THIS designed (Prodigi) product type's sizes + colours from
+// the live Prodigi catalog (sizes replaced; colours added additively). Surfaced as
+// the "Sync from Prodigi" button on the product edit page; also auto-run once at
+// creation (see createProductTypeAction).
 
-export async function syncDesignedFromProdigiAction(): Promise<SyncResult> {
+export async function syncProductTypeFromProdigiAction(productTypeId: string): Promise<SyncResult> {
   if (!(await requireAdmin())) return { error: "Unauthorized" };
 
-  const result = await syncDesignedAttributesFromProdigi();
-  revalidatePath("/admin/products");
-  return { synced: result.synced.length, total: result.total };
+  const result = await syncDesignedProductTypeFromProdigi(productTypeId);
+  revalidatePath(`/admin/products/${productTypeId}`);
+  if (!result.ok) return { error: result.reason };
+  return { sizes: result.sizes.length, colors: result.colors.length };
 }
 
 // ─── addProductTypeSizeAction ─────────────────────────────────────────────────

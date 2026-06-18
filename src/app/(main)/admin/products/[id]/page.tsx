@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { updateProductTypeAction } from "@/app/actions/admin/product-catalog";
 import BlankImageUploader from "@/components/admin/BlankImageUploader";
+import SyncProductButton from "@/components/admin/SyncProductButton";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -198,18 +199,23 @@ export default async function EditProductTypePage({ params }: Props) {
 
           {/* Colors — read-only thumbnails */}
           <section className="rounded-2xl border border-stone-200 bg-white shadow-sm p-7">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 gap-3">
               <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wider">
                 Colors
               </h2>
-              <span className="text-xs text-stone-400">
-                {pt.colors.length} available · all offered to sellers
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-stone-400">
+                  {pt.colors.length} available · all offered to sellers
+                </span>
+                {!isTeemill && <SyncProductButton productTypeId={pt.id} />}
+              </div>
             </div>
 
             {pt.colors.length === 0 ? (
               <p className="text-sm text-stone-400">
-                No colors synced. Re-create this product type to pull colors from the provider.
+                {isTeemill
+                  ? "No colors synced."
+                  : "No colors synced yet. Click “Sync from Prodigi” to pull sizes and colours from the provider."}
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">

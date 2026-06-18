@@ -96,6 +96,67 @@ export async function fetchProdigiBlankAttributes(providerSkuBase: string): Prom
   return { sizes, colors };
 }
 
+export type SyncOneResult =
+  | { ok: true; sizes: string[]; colors: string[] }
+  | { ok: false; reason: string };
+
+/** Fetch + persist one blank's attributes (sizes replaced, colours additive). */
+async function syncOneType(type: { id: string; providerSkuBase: string | null }): Promise<SyncOneResult> {
+  if (!type.providerSkuBase) return { ok: false, reason: "no providerSkuBase" };
+
+  let attrs: ProdigiBlankAttributes;
+  try {
+    attrs = await fetchProdigiBlankAttributes(type.providerSkuBase);
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "fetch failed" };
+  }
+  if (attrs.sizes.length === 0 && attrs.colors.length === 0) {
+    return { ok: false, reason: "no attributes returned" };
+  }
+
+  // Sizes: replace wholesale (no FK references them).
+  if (attrs.sizes.length > 0) {
+    await prisma.$transaction([
+      prisma.productTypeSizeOption.deleteMany({ where: { productTypeId: type.id } }),
+      prisma.productTypeSizeOption.createMany({
+        data: attrs.sizes.map((s, i) => ({ productTypeId: type.id, sizeLabel: s, providerSizeCode: s, sortOrder: i })),
+      }),
+    ]);
+  }
+
+  // Colours: additive — create only names not already present (ApparelListingColor
+  // FK-references ProductTypeColor, so we never delete).
+  if (attrs.colors.length > 0) {
+    const existing = await prisma.productTypeColor.findMany({
+      where: { productTypeId: type.id },
+      select: { colorName: true },
+    });
+    const have = new Set(existing.map((c) => c.colorName));
+    const toCreate = attrs.colors.filter((c) => !have.has(c));
+    if (toCreate.length > 0) {
+      await prisma.productTypeColor.createMany({
+        data: toCreate.map((c) => ({ productTypeId: type.id, colorName: c, providerColorCode: c, colorImageUrl: null })),
+      });
+    }
+  }
+
+  return { ok: true, sizes: attrs.sizes, colors: attrs.colors };
+}
+
+/**
+ * Sync sizes + colours for ONE designed (Prodigi) product type. Used by the admin
+ * per-product "Sync from Prodigi" action and auto-run once at product creation.
+ */
+export async function syncDesignedProductTypeFromProdigi(productTypeId: string): Promise<SyncOneResult> {
+  const type = await prisma.productType.findUnique({
+    where: { id: productTypeId },
+    select: { id: true, providerSkuBase: true, fulfillmentProvider: true },
+  });
+  if (!type) return { ok: false, reason: "product type not found" };
+  if (type.fulfillmentProvider !== "PRODIGI") return { ok: false, reason: "not a Prodigi product type" };
+  return syncOneType(type);
+}
+
 export interface AttrSyncResult {
   total: number;
   synced: Array<{ productTypeId: string; providerSkuBase: string; sizes: string[]; colors: string[] }>;
@@ -103,9 +164,8 @@ export interface AttrSyncResult {
 }
 
 /**
- * Sync sizes + colours for ALL designed (Prodigi) product types in one pass.
- * Sizes replace existing rows; colours are added additively (new names only).
- * Failure-isolated per blank.
+ * Sync sizes + colours for ALL designed (Prodigi) product types in one pass
+ * (cron-friendly). Failure-isolated per blank.
  */
 export async function syncDesignedAttributesFromProdigi(): Promise<AttrSyncResult> {
   const types = await prisma.productType.findMany({
@@ -115,49 +175,12 @@ export async function syncDesignedAttributesFromProdigi(): Promise<AttrSyncResul
   const result: AttrSyncResult = { total: types.length, synced: [], skipped: [] };
 
   for (const t of types) {
-    if (!t.providerSkuBase) {
-      result.skipped.push({ productTypeId: t.id, providerSkuBase: "", reason: "no providerSkuBase" });
-      continue;
+    const r = await syncOneType(t);
+    if (r.ok) {
+      result.synced.push({ productTypeId: t.id, providerSkuBase: t.providerSkuBase ?? "", sizes: r.sizes, colors: r.colors });
+    } else {
+      result.skipped.push({ productTypeId: t.id, providerSkuBase: t.providerSkuBase ?? "", reason: r.reason });
     }
-    let attrs: ProdigiBlankAttributes;
-    try {
-      attrs = await fetchProdigiBlankAttributes(t.providerSkuBase);
-    } catch (e) {
-      result.skipped.push({ productTypeId: t.id, providerSkuBase: t.providerSkuBase, reason: e instanceof Error ? e.message : "fetch failed" });
-      continue;
-    }
-    if (attrs.sizes.length === 0 && attrs.colors.length === 0) {
-      result.skipped.push({ productTypeId: t.id, providerSkuBase: t.providerSkuBase, reason: "no attributes returned" });
-      continue;
-    }
-
-    // Sizes: replace wholesale (no FK references them).
-    if (attrs.sizes.length > 0) {
-      await prisma.$transaction([
-        prisma.productTypeSizeOption.deleteMany({ where: { productTypeId: t.id } }),
-        prisma.productTypeSizeOption.createMany({
-          data: attrs.sizes.map((s, i) => ({ productTypeId: t.id, sizeLabel: s, providerSizeCode: s, sortOrder: i })),
-        }),
-      ]);
-    }
-
-    // Colours: additive — create only names not already present (ApparelListingColor
-    // FK-references ProductTypeColor, so we never delete).
-    if (attrs.colors.length > 0) {
-      const existing = await prisma.productTypeColor.findMany({
-        where: { productTypeId: t.id },
-        select: { colorName: true },
-      });
-      const have = new Set(existing.map((c) => c.colorName));
-      const toCreate = attrs.colors.filter((c) => !have.has(c));
-      if (toCreate.length > 0) {
-        await prisma.productTypeColor.createMany({
-          data: toCreate.map((c) => ({ productTypeId: t.id, colorName: c, providerColorCode: c, colorImageUrl: null })),
-        });
-      }
-    }
-
-    result.synced.push({ productTypeId: t.id, providerSkuBase: t.providerSkuBase, sizes: attrs.sizes, colors: attrs.colors });
   }
   return result;
 }

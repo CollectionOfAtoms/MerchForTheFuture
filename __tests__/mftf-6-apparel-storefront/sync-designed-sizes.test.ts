@@ -1,10 +1,20 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
 import { prisma, resetDatabase } from "../helpers/db";
 
-const { syncDesignedAttributesFromProdigi, extractProdigiSizes, extractProdigiColors } = await import("@/lib/apparel/sync-prodigi");
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/auth", () => ({ auth: vi.fn() }));
+
+const { syncDesignedAttributesFromProdigi, syncDesignedProductTypeFromProdigi, extractProdigiSizes, extractProdigiColors } =
+  await import("@/lib/apparel/sync-prodigi");
 const { getApparelListingDetail } = await import("@/lib/apparel/detail");
+const { createProductTypeAction } = await import("@/app/actions/admin/product-catalog");
+const { auth } = await import("@/auth");
+
+function authAsAdmin() {
+  vi.mocked(auth).mockResolvedValue({ user: { id: "admin-1", roles: ["ADMIN"] } } as never);
+}
 
 const PRODIGI_BASES = ["https://api.prodigi.com/v4.0", "https://api.sandbox.prodigi.com/v4.0"];
 
@@ -107,5 +117,46 @@ describe("syncDesignedAttributesFromProdigi", () => {
     });
     const result = await syncDesignedAttributesFromProdigi();
     expect(result.total).toBe(0);
+  });
+
+  describe("syncDesignedProductTypeFromProdigi (single)", () => {
+    it("syncs just the one product type's sizes + colours", async () => {
+      stubProdigiProducts({ "BLANK-TEE": { size: ["S", "M"], color: ["White", "Black"] } });
+      const { pt } = await seedDesignedType("BLANK-TEE");
+      const r = await syncDesignedProductTypeFromProdigi(pt.id);
+      expect(r).toEqual({ ok: true, sizes: ["S", "M"], colors: ["White", "Black"] });
+      const colors = await prisma.productTypeColor.findMany({ where: { productTypeId: pt.id } });
+      expect(colors).toHaveLength(2);
+    });
+
+    it("refuses a non-Prodigi product type", async () => {
+      stubProdigiProducts({});
+      const teemill = await prisma.productType.create({
+        data: { name: `T ${crypto.randomUUID()}`, fulfillmentProvider: "TEEMILL", providerSkuBase: "RNA1" },
+      });
+      const r = await syncDesignedProductTypeFromProdigi(teemill.id);
+      expect(r.ok).toBe(false);
+    });
+  });
+
+  describe("createProductTypeAction auto-syncs Prodigi types on creation", () => {
+    it("populates sizes + colours immediately when a Prodigi type is created", async () => {
+      authAsAdmin();
+      stubProdigiProducts({ "BLANK-NEW": { size: ["M", "L"], color: ["Sand", "Olive"] } });
+      const fd = new FormData();
+      fd.set("name", `Auto ${crypto.randomUUID()}`);
+      fd.set("fulfillmentProvider", "PRODIGI");
+      fd.set("providerSkuBase", "BLANK-NEW");
+      fd.set("isActive", "true");
+
+      const result = await createProductTypeAction(fd);
+      expect("id" in result).toBe(true);
+      if ("id" in result) {
+        const colors = await prisma.productTypeColor.findMany({ where: { productTypeId: result.id } });
+        const sizes = await prisma.productTypeSizeOption.findMany({ where: { productTypeId: result.id } });
+        expect(colors.map((c) => c.colorName).sort()).toEqual(["Olive", "Sand"]);
+        expect(sizes.map((s) => s.sizeLabel)).toEqual(["M", "L"]);
+      }
+    });
   });
 });
