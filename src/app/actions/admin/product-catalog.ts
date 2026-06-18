@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { syncDesignedSizesFromProdigi } from "@/lib/apparel/sync-sizes";
 
 type ActionResult = { id: string } | { error: string };
+type SyncSizesResult = { error: string } | { synced: number; total: number };
 
 async function requireAdmin(): Promise<string | null> {
   const session = await auth();
@@ -131,6 +133,20 @@ export async function toggleProductTypeColorAction(colorId: string, _active: boo
 
   revalidatePath(`/admin/products/${color.productTypeId}`);
   return { id: color.id };
+}
+
+// ─── syncDesignedSizesAction ──────────────────────────────────────────────────
+// One-click sync of ALL designed (Prodigi) product-type sizes from the live
+// Prodigi catalog into ProductTypeSizeOption rows. Prodigi has no bulk-list
+// endpoint, so this enumerates our own designed product types and fetches each
+// blank — no manual SKU list. Safe to re-run; also cron-friendly.
+
+export async function syncDesignedSizesAction(): Promise<SyncSizesResult> {
+  if (!(await requireAdmin())) return { error: "Unauthorized" };
+
+  const result = await syncDesignedSizesFromProdigi();
+  revalidatePath("/admin/products");
+  return { synced: result.synced.length, total: result.total };
 }
 
 // ─── addProductTypeSizeAction ─────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getAdminProductCatalog } from "@/lib/admin/product-catalog";
+import SyncSizesButton from "@/components/admin/SyncSizesButton";
 
 /** Teemill API fallback: only called if stored colorImageUrls are absent. */
 async function fetchTeemillApiImageMap(): Promise<Record<string, string>> {
@@ -52,12 +53,15 @@ export async function AdminProductsPage() {
             {products.length} product type{products.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Link
-          href="/admin/products/new"
-          className="rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
-        >
-          Add type
-        </Link>
+        <div className="flex items-center gap-2">
+          <SyncSizesButton />
+          <Link
+            href="/admin/products/new"
+            className="rounded-full bg-stone-900 px-5 py-2 text-sm font-medium text-white hover:bg-stone-700 transition-colors"
+          >
+            Add type
+          </Link>
+        </div>
       </div>
 
       {products.length === 0 ? (
