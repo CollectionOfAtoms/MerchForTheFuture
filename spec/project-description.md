@@ -25,10 +25,18 @@ were doing better and want that feeling reflected in what they wear, without nee
 already be radicalized into any particular movement. Some designs will be confrontational
 in a way that is intended to disrupt fatalism rather than alienate.
 
-**Product curation standard:** All apparel sold on this site must be 100% cotton. This is
-a non-negotiable brand principle, not a preference. It reflects a meaningful difference in
-environmental impact relative to conventional blended fabrics. Dropshipper relationships
-are evaluated against this standard before integration.
+**Product curation standard (the "material standard"):** All apparel sold on this site
+must be **sustainably sourced AND biodegradable**. Natural fibers only — organic cotton,
+hemp, linen, and similar. All-biodegradable natural-fiber blends are acceptable (e.g. a
+hemp/organic-cotton blend); any synthetic content or synthetic blend (cotton/poly, anything
+with elastane, etc.) is excluded. Chemically reconstituted fibers that compromise
+biodegradability or low-impact sourcing (e.g. bamboo viscose/rayon) do not automatically
+qualify and are evaluated case-by-case against both criteria. This is a non-negotiable brand
+principle, not a preference. 100% organic cotton is simply what is available today via our
+primary dropshipper (Teemill); the standard is the material profile, not cotton specifically,
+and other qualifying materials (bamboo done right, hemp, linen) are explicitly welcome where a
+dropshipper can print on them. Dropshipper relationships are evaluated against this standard
+before integration.
 
 ---
 
@@ -39,14 +47,19 @@ Browsing is available without an account. Purchasing requires authentication. Bu
 receive transactional email (order confirmation, fulfillment updates).
 
 **Seller** — Currently limited to the two founders. Sellers create and manage product
-listings, including both drop-shipped items and physical originals. The seller role is
+listings, including both drop-shipped items and physical originals. Sellers are responsible
+for fulfilling their own physical originals — they ship the piece and enter tracking from a
+seller-scoped fulfillment queue (see Fulfillment Ownership). The seller role is
 architecturally distinct from admin and is designed to support additional sellers in the
 future if the business model expands, though there are no concrete plans for this.
 
-**Admin** — Overlaps with seller for the founding team. Admins have access to fulfillment
-actions, order management, and site configuration. For drop-shipped orders, fulfillment
-is handled automatically via dropshipper API. For physical originals sold directly,
-the admin is responsible for shipping and entering tracking information.
+**Admin** — Overlaps with seller for the founding team. Admins have access to order
+management, site configuration, and the dropship-exception queue. Drop-shipped fulfillment is
+fully automated via dropshipper API with status flowing back through webhooks or polling
+(see Fulfillment Ownership and the New-Provider Pattern); no human enters dropship tracking.
+The admin's fulfillment role is therefore limited to handling automated-provider *failures*
+(retrying failed dropship orders), not routine shipping. Shipping of physical originals is a
+seller responsibility, not an admin one.
 
 > The seller/admin distinction is meaningful and should be preserved. Do not collapse
 > these roles even though they are currently held by the same people.
@@ -63,8 +76,8 @@ the admin is responsible for shipping and entering tracking information.
 | Prisma ORM | Selected by Claude Code as the idiomatic ORM for this stack | Generated client lives at src/generated/prisma — import from @/generated/prisma/client, not the default path. Use `prisma db push` not `prisma migrate dev` due to existing schema drift on Order.stripeSessionId |
 | NextAuth.js | Chosen for convenience with Next.js; JWT sessions | Auth is mocked in tests via vi.mock() — do not use real sessions in test context |
 | Prodigi | Inherited from Art & Sol codebase; chosen originally for open API (no Shopify dependency) and fine-art print quality | Product catalog limited to Prodigi's offerings; print quality for apparel is still being evaluated relative to alternatives |
-| Teemill | Primary apparel dropshipper; GOTS-certified 100% organic cotton catalog | Integrated at the product catalog layer (MFTF-4): public catalog API used for admin product picker; Orders API (api.teemill.com/v1) is the fulfillment target for MFTF-7; no sandbox — use MSW for tests |
-| Printify / Printful | Possible future apparel dropshippers | Not evaluated; would require cotton-standard verification before integration |
+| Teemill | Primary apparel dropshipper; GOTS-certified 100% organic cotton catalog (meets the material standard: sustainably sourced + biodegradable) | Integrated at the product catalog layer (MFTF-4): public catalog API used for admin product picker; Orders API (api.teemill.com/v1) is the fulfillment target for MFTF-7; no sandbox — use MSW for tests |
+| Printify / Printful | Possible future apparel dropshippers (Epics MFTF-17 / MFTF-18, deferred) | Not evaluated; would require material-standard verification (sustainably sourced + biodegradable, natural fibers only) before integration |
 | MailerSend | Free tier available at current scale | Intercepted in tests via MSW at https://api.mailersend.com/v1/email — do not make real API calls in tests |
 | Vercel Blob | Native integration with Vercel hosting | Used for image upload pipeline (three processed variants + watermark); requires BLOB_READ_WRITE_TOKEN |
 | Stripe Checkout (embedded) | Standard for payments; embedded mode chosen for UX control | Checkout flow has specific UX constraints from embedded mode; Stripe Tax is configured |
@@ -83,8 +96,12 @@ The ones with the highest switching cost are Stripe (payment history), Vercel Bl
 Axioms that should be treated as settled. New epics and stories must not contradict
 these without an explicit decision to revise them here first.
 
-- **100% cotton is non-negotiable.** No apparel product may be listed that does not meet
-  this standard. This applies to all dropshippers, current and future.
+- **The material standard is non-negotiable.** All apparel must be sustainably sourced AND
+  biodegradable — natural fibers only (organic cotton, hemp, linen, etc.), all-biodegradable
+  natural-fiber blends allowed, no synthetics or synthetic blends. 100% organic cotton is the
+  current de-facto material only because it is what Teemill offers; the principle is the
+  material profile, not cotton. This applies to all dropshippers, current and future, which
+  are screened via material-standard verification before integration.
 - **Exclusively human-made art.** No AI-generated imagery on products. This is a brand
   commitment, not just a preference.
 - **Dropshipper fulfillment is the primary model.** Physical originals sold directly are
@@ -100,8 +117,12 @@ these without an explicit decision to revise them here first.
   lock-in and per-transaction fees. Do not introduce dependencies that recreate that
   coupling.
 - **Multi-dropshipper abstraction.** When a second dropshipper is integrated, the
-  implementation should go behind a shared fulfillment interface rather than duplicating
+  implementation should go behind the shared fulfillment abstraction rather than duplicating
   Prodigi-specific logic. Plan for this even before it is needed.
+- **One epic per new provider/API.** Each new fulfillment provider (or any new external API)
+  gets its own epic, subclasses the `FulfillmentProvider` abstract base, registers in the
+  factory, and must pass material-standard verification before it is scheduled. See the
+  New-Provider Pattern section. (Printify = MFTF-17, Printful = MFTF-18, both deferred.)
 
 **Non-goals:**
 - This is not a general-purpose marketplace. It is not designed for arbitrary third-party
@@ -109,7 +130,7 @@ these without an explicit decision to revise them here first.
 - This is not an auction house. The auction feature is inherited infrastructure and may
   be used occasionally, but it is not the commercial focus and should not drive
   architectural decisions.
-- This site does not sell synthetic or blended-fabric apparel.
+- This site does not sell synthetic apparel or synthetic blends. (All-biodegradable natural-fiber blends are fine; the line is synthetic content, not blends per se.)
 
 ---
 
@@ -118,7 +139,7 @@ these without an explicit decision to revise them here first.
 | Question | Status | Notes |
 |---|---|---|
 | Should the storefront support a shopping cart? | Resolved | Scoped 2026-06-12 as Epic MFTF-11 (Cart) and Epic MFTF-12 (Multi-Provider Checkout & Fulfillment), replacing Epic MFTF-7. See the Cart & Checkout Model section. |
-| Which dropshippers will be integrated beyond Prodigi? | Open | Printify, Printful, and T-Mill are candidates. T-Mill noted for strong sourcing standards. Integration depends on cotton standard verification and API evaluation. |
+| Which dropshippers will be integrated beyond Prodigi? | Partially resolved | Teemill integrated (REFERENCED). Printify and Printful scoped as deferred placeholder epics MFTF-17/MFTF-18; each needs material-standard verification (sustainably sourced + biodegradable) and API evaluation before scheduling. |
 | Will Prodigi be retained for apparel, or only for fine-art prints? | Open | Prodigi's apparel print quality needs real-world evaluation before committing to it as the primary apparel vendor. |
 | Multi-dropshipper fulfillment abstraction layer | Deferred | Required before a second dropshipper is integrated. Should be scoped as its own epic at that time. |
 | Webhook support for physical-original shipment tracking | Deferred | Currently the admin manually enters tracking numbers. Webhook-based automation is desirable but not yet scoped. |
@@ -134,6 +155,12 @@ these without an explicit decision to revise them here first.
 | Buyer reviews with photos | Deferred | Mentioned as a future direction. No scope yet. |
 | Self-fulfillment provider (founders ship own products through the same pipeline) | Deferred | Nonzero chance of integrating the founders as a fulfillment provider one day. The FulfillmentProvider abstract base class (MFTF-12.1) and per-line-item order splitting are designed to make this a new subclass, not a rework. |
 | Cart abandonment email | Deferred | Out of MVP cart scope (MFTF-11). Revisit post-launch. |
+| Lifecycle email retry (failed provider-transition emails) | Deferred | Scoped out of MFTF-14.3 (2026-06-18). When a PRINTING/SHIPPED/DELIVERED email fails to send (e.g. MailerSend 5xx), the status transition is never rolled back and the failure is logged, but automatic re-send is not implemented. A retry surface (reuse the daily reconciliation cron, or a flagged-for-resend field on FulfillmentOrder) is a post-launch enhancement. |
+| Teemill in designed-mode product picker | Resolved | Resolved 2026-06-18. Teemill is a REFERENCED source and bypasses the MFTF-4 designed catalog; offering it in the designed-mode provider picker was contradictory dead function. MFTF-16.1 removes it from the UI and blocks new designed Teemill product types. The `ProductType.fulfillmentProvider` enum retains `TEEMILL` (no migration) — UI-blocked, not deleted. |
+| Default colour selection on apparel detail page | Resolved | Resolved 2026-06-18 (MFTF-16.2). First offered colour is pre-selected on load in both sourcing modes; size stays un-pre-selected; buy button gates on size only. Revises US-MFTF-6.2. |
+| Buyer order-status lifecycle emails | Resolved | Resolved 2026-06-18 (MFTF-14.3). Three provider-driven emails: PRINTING ("being printed"), SHIPPED ("on its way", with tracking), DELIVERED. The initial order-received email is the existing post-checkout confirmation (US-4.5/21.2/12.6) and is not duplicated. |
+| Webhook support for shipment tracking | Partially resolved | Scoped 2026-06-18 as Epic MFTF-14. Prodigi uses confirmed webhooks. Teemill webhook support is still unverified live; until confirmed, Teemill stays on polling GET /orders/{ref}, with the email/status contract identical to the webhook path. The Teemill webhook route ships only once payload + event names are verified. |
+| Fulfillment ownership (originals vs dropship) | Resolved | Resolved 2026-06-18 (Epic MFTF-15). Sellers ship their own physical originals; admins own dropship-failure retries; dropship fulfillment is fully automated. US-14.5 partially superseded. See Fulfillment Ownership section. |
 
 ---
 
@@ -146,6 +173,7 @@ these without an explicit decision to revise them here first.
 | 2026-06-07 | Updated Dropshipper Strategy with T-Mill Orders API findings (MFTF-2 partial spike); updated T-Mill API open question status | MFTF-2 |
 | 2026-06-12 | Updated Technology table: T-Mill row updated to reflect MFTF-4 catalog integration; Printify/Printful split into separate row. Updated Open Questions: T-Mill API status resolved (CHORE-17 complete, API key obtained). Noted Teemill webhook payload remains unconfirmed from live integration. | MFTF-4, CHORE-17 |
 | 2026-06-12 | Live-verified Teemill catalog API drove a second apparel sourcing mode. Added Epic MFTF-13 (Referenced Apparel Listings). Apparel Product Model: introduced DESIGNED vs REFERENCED modes + normalized read-shape. Dropshipper Strategy: Teemill documented as REFERENCED source with verified auth; seller-opacity principle narrowed to designed-mode only (buyer-opacity unconditional); provider routing updated for `providerKey`. Resolved the apparel retail pricing question (fixed USD retail; GBP base cached for margin monitoring only; no checkout FX). Added deferred Open Questions: FX/margin monitoring, Prodigi-mockup display. MFTF-8 kept Deferred but rationale updated (moot for Teemill — mockups served via catalog). MFTF-12.3 extended for referenced stock/price re-read; MFTF-12.6 shipment-status changed to polling (webhooks unconfirmed); MFTF-12.1 gains `checkFulfillmentStatus()`. epicOrder: MFTF-13 inserted after MFTF-5, before MFTF-6. | MFTF-13, MFTF-6, MFTF-8, MFTF-12 |
+| 2026-06-18 | Spec session: added Epic MFTF-14 (provider webhooks, canonical status mapping, three buyer lifecycle emails PRINTING/SHIPPED/DELIVERED — retires the MFTF-12.6 polling TODO; Teemill webhook forked on unverified support), Epic MFTF-15 (seller fulfillment for originals — hybrid split; US-14.5 partially superseded), Epic MFTF-16 (storefront/catalog corrections: Teemill out of designed picker, default first colour), and deferred Epics MFTF-17/MFTF-18 (Printify/Printful placeholders). Replaced the "100% cotton" axiom with the broader **material standard** (sustainably sourced AND biodegradable; natural fibers only; all-biodegradable blends OK; no synthetics; bamboo viscose case-by-case) throughout. Added New-Provider Pattern and Fulfillment Ownership sections. Ratified the Epic 5 (Tax) reorder. Formalized the "Tests Passing — pending live confirmation" status (statusLegend in tracker). epicOrder: …→ MFTF-12 → MFTF-14 → MFTF-15 → MFTF-16 → Epic 5 → MFTF-10 → Infrastructure. | MFTF-14, MFTF-15, MFTF-16, MFTF-17, MFTF-18, Epic 5 |
 ---
 
 ## Apparel Product Model
@@ -196,7 +224,7 @@ Design files sent to dropshippers bypass watermarking entirely.
 
 _Added 2026-06-07._
 
-**T-Mill is the primary apparel dropshipper, integrated as a `REFERENCED` source.** Their entire catalog is GOTS-certified 100% organic cotton, satisfying the brand's non-negotiable fabric standard without case-by-case verification. As of live API verification (2026-06-12), Teemill listings reference a Teemill **product ref**: the founder builds the product on Teemill's site, and the platform ingests the catalog entry (colours+hex, sizes, per-colour mockups, live stock, GBP base price, orderable variant refs at `…/v1/catalog/variants/{uuid}`) into a cached snapshot. This is distinct from the Prodigi `DESIGNED` model (upload a design file onto a curated blank). See the Apparel Product Model section and Epic MFTF-13.
+**T-Mill is the primary apparel dropshipper, integrated as a `REFERENCED` source.** Their entire catalog is GOTS-certified 100% organic cotton, which satisfies the brand's non-negotiable material standard (sustainably sourced + biodegradable) without case-by-case verification. Note the standard itself is the material profile, not cotton specifically — see the Material Standard note in Design Principles. As of live API verification (2026-06-12), Teemill listings reference a Teemill **product ref**: the founder builds the product on Teemill's site, and the platform ingests the catalog entry (colours+hex, sizes, per-colour mockups, live stock, GBP base price, orderable variant refs at `…/v1/catalog/variants/{uuid}`) into a cached snapshot. This is distinct from the Prodigi `DESIGNED` model (upload a design file onto a curated blank). See the Apparel Product Model section and Epic MFTF-13.
 
 **Verified Teemill auth (pin this — it is non-obvious):** `Authorization: {TEEMILL_API_KEY}` with **no `Bearer` prefix**, and `?project={sub}` where `sub` is the JWT `sub` claim on the key (`merchforthefuture-451391` for this account) — **not** the public key, which returns 404. The legacy bearer-token format is accepted but must be avoided.
 
@@ -209,6 +237,55 @@ _Added 2026-06-07._
 **All dropshippers sit behind a shared fulfillment abstraction layer** (`src/lib/fulfillment/`). As of MFTF-12, `FulfillmentProvider` is an **abstract base class** (not an interface): a shared `fulfill()` template method orchestrates the workflow, and every provider — current dropshippers and a possible future self-fulfillment provider — must implement the full set of abstract methods to compile. Adding a provider means subclassing and registering in the factory — no changes to order processing logic. Multi-item orders are split per provider: each cart line item is routed through its own provider's fulfillment pathway.
 
 **Provider routing.** For designed listings the dropshipper is an admin-level configuration (`ProductType.fulfillmentProvider`), invisible to sellers and buyers. For referenced listings the provider is recorded directly on the listing (`ApparelListing.providerKey`, e.g. `"teemill"`). Checkout grouping resolves a single provider key per line item from whichever applies, then routes each shipment group through that provider's `fulfill()`. Buyers never see provider names in either case.
+
+---
+
+## New-Provider Pattern
+
+_Added 2026-06-18._
+
+Every new fulfillment provider (and, more generally, every new external API integration) is
+introduced as its **own epic**. The provider:
+
+- subclasses the `FulfillmentProvider` abstract base class (US-MFTF-12.1) and implements the
+  full set of abstract methods, including `quoteShipping()` and `checkFulfillmentStatus()`;
+- registers in the provider factory — order-processing code is never edited to add a provider;
+- integrates at the catalog layer (a `DESIGNED` curated-blank path like Prodigi, or a
+  `REFERENCED` product-ref path like Teemill — decided per provider at scoping time), the order
+  layer, and the status-mapping layer (US-MFTF-14.2);
+- preserves buyer-facing opacity (no provider names exposed; "Shipment 1 of 2").
+
+**Material-standard gate.** A provider is not scheduled until it passes material-standard
+verification: its catalog must be sustainably sourced AND biodegradable (natural fibers only;
+all-biodegradable natural-fiber blends acceptable; no synthetics or synthetic blends; bamboo
+viscose/rayon evaluated case-by-case). Printify (MFTF-17) and Printful (MFTF-18) are deferred
+placeholders pending this gate.
+
+---
+
+## Fulfillment Ownership
+
+_Added 2026-06-18. Supersedes the original admin-only fulfillment model in Epic 14._
+
+Fulfillment responsibility is split by who can actually act on a shipment, preserving the
+architectural seller/admin distinction:
+
+- **Buyer** — confirms shipping address and sees per-shipment status + tracking on the
+  buyer-locked fulfillment/order page (US-14.1/14.2, US-22.2). Status source is unified across
+  mechanisms (US-MFTF-15.3): the buyer never sees who shipped or how status was detected.
+- **Seller** — ships their own **physical originals** from a seller-scoped queue
+  (`/seller/fulfillment`, US-MFTF-15.1) and enters tracking, which drives the buyer lifecycle
+  emails. A seller sees only their own orders.
+- **Admin** — owns **automated-provider exceptions**: failed dropship `FulfillmentOrder` rows
+  surface in an admin-only retry queue (US-MFTF-15.2, re-homed from US-14.5). Admins do not
+  ship originals; sellers do.
+
+**Dropshipped fulfillment is fully automated** — no human enters dropship tracking. Status
+flows back via provider webhooks (Prodigi) or polling (Teemill, until webhooks are confirmed),
+mapped to the canonical `FulfillmentStatus` set and emitting buyer lifecycle emails
+(PRINTING → SHIPPED → DELIVERED) per US-MFTF-14. **US-14.5 is partially superseded:** its
+originals-shipping function moves to the seller (US-MFTF-15.1); its dropship-retry function is
+re-homed to the admin exception queue (US-MFTF-15.2).
 
 ---
 

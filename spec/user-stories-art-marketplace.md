@@ -2462,3 +2462,191 @@ _**Dependency ordering:** 10.3 → 10.4 → 10.5 → 10.6 → 10.7 → 10.8. Ste
 - Small code change to remove CHORE-15's gate, plus manual smoke test. All other pre-launch items are prerequisites.
 
 ---
+
+## Epic MFTF-14: Provider Webhooks, Status Mapping & Lifecycle Emails
+
+_Added 2026-06-18. Makes order status flow back from fulfillment providers automatically and emails the buyer at each lifecycle transition. Retires the polling TODO left in US-MFTF-12.6 by making provider status-detection real behind the existing `checkFulfillmentStatus()` seam (US-MFTF-12.1). Prodigi uses confirmed webhooks; Teemill is forked on still-unverified webhook support and falls back to the polling path without changing the status-transition or email contract. The three buyer emails map onto the canonical `FulfillmentStatus` values already defined in US-MFTF-3.1 (`PRINTING | SHIPPED | DELIVERED`) — no new status enum is introduced. The initial "order received" email is already covered by the post-checkout confirmation (US-4.5 / US-21.2 / US-MFTF-12.6) and is deliberately not duplicated here._
+
+### US-MFTF-14.1 — Provider Webhook Endpoint & Verification
+
+**As a** platform,
+**I want** authenticated webhook endpoints that accept provider status callbacks,
+**so that** fulfillment status updates arrive without manual polling where the provider supports it.
+
+**Acceptance Criteria:**
+- [ ] A webhook route per provider (e.g. `/api/webhooks/prodigi`, and `/api/webhooks/teemill` **only if** live verification confirms Teemill webhook support — otherwise the Teemill route is not created and Teemill status detection stays on the polling path from US-MFTF-12.6)
+- [ ] Each endpoint verifies authenticity using that provider's documented mechanism (Prodigi signature/secret); a request failing verification returns 401 and is not processed
+- [ ] Verified payloads are parsed into a provider-agnostic internal shape and handed to the status-mapping step (US-MFTF-14.2); the route itself contains no status-transition logic
+- [ ] The Prodigi route handles a defined, enumerated set of event types — at minimum the dispatch/shipment event that carries tracking number + carrier, and the order-status events that correspond to the canonical `PRINTING`/`DELIVERED` transitions (the exact Prodigi event names are taken from Prodigi's webhook docs and recorded in `/docs/` alongside the Teemill notes). This enumerated set is what "recognized" means for the next criterion
+- [ ] Event types **outside** that enumerated set are acknowledged with 200 and ignored (no error, no transition), so unexpected provider events don't cause retry storms. (Tested with a fixture event whose type is deliberately not in the handled set.)
+- [ ] Processing is idempotent at the endpoint: a replayed webhook for an already-applied transition is a no-op (reuses the US-MFTF-12.5 idempotency guarantee)
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-14-webhooks-status-emails/US-MFTF-14.1-webhook-endpoint-verification.test.ts`
+- MSW/route tests: valid Prodigi signature → 200 + handed to mapper; invalid signature → 401, not processed; unknown event → 200 no-op
+- **Live-API confirmation flag (gates the Teemill route):** Open Q — whether Teemill exposes webhooks at all, plus event names + payload (tracking + carrier field paths). Until confirmed, **no Teemill webhook route is shipped**; Teemill remains on polling. Leave the existing `// TODO: replace Teemill polling with webhook once payload shape is confirmed live` marker until this resolves.
+
+### US-MFTF-14.2 — Provider Status → Canonical FulfillmentOrder Mapping
+
+**As a** platform,
+**I want** each provider's status vocabulary mapped to the canonical `FulfillmentStatus` set,
+**so that** order state is uniform regardless of which provider reported it.
+
+**Acceptance Criteria:**
+- [ ] A mapping step (living behind each provider's `checkFulfillmentStatus()`, per US-MFTF-12.1) translates raw provider status into the canonical set defined in US-MFTF-3.1: `PROCESSING | PRINTING | SHIPPED | DELIVERED | CANCELLED | ERROR`
+- [ ] When a mapped status advances a `FulfillmentOrder` (e.g. `PRINTING` → `SHIPPED`), the row's status is updated and, for `SHIPPED`, tracking number + carrier are persisted from the payload
+- [ ] Forward progression is monotonic: the ordered sequence is `PROCESSING → PRINTING → SHIPPED → DELIVERED`. A stale/out-of-order callback reporting a status **earlier in this sequence** than the `FulfillmentOrder`'s current status does not regress it (logged, ignored)
+- [ ] `CANCELLED` and `ERROR` are **always-allowed terminal transitions** — they are not part of the forward ordering and the monotonic guard does not block them. A `CANCELLED`/`ERROR` callback may transition the order from any non-terminal state; once terminal, further callbacks are no-ops
+- [ ] A status value that does not match any known provider mapping is recorded as a parse warning and does **not** silently transition the order (fails safe; surfaces for admin review rather than guessing)
+- [ ] Both the webhook path (Prodigi) and the polling path (Teemill, from US-MFTF-12.6) feed this same mapping step — the transition contract is identical regardless of detection method
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-14-webhooks-status-emails/US-MFTF-14.2-status-mapping.test.ts`
+- Unit tests: each provider raw status → expected canonical value; unknown value → warning, no transition; out-of-order callback does not regress status
+- Integration: a Prodigi webhook and a Teemill poll both drive the same `FulfillmentOrder` through identical transitions
+
+### US-MFTF-14.3 — Buyer Lifecycle Emails on Each Transition
+
+**As a** buyer,
+**I want** an email at each stage of my order's progress,
+**so that** I always know where my order is without checking the site.
+
+**Acceptance Criteria:**
+- [ ] A buyer email is sent (MailerSend, existing transactional pattern) on each of these per-`FulfillmentOrder` transitions: → `PRINTING` ("Your order is being printed"), → `SHIPPED` ("Your order is on its way!", includes tracking number + carrier + tracking link), → `DELIVERED` ("Your order has been delivered")
+- [ ] Each email lists **only that shipment's** items (consistent with the per-shipment model in US-MFTF-12.6); a multi-shipment order produces independent emails per shipment per transition
+- [ ] Provider/dropshipper names never appear in any email — shipments are referred to in buyer-facing terms ("Shipment 1 of 2")
+- [ ] Emails are sent exactly once per transition: the idempotency guard (US-MFTF-14.1) prevents duplicate sends when a webhook/poll is replayed
+- [ ] The email-trigger path is identical whether the transition was detected via webhook (Prodigi) or polling (Teemill)
+- [ ] If a MailerSend send fails, the failure is logged and the status transition itself is **never rolled back** (the order state is the source of truth; a missed email must not corrupt it). This is the testable contract: MSW returns a 500 from MailerSend → assert the `FulfillmentOrder` status transition still persisted and the failure was logged. Automatic re-send of a failed lifecycle email is **deferred** (see Open Questions → "Lifecycle email retry"); it is not in scope for this story and no test should assert a re-send occurs
+- [ ] No "order received" email is sent from this epic — that moment is already covered by the post-checkout confirmation (US-4.5 / US-21.2 / US-MFTF-12.6)
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-14-webhooks-status-emails/US-MFTF-14.3-lifecycle-emails.test.ts`
+- MSW intercepts MailerSend; assert one email per transition with correct subject + shipment-scoped items
+- Idempotency test: replayed `SHIPPED` callback → exactly one shipping email total
+- Two-shipment order: independent `PRINTING`/`SHIPPED`/`DELIVERED` emails per shipment
+
+---
+
+## Epic MFTF-15: Seller Fulfillment for Originals
+
+_Added 2026-06-18. Moves physical-original fulfillment from admin to seller (the hybrid split decided in the 2026-06-18 spec session). The seller ships their own originals from a seller-scoped queue; the admin retains an exception queue for dropship provider failures (re-homed from US-14.5). Dropshipped fulfillment is unchanged — it remains fully automated via US-MFTF-12.5 and MFTF-14. The buyer-facing fulfillment page (US-14.1/14.2) stays buyer-locked; only its status source is aligned. **US-14.5 is partially superseded by this epic:** its originals-shipping responsibility moves to US-MFTF-15.1; its dropship-exception/retry responsibility is re-homed to US-MFTF-15.2 as admin-only._
+
+### US-MFTF-15.1 — Seller Originals Fulfillment Queue
+
+**As a** seller,
+**I want** a queue of my own paid original-artwork orders awaiting shipment,
+**so that** I can pack and ship the pieces I'm responsible for.
+
+**Acceptance Criteria:**
+- [ ] A seller-scoped page (e.g. `/seller/fulfillment`) lists original-artwork orders where the order's `sellerId` matches the session user, status is paid, shipping address is confirmed, and the item has not yet shipped
+- [ ] The queue is **seller-locked**: a seller sees only their own orders; another seller's originals never appear; non-sellers are redirected
+- [ ] Dropshipped (apparel/print) line items **never** appear in this queue — they fulfill automatically and are not a seller responsibility
+- [ ] Each row shows: artwork thumbnail, title, buyer name, confirmed shipping address, date paid, sale amount
+- [ ] The seller can mark an original as `SHIPPED` and enter tracking number + carrier; doing so transitions the order and triggers the buyer `SHIPPED` email via the same path as US-MFTF-14.3
+- [ ] The seller can mark an original `DELIVERED`, which transitions the order and triggers the buyer `DELIVERED` email via the US-MFTF-14.3 path. (Manual mark-delivered is in scope for this story; carrier-tracking auto-detection of delivery for originals remains a future enhancement, but the manual action must work and be tested now.)
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-15-seller-fulfillment/US-MFTF-15.1-seller-originals-queue.test.ts`
+- Auth/ownership: seller A cannot see seller B's originals; non-seller redirected
+- Data: seed a paid original + a paid dropship apparel order; assert only the original appears
+- Action test: mark shipped persists tracking + fires the lifecycle-email path (US-MFTF-14.3)
+- Action test: mark delivered transitions the order to `DELIVERED` and fires the `DELIVERED` lifecycle email (US-MFTF-14.3)
+
+### US-MFTF-15.2 — Admin Dropship Exception Queue (re-homed from US-14.5)
+
+**As an** admin,
+**I want** a queue of failed dropship fulfillment orders with per-shipment retry,
+**so that** provider failures are a platform responsibility, not a seller's.
+
+**Acceptance Criteria:**
+- [ ] An admin-only page lists `FulfillmentOrder` rows in `FAILED` (the dropship fan-out failures from US-MFTF-12.5), each with the recorded error and a retry action that re-runs `fulfill()` for that shipment only
+- [ ] This queue contains **only** automated-provider failures — physical originals are not shown here (they live in the seller queue, US-MFTF-15.1)
+- [ ] Retry is idempotent (reuses US-MFTF-12.5 guarantees): a retry that succeeds moves the shipment `FAILED` → `CONFIRMED`; the provider order is not duplicated
+- [ ] Non-admins are redirected
+- [ ] US-14.5's prior dual responsibility is now split: its originals-shipping function is superseded by US-MFTF-15.1; its dropship-exception function is re-homed here as admin-only
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-15-seller-fulfillment/US-MFTF-15.2-admin-exception-queue.test.ts`
+- Auth: non-admin redirected
+- Retry: FAILED → CONFIRMED, no duplicate provider order; originals never appear in this queue
+
+### US-MFTF-15.3 — Buyer Fulfillment Page Status Source Alignment
+
+**As a** buyer,
+**I want** my order page to show accurate status for originals (seller-shipped) and dropship items (provider-driven) uniformly,
+**so that** my experience is consistent regardless of who ships.
+
+**Acceptance Criteria:**
+- [ ] The buyer fulfillment/order page (US-14.1 / US-14.4 / US-22.2) derives original-item status from the seller-driven transitions (US-MFTF-15.1) and dropship-item status from provider-driven transitions (MFTF-14), with no buyer-facing distinction between the two mechanisms
+- [ ] Provider and seller identities are not exposed differently — the buyer sees shipment status and tracking, not who performed the action
+- [ ] No change to the buyer-locked access control already established in US-14.1 (this is a status-source/copy adjustment, not a re-open of access logic)
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-15-seller-fulfillment/US-MFTF-15.3-buyer-status-source.test.ts`
+- Component/integration: an original marked shipped by its seller and a dropship shipment marked shipped by webhook render identical buyer-facing status/tracking UI
+
+---
+
+## Epic MFTF-16: Storefront & Catalog Corrections
+
+_Added 2026-06-18. Two small revisions correcting drift from the two-sourcing-mode model. Both touch Passed stories. Grouped as a standalone epic because they are unrelated to the fulfillment work in MFTF-14/15._
+
+### US-MFTF-16.1 — Remove Teemill from Designed-Mode Provider Picker
+
+**As an** admin,
+**I want** the designed-mode product catalog to offer only Prodigi,
+**so that** the UI reflects that Teemill is a referenced source and cannot be mis-selected into the designed path.
+
+**Acceptance Criteria:**
+- [ ] The `fulfillmentProvider` dropdown in the product-type create/edit form (US-MFTF-4.3) no longer offers Teemill; designed-mode product types are Prodigi-only
+- [ ] The `ProductType.fulfillmentProvider` enum **retains** the `TEEMILL` value in the schema (no migration) — it is removed from the UI and blocked for new designed types, not deleted from the enum
+- [ ] Attempting to create/update a designed `ProductType` with `TEEMILL` via the server action is rejected with a validation error (guards against direct/stale calls)
+- [ ] Where the Teemill option previously appeared, an informational note **region renders** (asserted by test id or role, not by exact string) conveying that Teemill products meet the material standard, are available via the referenced-listing path, and can be added by reference without whitelisting a product type. The exact copy is founder-authored and is a non-asserted detail — tests assert the note region is present, not its wording
+- [ ] Existing Passed MFTF-4 behavior for Prodigi designed types is unchanged
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-16-storefront-corrections/US-MFTF-16.1-teemill-out-of-designed-picker.test.ts`
+- Server-action test: create/update designed ProductType with TEEMILL → validation error
+- Component test: provider dropdown contains Prodigi only; informational note renders
+- Regression: existing Prodigi product-type create/edit still passes
+
+### US-MFTF-16.2 — Default First Color on Apparel Detail Page
+
+**As a** buyer,
+**I want** the first available color pre-selected when I open an apparel product,
+**so that** the page is immediately complete and I only need to choose a size.
+
+**Acceptance Criteria:**
+- [ ] On `/shop/[listingId]`, the first offered color is selected by default on initial render, for **both** sourcing modes (designed: first `ApparelListingColor`; referenced: first `ReferencedVariant` color)
+- [ ] Size remains **not** pre-selected (this revises US-MFTF-6.2 for color only; size behavior is unchanged)
+- [ ] The add-to-cart / buy button is disabled until a **size** is selected (color is already satisfied by the default) — this revises US-MFTF-6.2's "disabled until both a color and size are selected"
+- [ ] In referenced mode, defaulting to the first color also selects that color's cached mockup on load (consistent with US-MFTF-6.2's referenced-mode mockup-swap criterion)
+- [ ] If a listing has zero offered colors, the page degrades gracefully (no crash; buy disabled)
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-16-storefront-corrections/US-MFTF-16.2-default-first-color.test.ts`
+- Component tests: first color highlighted on mount (both modes); buy button gated on size only; referenced-mode mockup matches defaulted color
+- Regression: update the US-MFTF-6.2 tests that asserted "no color pre-selected" / "both required"
+
+---
+
+## Epic MFTF-17: Printify Integration
+
+_**Status: Deferred.** Placeholder for a future apparel dropshipper. Follows the documented new-provider pattern (see project_description.md → New-Provider Pattern): subclass the `FulfillmentProvider` abstract base (US-MFTF-12.1), register in the factory, integrate at the catalog + order + status-mapping (MFTF-14.2) layers, and preserve buyer-opacity. **Must pass material-standard verification (sustainably sourced AND biodegradable; natural fibers only, all-biodegradable blends acceptable, no synthetics) before this epic is scheduled.** Stories will be drafted when the provider is evaluated and the material gate is cleared. Decide at scoping time whether Printify is a `DESIGNED` or `REFERENCED` source._
+
+### US-MFTF-17.1 — Printify Provider Integration _(stub — not yet scoped)_
+
+**Status:** Deferred
+
+---
+
+## Epic MFTF-18: Printful Integration
+
+_**Status: Deferred.** Placeholder for a future apparel dropshipper. Same new-provider pattern and **material-standard verification gate** as MFTF-17. Stories drafted when evaluated and the material gate is cleared._
+
+### US-MFTF-18.1 — Printful Provider Integration _(stub — not yet scoped)_
+
+**Status:** Deferred
+
+---
