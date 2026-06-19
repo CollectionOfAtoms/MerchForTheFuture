@@ -179,11 +179,14 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
   }
 
   async checkFulfillmentStatus(q: FulfillmentStatusQuery): Promise<FulfillmentStatusResult> {
-    const none = { shipped: false, trackingNumber: null, carrier: null };
+    const none = { status: null, shipped: false, trackingNumber: null, carrier: null };
     if (!q.providerOrderId) return none;
     // TODO: replace Teemill polling with webhook once payload shape is confirmed live.
     // Teemill webhook support is unconfirmed (Open Q#2) — until then shipment status
     // is detected by polling GET /orders/{orderRef} on a daily reconciliation cron.
+    // The mapping below feeds the SAME shared transition seam (src/lib/fulfillment/
+    // status.ts) as the Prodigi webhook path, so the status/email contract is identical
+    // regardless of detection method (US-MFTF-14.2).
     const resp = await teemillGet(`/orders/${q.providerOrderId}`);
     if (!resp.ok) return none;
     const data = (await resp.json()) as {
@@ -191,11 +194,12 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
       fulfillments?: Array<{ status?: string; trackingNumber?: string; carrier?: string }>;
     };
     const fulfillment = data.fulfillments?.[0];
-    // // UNVERIFIED: the tracking number + carrier field paths and the dispatched
-    // status value are guesses until a live proofing order confirms them.
-    const dispatched = fulfillment?.status === 'dispatched';
+    // // UNVERIFIED: the tracking number + carrier field paths and the raw status
+    // values are guesses until a live proofing order confirms them.
+    const status = mapTeemillStatusToCanonical(fulfillment?.status ?? data.status);
     return {
-      shipped: dispatched && !!fulfillment?.trackingNumber,
+      status,
+      shipped: status === 'SHIPPED',
       trackingNumber: fulfillment?.trackingNumber ?? null,
       carrier: fulfillment?.carrier ?? null,
       raw: data as Record<string, unknown>,
@@ -256,5 +260,38 @@ export class TeemillFulfillmentProvider extends FulfillmentProvider {
       throw await teemillError(resp, 'order confirm (POST /orders/{id}/confirm)');
     }
     return created;
+  }
+}
+
+/**
+ * Map a Teemill raw fulfillment/order status to the canonical `FulfillmentStatus`
+ * (US-MFTF-14.2). // UNVERIFIED — the raw status vocabulary is a guess until a live
+ * proofing order confirms it (no Teemill sandbox). An unrecognised value returns
+ * `null` (a logged parse warning upstream, never a silent transition).
+ */
+export function mapTeemillStatusToCanonical(raw: string | undefined): FulfillmentStatus | null {
+  switch ((raw ?? '').toLowerCase()) {
+    case 'pending':
+    case 'processing':
+    case 'confirmed':
+      return 'PROCESSING';
+    case 'printing':
+    case 'in_production':
+    case 'production':
+      return 'PRINTING';
+    case 'dispatched':
+    case 'shipped':
+      return 'SHIPPED';
+    case 'delivered':
+      return 'DELIVERED';
+    case 'cancelled':
+    case 'canceled':
+      return 'CANCELLED';
+    case 'failed':
+    case 'error':
+      return 'ERROR';
+    default:
+      if (raw) console.warn(`[teemill] unknown order status "${raw}" — no transition`);
+      return null;
   }
 }

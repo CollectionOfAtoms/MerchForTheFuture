@@ -1951,33 +1951,40 @@
     },
     {
       "id": "US-MFTF-14.1",
+      "epic": "Epic MFTF-14: Provider Webhooks, Status Mapping & Lifecycle Emails",
       "title": "Provider Webhook Endpoint & Verification",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-19",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-19",
+      "testPassedCommit": "pending",
+      "notes": "Prodigi webhook route POST /api/webhooks/prodigi (src/app/api/webhooks/prodigi/route.ts). Public (no auth session); the raw body is UNTRUSTED and verified before processing — HMAC-SHA256 hex digest of the raw body keyed by PRODIGI_WEBHOOK_SECRET, compared timing-safely to the 'prodigi-signature' header; missing secret/sig or mismatch → 401, not processed. Handled event types are an enumerated constant HANDLED_PRODIGI_EVENTS (src/lib/fulfillment/providers/prodigi.ts); events outside the set are acked 200 + ignored (no transition, no retry-storm). Verified events are parsed by mapProdigiEventToStatus into the provider-agnostic {providerOrderId,status,tracking} shape and handed to the shared seam applyFulfillmentTransition (US-MFTF-14.2) — the route itself contains NO transition logic. Idempotent (replayed event → single transition via the seam's guarded write). NO Teemill webhook route — Teemill webhook support is unverified, so it stays on polling (GET /orders/{ref}); the '// TODO: replace Teemill polling with webhook once payload shape is confirmed live' marker is retained. 4 tests (valid sig → 200 + FO transitioned; invalid sig → 401 no-op; unknown event → 200 ignored; replay → single transition+email). // UNVERIFIED (no live callback this session): exact Prodigi signature header/scheme + event-type strings + payload field paths — documented in docs/prodigi-api-notes.md → Webhooks; confirm on first live dispatch. Env: PRODIGI_WEBHOOK_SECRET."
     },
     {
       "id": "US-MFTF-14.2",
+      "epic": "Epic MFTF-14: Provider Webhooks, Status Mapping & Lifecycle Emails",
       "title": "Provider Status \u2192 Canonical FulfillmentOrder Mapping",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-19",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-19",
+      "testPassedCommit": "pending",
+      "notes": "Canonical mapping + the single FulfillmentOrder transition seam (src/lib/fulfillment/status.ts). SCHEMA: extended the FulfillmentOrderStatus enum to align with the canonical FulfillmentStatus set (US-MFTF-3.1) \u2014 added PRINTING, DELIVERED, CANCELLED (CONFIRMED reused as the PROCESSING base, FAILED == canonical ERROR); no new enum, no new table. prisma generate + db push to main + test DBs. Each provider owns its raw\u2192canonical mapping inside the subclass so vocabulary never leaks: ProdigiFulfillmentProvider.checkFulfillmentStatus maps order.status.stage (mapProdigiStageToStatus: InProgress\u2192PROCESSING, Complete/Dispatched\u2192SHIPPED, Cancelled\u2192CANCELLED, unknown\u2192null+warn); TeemillFulfillmentProvider via mapTeemillStatusToCanonical (// UNVERIFIED raw values). FulfillmentStatusResult gained an optional canonical `status` field (additive; 12.1 fake unaffected). applyFulfillmentTransition(foId, canonical, {tracking}) is the ONE seam both paths use: canonicalToDbStatus reconciles; MONOTONIC forward guard (PENDING<SUBMITTED<CONFIRMED<PRINTING<SHIPPED<DELIVERED) \u2014 a stale earlier-status callback is logged + ignored (no regress); CANCELLED/FAILED are always-allowed terminal transitions from any non-terminal state and absorbing once terminal; unknown provider status = null = logged parse warning, NO transition. SHIPPED persists tracking+carrier. IDEMPOTENT via a guarded updateMany keyed on current status (count===1 = this call transitioned), reusing the 12.5 'row status is the guard' guarantee. checkAndSyncShipments (12.6 polling cron) refactored to feed this seam (now flows PRINTING/DELIVERED too, not just SHIPPED) \u2014 see founder flag below. aggregateOrderStatus treats DELIVERED as shipped-or-beyond; OrderShipments badge config gained PRINTING/DELIVERED/CANCELLED. 10 tests (canonical reconciliation, per-provider mapping incl. unknown\u2192null+warn, monotonic no-regress, idempotency, terminal rules, Prodigi-poll + Teemill-poll drive identical transitions). FOUNDER FLAG: this rewired the US-MFTF-12.6 reconciliation code path \u2014 12.6 status intentionally NOT changed (stays 'Tests Passing \u2014 pending live confirmation'; its flip is the founder's call after the live proofing order)."
     },
     {
       "id": "US-MFTF-14.3",
+      "epic": "Epic MFTF-14: Provider Webhooks, Status Mapping & Lifecycle Emails",
       "title": "Buyer Lifecycle Emails on Each Transition",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-19",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-19",
+      "testPassedCommit": "pending",
+      "notes": "Per-shipment buyer emails fired from applyFulfillmentTransition (US-MFTF-14.2) on transition INTO PRINTING/SHIPPED/DELIVERED (src/lib/payments/email.ts). Added sendShipmentPrintingEmail ('…is being printed') and sendShipmentDeliveredEmail ('…has been delivered'); sendShipmentShippedEmail refactored to share loadShipmentEmailContext and now subjects 'Shipment N of M is on its way!' with tracking number + carrier + a tracking link. Each email lists ONLY that shipment's items and labels it 'Shipment N of M' (single-shipment → 'Your order') — provider/dropshipper names NEVER appear. EXACTLY ONCE per transition: the seam's guarded write means the email only fires when count===1, so a replayed webhook/poll → at most one email per transition (idempotency reuses US-MFTF-12.5). The trigger path is identical whether detected via Prodigi webhook or Teemill polling. ON MAILERSEND FAILURE: the email is awaited with .catch → logged; the status transition is ALREADY persisted and is NEVER rolled back (order state is the source of truth). Automatic re-send is DEFERRED (project-description.md → Open Questions → 'Lifecycle email retry') — no test asserts a re-send. No 'order received' email here (covered by the post-checkout confirmation US-4.5/21.2/12.6). 5 tests (one email per transition w/ correct subject + tracking; no provider names; replayed SHIPPED → one email; two-shipment order → independent 'Shipment 1/2 of 2' emails; MailerSend 500 → transition persisted + failure logged, no re-send)."
     },
     {
       "id": "US-MFTF-15.1",
+      "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
       "title": "Seller Originals Fulfillment Queue",
       "status": "Not Started",
       "testWrittenDate": null,
@@ -1987,6 +1994,7 @@
     },
     {
       "id": "US-MFTF-15.2",
+      "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
       "title": "Admin Dropship Exception Queue",
       "status": "Not Started",
       "testWrittenDate": null,
@@ -1996,6 +2004,7 @@
     },
     {
       "id": "US-MFTF-15.3",
+      "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
       "title": "Buyer Fulfillment Page Status Source Alignment",
       "status": "Not Started",
       "testWrittenDate": null,
@@ -2005,6 +2014,7 @@
     },
     {
       "id": "US-MFTF-16.1",
+      "epic": "Epic MFTF-16: Storefront & Catalog Corrections",
       "title": "Remove Teemill from Designed-Mode Provider Picker",
       "status": "Not Started",
       "testWrittenDate": null,
@@ -2014,6 +2024,7 @@
     },
     {
       "id": "US-MFTF-16.2",
+      "epic": "Epic MFTF-16: Storefront & Catalog Corrections",
       "title": "Default First Color on Apparel Detail Page",
       "status": "Not Started",
       "testWrittenDate": null,
@@ -2023,6 +2034,7 @@
     },
     {
       "id": "US-MFTF-17.1",
+      "epic": "Epic MFTF-17: Printify Integration",
       "title": "Printify Provider Integration",
       "status": "Deferred",
       "testWrittenDate": null,
@@ -2032,6 +2044,7 @@
     },
     {
       "id": "US-MFTF-18.1",
+      "epic": "Epic MFTF-18: Printful Integration",
       "title": "Printful Provider Integration",
       "status": "Deferred",
       "testWrittenDate": null,

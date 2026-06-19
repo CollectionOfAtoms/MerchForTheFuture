@@ -66,11 +66,21 @@ enum OrderListingType {
 }
 
 /// Status of one per-provider shipment within a multi-item cart order (US-MFTF-12.2).
+/// Per-provider shipment status within a multi-item cart order (US-MFTF-12.2),
+/// aligned with the canonical `FulfillmentStatus` set from US-MFTF-3.1 so provider
+/// progression can be persisted (US-MFTF-14.2). PENDING/SUBMITTED are the placement
+/// lifecycle before the provider accepts the order; CONFIRMED is the canonical
+/// PROCESSING base; PRINTING/SHIPPED/DELIVERED are the forward progression; FAILED
+/// is the canonical ERROR. Forward order is monotonic (see src/lib/fulfillment/status.ts);
+/// CANCELLED and FAILED are always-allowed terminal states.
 enum FulfillmentOrderStatus {
   PENDING
   SUBMITTED
   CONFIRMED
+  PRINTING
   SHIPPED
+  DELIVERED
+  CANCELLED
   FAILED
 }
 

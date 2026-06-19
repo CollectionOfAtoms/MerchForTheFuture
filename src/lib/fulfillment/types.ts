@@ -107,8 +107,16 @@ export interface FulfillmentStatusQuery {
   providerOrderId: string | null;
 }
 
-/** Result of polling/receiving a provider's shipment status (12.6). */
+/** Result of polling/receiving a provider's shipment status (12.6 / 14.2). */
 export interface FulfillmentStatusResult {
+  /**
+   * The provider's raw status mapped to the canonical `FulfillmentStatus` set
+   * (US-MFTF-14.2). `null` means the raw status matched no known mapping — a
+   * logged parse warning, never a silent transition. The mapping lives inside the
+   * provider subclass so provider vocabulary never leaks into shared transition
+   * logic. Back-compat: `shipped` remains the boolean projection of `SHIPPED`.
+   */
+  status?: FulfillmentStatus | null;
   shipped: boolean;
   trackingNumber: string | null;
   carrier: string | null;

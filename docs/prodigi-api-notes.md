@@ -102,6 +102,41 @@ Response `{ "order": { "status": { "stage": "..." }, "shipments": [{ "tracking":
 
 ---
 
+## Webhooks (US-MFTF-14.1) — `// UNVERIFIED`
+
+Prodigi supports order-status webhooks (CloudEvents-style callbacks), so unlike Teemill it is on
+the **webhook** path, not polling. The route is `POST /api/webhooks/prodigi`
+(`src/app/api/webhooks/prodigi/route.ts`). **Everything in this section is `// UNVERIFIED`** —
+captured from Prodigi's webhook docs but not yet confirmed against a live callback (this account
+has had no live webhook delivery). Confirm and tighten on the first real dispatch.
+
+- **Authenticity:** the route verifies an **HMAC-SHA256 hex digest of the raw request body**,
+  keyed by `PRODIGI_WEBHOOK_SECRET`, compared timing-safely to the `prodigi-signature` request
+  header. A missing secret/signature or a mismatch → **401, not processed**. // UNVERIFIED: the
+  exact header name and signing scheme — adjust `verifyProdigiSignature` once Prodigi's real
+  mechanism is confirmed.
+- **Handled event types** (the enumerated set in `HANDLED_PRODIGI_EVENTS`,
+  `src/lib/fulfillment/providers/prodigi.ts`). Anything outside this set is acknowledged **200 and
+  ignored** (no transition), so unexpected events never retry-storm:
+
+  | Event `type` | Canonical status | Notes |
+  |---|---|---|
+  | `com.prodigi.order.status.stage.changed#InProgress` | `PROCESSING` | no-op from CONFIRMED |
+  | `com.prodigi.order.status.details.printStatus#Printing` | `PRINTING` | fires the "being printed" email |
+  | `com.prodigi.order.status.stage.changed#Complete` | `SHIPPED` | order done/dispatched |
+  | `com.prodigi.order.shipments.shipment#Dispatched` | `SHIPPED` | carries `data.order.shipments[].tracking` |
+  | `com.prodigi.order.shipments.shipment#Delivered` | `DELIVERED` | |
+  | `com.prodigi.order.status.stage.changed#Cancelled` | `CANCELLED` | terminal |
+
+- **Payload field paths used:** order id at `data.order.id`; tracking at
+  `data.order.shipments[0].tracking.{number,carrier}`. // UNVERIFIED.
+- **Mapping + transition:** the route does **no** transition logic — `mapProdigiEventToStatus`
+  parses the event into the provider-agnostic `{ providerOrderId, status, tracking }` shape and
+  hands it to the shared seam `applyFulfillmentTransition` (`src/lib/fulfillment/status.ts`), the
+  SAME seam the Teemill polling path feeds (US-MFTF-14.2). The seam owns the monotonic guard,
+  idempotency, and the buyer lifecycle email (US-MFTF-14.3).
+- Env var: `PRODIGI_WEBHOOK_SECRET`.
+
 ## Cotton-standard note
 
 Prodigi's `paperType` attribute reveals fabric composition. The blank used to validate this integration (Bella + Canvas 1010) is **52% cotton / 48% polyester** — a blend, which violates the brand's **100%-cotton non-negotiable**. Prodigi has **no organic / 100%-cotton apparel** offering, so Prodigi apparel is a **reference integration only** (proving the `DESIGNED`/provider abstraction); production apparel is Teemill (GOTS organic cotton). If Prodigi apparel ever ships for real, add a cotton-standard guard at product-type creation that reads `paperType`.

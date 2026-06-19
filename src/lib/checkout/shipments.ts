@@ -5,7 +5,7 @@
  */
 import { prisma } from "@/lib/db";
 import { getProviderByKey } from "@/lib/fulfillment";
-import { sendShipmentShippedEmail } from "@/lib/payments/email";
+import { applyFulfillmentTransition } from "@/lib/fulfillment/status";
 
 const MATERIAL_LABELS: Record<string, string> = { FAP: "Fine Art Paper", CAN: "Stretched Canvas" };
 
@@ -18,24 +18,30 @@ function printSummary(sku: string): string {
 
 /**
  * Aggregate buyer-facing status for a cart order: "Shipped" only once every
- * shipment has shipped, otherwise "Processing".
+ * shipment is shipped-or-beyond (SHIPPED or DELIVERED), otherwise "Processing".
  */
 export function aggregateOrderStatus(fulfillmentStatuses: string[]): "Processing" | "Shipped" {
-  if (fulfillmentStatuses.length > 0 && fulfillmentStatuses.every((s) => s === "SHIPPED")) {
+  if (fulfillmentStatuses.length > 0 && fulfillmentStatuses.every((s) => s === "SHIPPED" || s === "DELIVERED")) {
     return "Shipped";
   }
   return "Processing";
 }
 
 /**
- * Poll every placed-but-not-yet-shipped FulfillmentOrder for dispatch + tracking
- * via the provider's checkFulfillmentStatus(), mark shipped ones SHIPPED, and send
- * a per-shipment email. Scheduled reconciliation (daily cron) — not a per-request
- * call. Failure-isolated per shipment.
+ * Poll every in-flight FulfillmentOrder (placed, not yet terminal) for its current
+ * provider status via `checkFulfillmentStatus()`, and feed the canonical status
+ * through the shared transition seam (US-MFTF-14.2) — which applies the monotonic
+ * guard, persists tracking on SHIPPED, and fires the per-shipment lifecycle email
+ * exactly once. This is the Teemill detection path (polling) and also reconciles
+ * Prodigi; the Prodigi webhook path (US-MFTF-14.1) drives the SAME seam. Scheduled
+ * reconciliation (daily cron) — failure-isolated per shipment.
+ * TODO: replace Teemill polling with a webhook once the payload shape is confirmed live.
  */
 export async function checkAndSyncShipments(): Promise<{ checked: number; shipped: number }> {
   const fos = await prisma.fulfillmentOrder.findMany({
-    where: { status: "CONFIRMED", providerOrderId: { not: null } },
+    // Poll everything still in-flight (not terminal, not yet DELIVERED) so PRINTING,
+    // SHIPPED and DELIVERED transitions are all detected — not just the first ship.
+    where: { status: { in: ["CONFIRMED", "PRINTING", "SHIPPED"] }, providerOrderId: { not: null } },
     select: { id: true, provider: true, providerOrderId: true },
   });
 
@@ -43,17 +49,16 @@ export async function checkAndSyncShipments(): Promise<{ checked: number; shippe
   for (const fo of fos) {
     try {
       const provider = getProviderByKey(fo.provider);
-      const status = await provider.checkFulfillmentStatus({ provider: fo.provider, providerOrderId: fo.providerOrderId });
-      if (status.shipped && status.trackingNumber) {
-        await prisma.fulfillmentOrder.update({
-          where: { id: fo.id },
-          data: { status: "SHIPPED", trackingNumber: status.trackingNumber, carrier: status.carrier },
-        });
-        await sendShipmentShippedEmail(fo.id).catch((e) =>
-          console.error(`[shipments] shipped email failed for ${fo.id}`, e),
-        );
-        shipped++;
-      }
+      const result = await provider.checkFulfillmentStatus({ provider: fo.provider, providerOrderId: fo.providerOrderId });
+      // null = the raw provider status matched no known mapping → already logged a
+      // parse warning in the provider; never a silent transition.
+      const canonical = result.status ?? (result.shipped ? "SHIPPED" : null);
+      if (!canonical) continue;
+      const transition = await applyFulfillmentTransition(fo.id, canonical, {
+        trackingNumber: result.trackingNumber,
+        carrier: result.carrier,
+      });
+      if (transition.transitioned && transition.status === "SHIPPED") shipped++;
     } catch (err) {
       console.error(`[shipments] status check failed for ${fo.id}`, err);
     }

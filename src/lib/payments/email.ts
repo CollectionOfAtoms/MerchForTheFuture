@@ -307,6 +307,39 @@ export async function sendShippingNotificationEmail(orderId: string): Promise<vo
  * webhook).
  */
 export async function sendShipmentShippedEmail(fulfillmentOrderId: string): Promise<void> {
+  const ctx = await loadShipmentEmailContext(fulfillmentOrderId);
+  if (!ctx) return;
+
+  // Tracking number + carrier + a carrier-agnostic tracking link (US-MFTF-14.3).
+  const trackingLink =
+    ctx.trackingNumber ? `https://www.google.com/search?q=${encodeURIComponent(`${ctx.carrier ?? ""} ${ctx.trackingNumber}`.trim())}` : null;
+  const trackingInfo =
+    ctx.carrier && ctx.trackingNumber
+      ? `<p style="color:#78716c;font-size:14px">Carrier: ${escapeHtml(ctx.carrier)}<br/>Tracking: ${escapeHtml(ctx.trackingNumber)}${trackingLink ? `<br/><a href="${trackingLink}">Track this shipment →</a>` : ""}</p>`
+      : "";
+
+  await mailersend({
+    to: ctx.to,
+    subject: `${ctx.shipmentLabel} is on its way!`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1c1917">
+        <p style="font-size:18px;font-weight:600;margin-bottom:4px">${ctx.shipmentLabel} is on its way!</p>
+        <ul style="color:#78716c">${ctx.itemLines}</ul>
+        ${trackingInfo}
+        <a href="${ctx.orderUrl}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View order →</a>
+      </div>
+    `,
+  });
+}
+
+// ─── Per-shipment lifecycle notifications (US-MFTF-14.3) ──────────────────────
+
+/**
+ * Shared loader for the per-shipment lifecycle emails. Resolves the buyer, the
+ * "Shipment N of M" label (never a provider/dropshipper name), and that shipment's
+ * own items. Per US-MFTF-14.3 each email lists ONLY this shipment's items.
+ */
+async function loadShipmentEmailContext(fulfillmentOrderId: string) {
   const fo = await prisma.fulfillmentOrder.findUnique({
     where: { id: fulfillmentOrderId },
     include: {
@@ -314,7 +347,7 @@ export async function sendShipmentShippedEmail(fulfillmentOrderId: string): Prom
         select: {
           id: true,
           buyer: { select: { email: true } },
-          fulfillmentOrders: { select: { id: true } },
+          fulfillmentOrders: { orderBy: { createdAt: "asc" }, select: { id: true } },
         },
       },
       items: {
@@ -325,33 +358,52 @@ export async function sendShipmentShippedEmail(fulfillmentOrderId: string): Prom
       },
     },
   });
-  if (!fo) return;
+  if (!fo) return null;
 
   const total = fo.order.fulfillmentOrders.length;
   const index = fo.order.fulfillmentOrders.findIndex((f) => f.id === fo.id) + 1;
   const shipmentLabel = total > 1 ? `Shipment ${index} of ${total}` : "Your order";
-
   const itemLines = fo.items
     .map((it) => {
       const title = it.itemKind === "APPAREL" ? it.apparelListing?.title : it.originalListing?.artwork?.title;
-      return `<li>${title ?? "Item"} × ${it.quantity}</li>`;
+      return `<li>${escapeHtml(title ?? "Item")} × ${it.quantity}</li>`;
     })
     .join("");
+  const orderUrl = `${BASE_URL}/buyer/orders/${fo.order.id}`;
+  return { to: fo.order.buyer.email, shipmentLabel, itemLines, orderUrl, carrier: fo.carrier, trackingNumber: fo.trackingNumber };
+}
 
-  const trackingInfo =
-    fo.carrier && fo.trackingNumber
-      ? `<p style="color:#78716c;font-size:14px">Carrier: ${fo.carrier}<br/>Tracking: ${fo.trackingNumber}</p>`
-      : "";
-
+/** "Your order is being printed" (→ PRINTING transition, US-MFTF-14.3). */
+export async function sendShipmentPrintingEmail(fulfillmentOrderId: string): Promise<void> {
+  const ctx = await loadShipmentEmailContext(fulfillmentOrderId);
+  if (!ctx) return;
   await mailersend({
-    to: fo.order.buyer.email,
-    subject: `${shipmentLabel} has shipped`,
+    to: ctx.to,
+    subject: `${ctx.shipmentLabel} is being printed`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1c1917">
-        <p style="font-size:18px;font-weight:600;margin-bottom:4px">${shipmentLabel} is on its way</p>
-        <ul style="color:#78716c">${itemLines}</ul>
-        ${trackingInfo}
-        <a href="${BASE_URL}/buyer/orders/${fo.order.id}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View order →</a>
+        <p style="font-size:18px;font-weight:600;margin-bottom:4px">${ctx.shipmentLabel} is being printed</p>
+        <p style="color:#78716c;margin-top:0">Your order is being printed and will ship soon.</p>
+        <ul style="color:#78716c">${ctx.itemLines}</ul>
+        <a href="${ctx.orderUrl}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View your order →</a>
+      </div>
+    `,
+  });
+}
+
+/** "Your order has been delivered" (→ DELIVERED transition, US-MFTF-14.3). */
+export async function sendShipmentDeliveredEmail(fulfillmentOrderId: string): Promise<void> {
+  const ctx = await loadShipmentEmailContext(fulfillmentOrderId);
+  if (!ctx) return;
+  await mailersend({
+    to: ctx.to,
+    subject: `${ctx.shipmentLabel} has been delivered`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1c1917">
+        <p style="font-size:18px;font-weight:600;margin-bottom:4px">${ctx.shipmentLabel} has been delivered</p>
+        <p style="color:#78716c;margin-top:0">Your order has been delivered. We hope you love it!</p>
+        <ul style="color:#78716c">${ctx.itemLines}</ul>
+        <a href="${ctx.orderUrl}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View your order →</a>
       </div>
     `,
   });

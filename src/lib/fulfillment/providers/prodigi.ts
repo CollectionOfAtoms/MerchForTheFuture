@@ -173,7 +173,7 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
   }
 
   async checkFulfillmentStatus(q: FulfillmentStatusQuery): Promise<FulfillmentStatusResult> {
-    const none = { shipped: false, trackingNumber: null, carrier: null };
+    const none = { status: null, shipped: false, trackingNumber: null, carrier: null };
     if (!q.providerOrderId) return none;
     // Prodigi exposes shipment + tracking on the order; this is the same data its
     // webhook carries, so the status contract is identical to the webhook path.
@@ -188,10 +188,10 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
       };
     };
     const tracking = data.order?.shipments?.[0]?.tracking;
-    const stage = data.order?.status?.stage;
-    const dispatched = stage === 'Complete' || stage === 'Dispatched' || stage === 'Shipped';
+    const status = mapProdigiStageToStatus(data.order?.status?.stage);
     return {
-      shipped: dispatched && !!tracking?.number,
+      status,
+      shipped: status === 'SHIPPED',
       trackingNumber: tracking?.number ?? null,
       carrier: tracking?.carrier ?? null,
       raw: data as Record<string, unknown>,
@@ -240,4 +240,91 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
     };
   }
   // Prodigi is single-step — the base-class no-op confirmProviderOrder applies.
+}
+
+// ─── Status mapping (US-MFTF-14.2) ────────────────────────────────────────────
+// The provider owns its raw→canonical mapping so the provider vocabulary never
+// leaks into the shared transition logic (src/lib/fulfillment/status.ts).
+
+/**
+ * Map a Prodigi order `status.stage` (the polling/GET path) to the canonical
+ * `FulfillmentStatus`. Prodigi's stage vocabulary is coarse (Draft / InProgress /
+ * Complete / Cancelled) — `InProgress` is the production phase (canonical PROCESSING;
+ * Prodigi exposes no distinct "printing" stage on the GET), `Complete` means
+ * dispatched. An unrecognised stage returns `null` (a logged parse warning upstream,
+ * never a silent transition).
+ */
+export function mapProdigiStageToStatus(stage: string | undefined): FulfillmentStatus | null {
+  switch (stage) {
+    case 'Draft':
+    case 'InProgress':
+      return 'PROCESSING';
+    case 'Complete':
+    case 'Dispatched':
+    case 'Shipped':
+      return 'SHIPPED';
+    case 'Cancelled':
+      return 'CANCELLED';
+    default:
+      if (stage) console.warn(`[prodigi] unknown order stage "${stage}" — no transition`);
+      return null;
+  }
+}
+
+/**
+ * The enumerated set of Prodigi webhook event `type` values this platform handles
+ * (US-MFTF-14.1). Events outside this set are acknowledged 200 and ignored. Prodigi
+ * webhooks are CloudEvents-style `type` strings; the dispatch event carries tracking.
+ * // UNVERIFIED — exact event-type strings + payload field paths are taken from the
+ * Prodigi webhook docs (see docs/prodigi-api-notes.md → Webhooks) and must be
+ * confirmed against a live callback before 14.1 is promoted past reference status.
+ */
+export const HANDLED_PRODIGI_EVENTS = [
+  'com.prodigi.order.status.stage.changed#InProgress',
+  'com.prodigi.order.status.details.printStatus#Printing',
+  'com.prodigi.order.status.stage.changed#Complete',
+  'com.prodigi.order.shipments.shipment#Dispatched',
+  'com.prodigi.order.shipments.shipment#Delivered',
+  'com.prodigi.order.status.stage.changed#Cancelled',
+] as const;
+
+export interface ProdigiWebhookEvent {
+  type?: string;
+  data?: { order?: { id?: string; shipments?: Array<{ tracking?: { number?: string; carrier?: string } }> } };
+}
+
+export interface ParsedProviderCallback {
+  providerOrderId: string;
+  status: FulfillmentStatus;
+  trackingNumber: string | null;
+  carrier: string | null;
+}
+
+/**
+ * Parse a verified Prodigi webhook event into the provider-agnostic callback shape
+ * the shared transition seam consumes (US-MFTF-14.1 → 14.2). Returns `null` for any
+ * event type outside `HANDLED_PRODIGI_EVENTS` (caller acks 200 and ignores) or when
+ * the payload lacks an order id. The route itself contains no transition logic.
+ */
+export function mapProdigiEventToStatus(event: ProdigiWebhookEvent): ParsedProviderCallback | null {
+  const type = event.type ?? '';
+  if (!HANDLED_PRODIGI_EVENTS.includes(type as (typeof HANDLED_PRODIGI_EVENTS)[number])) return null;
+
+  const providerOrderId = event.data?.order?.id;
+  if (!providerOrderId) return null;
+
+  const tracking = event.data?.order?.shipments?.[0]?.tracking;
+  let status: FulfillmentStatus;
+  if (type.endsWith('#Cancelled')) status = 'CANCELLED';
+  else if (type.endsWith('#Delivered')) status = 'DELIVERED';
+  else if (type.endsWith('#Dispatched') || type.endsWith('stage.changed#Complete')) status = 'SHIPPED';
+  else if (type.startsWith('com.prodigi.order.status.details.printStatus')) status = 'PRINTING';
+  else status = 'PROCESSING'; // stage.changed#InProgress
+
+  return {
+    providerOrderId,
+    status,
+    trackingNumber: tracking?.number ?? null,
+    carrier: tracking?.carrier ?? null,
+  };
 }
