@@ -11,16 +11,14 @@ process.env.PRODIGI_WEBHOOK_SECRET = WEBHOOK_SECRET;
 
 const { POST } = await import("@/app/api/webhooks/prodigi/route");
 
-function sign(body: string): string {
-  return crypto.createHmac("sha256", WEBHOOK_SECRET).update(body, "utf8").digest("hex");
-}
-
-function postEvent(event: unknown, opts: { signature?: string } = {}): Promise<Response> {
+// Prodigi does not sign callbacks — the endpoint is secured by a shared secret token
+// embedded in the registered callback URL (?token=…). See the route's AUTH MODEL note.
+function postEvent(event: unknown, opts: { token?: string } = {}): Promise<Response> {
   const body = JSON.stringify(event);
-  const signature = opts.signature ?? sign(body);
-  return POST(new Request("https://example.com/api/webhooks/prodigi", {
+  const token = opts.token ?? WEBHOOK_SECRET;
+  return POST(new Request(`https://example.com/api/webhooks/prodigi?token=${encodeURIComponent(token)}`, {
     method: "POST",
-    headers: { "content-type": "application/json", "prodigi-signature": signature },
+    headers: { "content-type": "application/json" },
     body,
   }));
 }
@@ -77,9 +75,9 @@ describe("US-MFTF-14.1 — Prodigi webhook endpoint & verification", () => {
     expect(row!.carrier).toBe("FedEx");
   });
 
-  it("rejects an invalid signature → 401 and does not process", async () => {
+  it("rejects an invalid/missing token → 401 and does not process", async () => {
     const fo = await seedProdigiFo("ord-1");
-    const res = await postEvent(dispatchEvent("ord-1"), { signature: "deadbeef" });
+    const res = await postEvent(dispatchEvent("ord-1"), { token: "wrong-token" });
     expect(res.status).toBe(401);
     expect((await prisma.fulfillmentOrder.findUnique({ where: { id: fo.id } }))!.status).toBe("CONFIRMED");
   });

@@ -106,15 +106,21 @@ Response `{ "order": { "status": { "stage": "..." }, "shipments": [{ "tracking":
 
 Prodigi supports order-status webhooks (CloudEvents-style callbacks), so unlike Teemill it is on
 the **webhook** path, not polling. The route is `POST /api/webhooks/prodigi`
-(`src/app/api/webhooks/prodigi/route.ts`). **Everything in this section is `// UNVERIFIED`** —
-captured from Prodigi's webhook docs but not yet confirmed against a live callback (this account
-has had no live webhook delivery). Confirm and tighten on the first real dispatch.
+(`src/app/api/webhooks/prodigi/route.ts`). The auth model is **confirmed** (2026-06-19); the event
+names + payload field paths are still `// UNVERIFIED` (no live callback delivered to this account
+yet) — confirm and tighten on the first real dispatch.
 
-- **Authenticity:** the route verifies an **HMAC-SHA256 hex digest of the raw request body**,
-  keyed by `PRODIGI_WEBHOOK_SECRET`, compared timing-safely to the `prodigi-signature` request
-  header. A missing secret/signature or a mismatch → **401, not processed**. // UNVERIFIED: the
-  exact header name and signing scheme — adjust `verifyProdigiSignature` once Prodigi's real
-  mechanism is confirmed.
+- **Authenticity (CONFIRMED 2026-06-19):** Prodigi does **not** sign callback payloads and does
+  **not** issue a signing secret. You only register a callback URL — globally in the Prodigi
+  dashboard (Settings → callback URL) or per-order via the order object's `callbackUrl` — and the
+  body arrives as an **unsigned CloudEvents** payload (no signature header). The supported way to
+  secure it is a shared secret **you** generate, embedded as a `?token=` query param on the
+  registered URL. Register e.g.
+  `https://merchforthefuture.quest/api/webhooks/prodigi?token=<PRODIGI_WEBHOOK_SECRET>`; the route
+  (`verifyProdigiToken`) timing-safely compares `?token` to `PRODIGI_WEBHOOK_SECRET` and returns
+  **401** on any mismatch or missing secret. Defence in depth: past the token, only enumerated
+  event types act and the order must resolve by `providerOrderId`. (Prodigi support is the source
+  if a stronger mechanism is ever offered; as of this date none is — see Prodigi callback docs.)
 - **Handled event types** (the enumerated set in `HANDLED_PRODIGI_EVENTS`,
   `src/lib/fulfillment/providers/prodigi.ts`). Anything outside this set is acknowledged **200 and
   ignored** (no transition), so unexpected events never retry-storm:

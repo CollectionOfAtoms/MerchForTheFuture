@@ -5,10 +5,18 @@ import { mapProdigiEventToStatus, type ProdigiWebhookEvent } from "@/lib/fulfill
 import { applyFulfillmentTransition } from "@/lib/fulfillment/status";
 
 // Prodigi provider-status webhook (US-MFTF-14.1). Public endpoint — there is no auth
-// session; the request body is UNTRUSTED and MUST be verified against Prodigi's
-// signature before any processing. Verified events are parsed into a provider-agnostic
-// shape and handed to the shared transition seam (US-MFTF-14.2); this route contains
-// no status-transition logic of its own.
+// session; the request is UNTRUSTED and MUST be authenticated before any processing.
+//
+// AUTH MODEL (confirmed against Prodigi's callback docs, 2026-06-19): Prodigi does NOT
+// sign callback payloads and does NOT issue a signing secret — you only register a
+// callback URL (globally in the dashboard, or per-order via `callbackUrl`), and the
+// body is an unsigned CloudEvents payload. The supported way to secure it is therefore
+// a shared secret YOU choose, embedded as a `?token=` query param in the registered
+// URL; this route rejects any request whose token doesn't match PRODIGI_WEBHOOK_SECRET.
+// Defence in depth: even past the token, only enumerated event types act, and the
+// order must resolve by providerOrderId. Verified events are parsed into a provider-
+// agnostic shape and handed to the shared transition seam (US-MFTF-14.2); this route
+// contains no status-transition logic of its own.
 //
 // NOTE: there is intentionally NO Teemill webhook route — Teemill webhook support is
 // unverified, so its status detection stays on polling (GET /orders/{ref}, the daily
@@ -16,27 +24,25 @@ import { applyFulfillmentTransition } from "@/lib/fulfillment/status";
 // TODO: replace Teemill polling with a webhook once the payload shape is confirmed live.
 
 /**
- * Verify the Prodigi webhook signature over the raw request body.
- * // UNVERIFIED: exact header name + scheme — assumed HMAC-SHA256 hex digest of the
- * raw body keyed by PRODIGI_WEBHOOK_SECRET (documented in docs/prodigi-api-notes.md →
- * Webhooks). Compared timing-safely; a missing secret or signature fails closed.
+ * Authenticate a Prodigi callback by the shared secret token embedded in the
+ * registered callback URL (`?token=<PRODIGI_WEBHOOK_SECRET>`). Compared timing-safely;
+ * a missing secret or token fails closed (401).
  */
-function verifyProdigiSignature(rawBody: string, signature: string | null): boolean {
+function verifyProdigiToken(request: Request): boolean {
   const secret = process.env.PRODIGI_WEBHOOK_SECRET ?? "";
-  if (!secret || !signature) return false;
-  const expected = crypto.createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
-  const provided = Buffer.from(signature);
-  const computed = Buffer.from(expected);
-  return provided.length === computed.length && crypto.timingSafeEqual(provided, computed);
+  if (!secret) return false;
+  const token = new URL(request.url).searchParams.get("token") ?? "";
+  const provided = Buffer.from(token);
+  const expected = Buffer.from(secret);
+  return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
 }
 
 export async function POST(request: Request) {
-  const rawBody = await request.text();
-  const signature = request.headers.get("prodigi-signature");
-
-  if (!verifyProdigiSignature(rawBody, signature)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  if (!verifyProdigiToken(request)) {
+    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
+
+  const rawBody = await request.text();
 
   let event: ProdigiWebhookEvent;
   try {
