@@ -73,8 +73,10 @@ async function main() {
 
   const curl = (type: string, extra = "") =>
     `curl -k -X POST '${base}/api/webhooks/prodigi?token=${prodigiToken}' -H 'content-type: application/json' -d '{"type":"${type}","data":{"order":{"id":"${prodigiOrderId}"${extra}}}}'`;
-  const advance = (status: string, args = "") =>
-    `npx tsx --env-file=.env.local scripts/advance-shipment.ts ${teemillFo.id} ${status}${args}`;
+  // Teemill has no webhook — simulate a poll by feeding a RAW Teemill status word
+  // through the real raw→canonical mapping (what the daily cron does after GET /orders).
+  const poll = (rawStatus: string, args = "") =>
+    `npx tsx --env-file=.env.local scripts/simulate-teemill-poll.ts ${teemillFo.id} ${rawStatus}${args}`;
 
   console.log(`\n✅ Seeded a 2-shipment order under ${email}`);
   console.log(`   Buyer order page: ${base}/buyer/orders/${order.id}   (log in as ${email})`);
@@ -86,10 +88,10 @@ async function main() {
   console.log("# → SHIPPED (with tracking)\n" + curl("com.prodigi.order.shipments.shipment#Dispatched", `,"shipments":[{"tracking":{"number":"PG-TRACK-9","carrier":"FedEx"}}]`) + "\n");
   console.log("# → DELIVERED\n" + curl("com.prodigi.order.shipments.shipment#Delivered") + "\n");
 
-  console.log("── Drive Shipment 1 (polling path — no webhook; this simulates the daily cron) ──\n");
-  console.log("# → PRINTING\n" + advance("PRINTING") + "\n");
-  console.log("# → SHIPPED (with tracking)\n" + advance("SHIPPED", ` TM-TRACK-77 "Royal Mail"`) + "\n");
-  console.log("# → DELIVERED\n" + advance("DELIVERED") + "\n");
+  console.log("── Drive Shipment 1 (polling path — no webhook; this simulates the daily cron polling Teemill) ──\n");
+  console.log("# → PRINTING   (raw Teemill status \"printing\")\n" + poll("printing") + "\n");
+  console.log("# → SHIPPED    (raw \"dispatched\" + tracking)\n" + poll("dispatched", ` TM-TRACK-77 "Royal Mail"`) + "\n");
+  console.log("# → DELIVERED  (raw \"delivered\")\n" + poll("delivered") + "\n");
 
   console.log("Notes:");
   console.log("  • Each shipment emits its OWN emails labelled \"Shipment 1 of 2\" / \"Shipment 2 of 2\", with that shipment's items + thumbnails.");
