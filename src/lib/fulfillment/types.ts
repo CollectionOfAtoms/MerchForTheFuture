@@ -99,6 +99,13 @@ export interface FulfillmentJob {
   contact?: { email?: string; phone?: string };
   /** Chosen shipping method id, when known from the checkout-time quote. */
   shippingMethod?: string;
+  /**
+   * Per-order status-callback URL (US-MFTF-14.1). Providers that support per-order
+   * webhooks (Prodigi's `callbackUrl`) register this so each shipment's status flows
+   * back to a unique, secret-bearing address; the host self-addresses per environment.
+   * Providers without webhook support (Teemill) ignore it.
+   */
+  callbackUrl?: string;
 }
 
 /** Identifies a placed fulfillment order for a status check (12.6). */
@@ -107,8 +114,16 @@ export interface FulfillmentStatusQuery {
   providerOrderId: string | null;
 }
 
-/** Result of polling/receiving a provider's shipment status (12.6). */
+/** Result of polling/receiving a provider's shipment status (12.6 / 14.2). */
 export interface FulfillmentStatusResult {
+  /**
+   * The provider's raw status mapped to the canonical `FulfillmentStatus` set
+   * (US-MFTF-14.2). `null` means the raw status matched no known mapping — a
+   * logged parse warning, never a silent transition. The mapping lives inside the
+   * provider subclass so provider vocabulary never leaks into shared transition
+   * logic. Back-compat: `shipped` remains the boolean projection of `SHIPPED`.
+   */
+  status?: FulfillmentStatus | null;
   shipped: boolean;
   trackingNumber: string | null;
   carrier: string | null;

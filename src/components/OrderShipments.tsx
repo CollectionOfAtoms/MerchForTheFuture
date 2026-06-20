@@ -4,7 +4,10 @@ const STATUS_COPY: Record<string, { label: string; cls: string }> = {
   PENDING: { label: "Preparing", cls: "bg-stone-100 text-stone-600" },
   SUBMITTED: { label: "Preparing", cls: "bg-stone-100 text-stone-600" },
   CONFIRMED: { label: "In production", cls: "bg-amber-50 text-amber-700" },
+  PRINTING: { label: "Being printed", cls: "bg-amber-50 text-amber-700" },
   SHIPPED: { label: "Shipped", cls: "bg-emerald-50 text-emerald-700" },
+  DELIVERED: { label: "Delivered", cls: "bg-emerald-50 text-emerald-700" },
+  CANCELLED: { label: "Cancelled", cls: "bg-stone-100 text-stone-600" },
   FAILED: { label: "Delayed", cls: "bg-stone-100 text-stone-600" },
 };
 
@@ -15,7 +18,7 @@ const STATUS_COPY: Record<string, { label: string; cls: string }> = {
  */
 export default function OrderShipments({ view }: { view: OrderShipmentsView }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="order-shipments">
       {view.shipments.map((s) => {
         const status = STATUS_COPY[s.status] ?? { label: "Processing", cls: "bg-stone-100 text-stone-600" };
         return (

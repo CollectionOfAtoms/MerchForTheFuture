@@ -307,6 +307,39 @@ export async function sendShippingNotificationEmail(orderId: string): Promise<vo
  * webhook).
  */
 export async function sendShipmentShippedEmail(fulfillmentOrderId: string): Promise<void> {
+  const ctx = await loadShipmentEmailContext(fulfillmentOrderId);
+  if (!ctx) return;
+
+  // Tracking number + carrier + a carrier-agnostic tracking link (US-MFTF-14.3).
+  const trackingLink =
+    ctx.trackingNumber ? `https://www.google.com/search?q=${encodeURIComponent(`${ctx.carrier ?? ""} ${ctx.trackingNumber}`.trim())}` : null;
+  const trackingInfo =
+    ctx.carrier && ctx.trackingNumber
+      ? `<p style="color:#78716c;font-size:14px">Carrier: ${escapeHtml(ctx.carrier)}<br/>Tracking: ${escapeHtml(ctx.trackingNumber)}${trackingLink ? `<br/><a href="${trackingLink}">Track this shipment →</a>` : ""}</p>`
+      : "";
+
+  await mailersend({
+    to: ctx.to,
+    subject: `${ctx.shipmentLabel} is on its way!`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1c1917">
+        <p style="font-size:18px;font-weight:600;margin-bottom:4px">${ctx.shipmentLabel} is on its way!</p>
+        <table style="width:100%;border-collapse:collapse;margin:12px 0">${ctx.itemsHtml}</table>
+        ${trackingInfo}
+        <a href="${ctx.orderUrl}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View order →</a>
+      </div>
+    `,
+  });
+}
+
+// ─── Per-shipment lifecycle notifications (US-MFTF-14.3) ──────────────────────
+
+/**
+ * Shared loader for the per-shipment lifecycle emails. Resolves the buyer, the
+ * "Shipment N of M" label (never a provider/dropshipper name), and that shipment's
+ * own items. Per US-MFTF-14.3 each email lists ONLY this shipment's items.
+ */
+async function loadShipmentEmailContext(fulfillmentOrderId: string) {
   const fo = await prisma.fulfillmentOrder.findUnique({
     where: { id: fulfillmentOrderId },
     include: {
@@ -314,44 +347,103 @@ export async function sendShipmentShippedEmail(fulfillmentOrderId: string): Prom
         select: {
           id: true,
           buyer: { select: { email: true } },
-          fulfillmentOrders: { select: { id: true } },
+          fulfillmentOrders: { orderBy: { createdAt: "asc" }, select: { id: true } },
         },
       },
       items: {
         include: {
-          apparelListing: { select: { title: true } },
-          originalListing: { select: { artwork: { select: { title: true } } } },
+          apparelListing: {
+            select: {
+              title: true,
+              // Our own watermarked lifestyle photos (Vercel Blob). We deliberately do
+              // NOT fall back to the provider mockup URL here: those are hosted on the
+              // dropshipper's domain (e.g. teemill.com) and would leak the provider into
+              // a buyer email, breaking the US-MFTF-14.3 buyer-opacity guarantee. A
+              // referenced listing with no uploaded photo simply shows no thumbnail.
+              images: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 1 },
+            },
+          },
+          originalListing: {
+            select: {
+              artwork: { select: { title: true, images: { orderBy: [{ isPrimary: "desc" }, { order: "asc" }], take: 1 } } },
+            },
+          },
         },
       },
     },
   });
-  if (!fo) return;
+  if (!fo) return null;
 
   const total = fo.order.fulfillmentOrders.length;
   const index = fo.order.fulfillmentOrders.findIndex((f) => f.id === fo.id) + 1;
   const shipmentLabel = total > 1 ? `Shipment ${index} of ${total}` : "Your order";
 
-  const itemLines = fo.items
+  // One row per item: thumbnail + title + selection (colour · size / material · size)
+  // + qty, so the buyer can identify exactly what's in this shipment. Provider names
+  // never appear; thumbnails are our-domain images only (see the include note above).
+  const itemsHtml = fo.items
     .map((it) => {
-      const title = it.itemKind === "APPAREL" ? it.apparelListing?.title : it.originalListing?.artwork?.title;
-      return `<li>${title ?? "Item"} × ${it.quantity}</li>`;
+      let title: string;
+      let thumb: string | null;
+      let selection: string;
+      if (it.itemKind === "APPAREL") {
+        const l = it.apparelListing;
+        const sel = it.selection as { colorId?: string; sizeLabel?: string };
+        const img = l?.images[0];
+        thumb = img?.gridUrl ?? img?.displayUrl ?? img?.originalUrl ?? null;
+        title = l?.title ?? "Apparel";
+        selection = [sel.colorId, sel.sizeLabel].filter(Boolean).join(" · ");
+      } else {
+        const a = it.originalListing?.artwork;
+        const sel = it.selection as { prodigiSku?: string };
+        const img = a?.images[0];
+        thumb = img?.gridUrl ?? img?.displayUrl ?? img?.url ?? null;
+        title = a?.title ?? "Print";
+        selection = printSelectionSummary(sel.prodigiSku ?? "");
+      }
+      return `
+      <tr>
+        <td style="padding:8px 0;width:56px">${thumb ? `<img src="${thumb}" alt="" width="48" height="48" style="width:48px;height:48px;border-radius:8px;object-fit:cover;background:#f5f5f4" />` : ""}</td>
+        <td style="padding:8px 8px;font-size:14px;color:#1c1917">${escapeHtml(title)}${selection ? `<br/><span style="color:#78716c;font-size:12px">${escapeHtml(selection)}</span>` : ""}<br/><span style="color:#78716c;font-size:12px">Qty ${it.quantity}</span></td>
+      </tr>`;
     })
     .join("");
 
-  const trackingInfo =
-    fo.carrier && fo.trackingNumber
-      ? `<p style="color:#78716c;font-size:14px">Carrier: ${fo.carrier}<br/>Tracking: ${fo.trackingNumber}</p>`
-      : "";
+  const orderUrl = `${BASE_URL}/buyer/orders/${fo.order.id}`;
+  return { to: fo.order.buyer.email, shipmentLabel, itemsHtml, orderUrl, carrier: fo.carrier, trackingNumber: fo.trackingNumber };
+}
 
+/** "Your order is being printed" (→ PRINTING transition, US-MFTF-14.3). */
+export async function sendShipmentPrintingEmail(fulfillmentOrderId: string): Promise<void> {
+  const ctx = await loadShipmentEmailContext(fulfillmentOrderId);
+  if (!ctx) return;
   await mailersend({
-    to: fo.order.buyer.email,
-    subject: `${shipmentLabel} has shipped`,
+    to: ctx.to,
+    subject: `${ctx.shipmentLabel} is being printed`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1c1917">
-        <p style="font-size:18px;font-weight:600;margin-bottom:4px">${shipmentLabel} is on its way</p>
-        <ul style="color:#78716c">${itemLines}</ul>
-        ${trackingInfo}
-        <a href="${BASE_URL}/buyer/orders/${fo.order.id}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View order →</a>
+        <p style="font-size:18px;font-weight:600;margin-bottom:4px">${ctx.shipmentLabel} is being printed</p>
+        <p style="color:#78716c;margin-top:0">Your order is being printed and will ship soon.</p>
+        <table style="width:100%;border-collapse:collapse;margin:12px 0">${ctx.itemsHtml}</table>
+        <a href="${ctx.orderUrl}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View your order →</a>
+      </div>
+    `,
+  });
+}
+
+/** "Your order has been delivered" (→ DELIVERED transition, US-MFTF-14.3). */
+export async function sendShipmentDeliveredEmail(fulfillmentOrderId: string): Promise<void> {
+  const ctx = await loadShipmentEmailContext(fulfillmentOrderId);
+  if (!ctx) return;
+  await mailersend({
+    to: ctx.to,
+    subject: `${ctx.shipmentLabel} has been delivered`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1c1917">
+        <p style="font-size:18px;font-weight:600;margin-bottom:4px">${ctx.shipmentLabel} has been delivered</p>
+        <p style="color:#78716c;margin-top:0">Your order has been delivered. We hope you love it!</p>
+        <table style="width:100%;border-collapse:collapse;margin:12px 0">${ctx.itemsHtml}</table>
+        <a href="${ctx.orderUrl}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500">View your order →</a>
       </div>
     `,
   });

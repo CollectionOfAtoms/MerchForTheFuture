@@ -188,6 +188,17 @@
       "notes": "Reported 2026-06-03. Portrait (tall/narrow) images come out rotated 90\u00b0 in generated variants (display, grid, thumbnail). Fix 1: add .rotate() as first call in the normalizedBuffer Sharp pipeline (src/lib/artworks/variants.ts). Fix 2: use timestamped filenames for variant blobs so each generation produces a unique URL, defeating Vercel CDN and browser caching of the old rotated variants."
     },
     {
+      "id": "CHORE-18",
+      "epic": "Infrastructure",
+      "title": "Integrate Playwright real-browser E2E + visual snapshots",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-20",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-20",
+      "testPassedCommit": "pending",
+      "notes": "Stood up the real-browser E2E layer the founder wanted (jsdom/unit tests miss visual bugs). Fixed the stale playwright.config.ts (was http:// while the dev server is HTTPS): baseURL now follows NEXT_PUBLIC_BASE_URL (the app canonicalises host to it, so targeting localhost caused a cross-host redirect that broke the auth cookie), ignoreHTTPSErrors for the mkcert cert, a 'setup' project that signs in via the real form and saves storageState, serial workers (specs seed shared DB). First spec __tests__/e2e/buyer-order.spec.ts drives a seeded two-shipment cart order (Teemill apparel + Prodigi print) through the buyer order page and asserts both shipments render, tracking shows on SHIPPED, no provider names leak, and the rollup stays Processing until both ship — with 3 committed visual-snapshot baselines (shipments-processing/one-shipped/delivered). DB seed/verify runs in a tsx subprocess (__tests__/e2e/helpers/seed-cli.ts) because Playwright's ESM transform can't load the CommonJS generated Prisma client; helpers/db.ts shells out to it. Added tsx as a devDependency (was only resolved via npx). data-testid='order-shipments' added to OrderShipments for a stable locator. .gitignore excludes /test-results, /playwright-report, __tests__/e2e/.auth (storageState); snapshot baselines ARE committed. Run: npx playwright test (reuses a running dev server; first run on a new OS regenerates baselines via --update-snapshots). Vitest+MSW remains the logic layer; these add the visual/browser layer. Companion manual dev tooling: scripts/demo-mixed-order.ts (seeds a mixed Prodigi+Teemill order), scripts/advance-shipment.ts (drive any shipment by canonical status via the seam), and scripts/simulate-teemill-poll.ts (faithfully simulate a Teemill poll: raw Teemill status word → mapTeemillStatusToCanonical → transition+email, the symmetric counterpart to the Prodigi webhook curls). The demo drives the Teemill shipment via simulate-teemill-poll and the Prodigi shipment via webhook curls."
+    },
+    {
       "id": "CHORE-13",
       "epic": "Infrastructure",
       "title": "Fix Vercel TypeScript build error on requestPasswordResetAction",
@@ -1951,33 +1962,40 @@
     },
     {
       "id": "US-MFTF-14.1",
+      "epic": "Epic MFTF-14: Provider Webhooks, Status Mapping & Lifecycle Emails",
       "title": "Provider Webhook Endpoint & Verification",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-19",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-19",
+      "testPassedCommit": "pending",
+      "notes": "Prodigi webhook route POST /api/webhooks/prodigi (src/app/api/webhooks/prodigi/route.ts). Public (no auth session); UNTRUSTED request authenticated before processing. AUTH MODEL CONFIRMED 2026-06-19 against Prodigi callback docs: Prodigi does NOT sign payloads and issues NO secret — you only register a callback URL and the body is unsigned CloudEvents. Secured by a PER-ORDER token (2026-06-20): at fan-out each Prodigi FulfillmentOrder mints an unguessable webhookToken and registers ${NEXT_PUBLIC_BASE_URL}/api/webhooks/prodigi?token=<webhookToken> as the order's callbackUrl; the route resolves the shipment by webhookToken alone (findFirst provider=prodigi+webhookToken) — a token matching no shipment → 401. No global dashboard URL, no shared-secret env var. Wins: leaked token = one order only; each environment self-addresses its own callbacks. Defence in depth: only enumerated events act. Schema: added FulfillmentOrder.webhookToken (String? @unique); db push to main+test. Handled event types are an enumerated constant HANDLED_PRODIGI_EVENTS (src/lib/fulfillment/providers/prodigi.ts); events outside the set are acked 200 + ignored (no transition, no retry-storm). Verified events are parsed by mapProdigiEventToStatus into the provider-agnostic {providerOrderId,status,tracking} shape and handed to the shared seam applyFulfillmentTransition (US-MFTF-14.2) — the route itself contains NO transition logic. Idempotent (replayed event → single transition via the seam's guarded write). NO Teemill webhook route — Teemill webhook support is unverified, so it stays on polling (GET /orders/{ref}); the '// TODO: replace Teemill polling with webhook once payload shape is confirmed live' marker is retained. 4 tests (valid sig → 200 + FO transitioned; invalid sig → 401 no-op; unknown event → 200 ignored; replay → single transition+email). // UNVERIFIED (no live callback this session): exact Prodigi signature header/scheme + event-type strings + payload field paths — documented in docs/prodigi-api-notes.md → Webhooks; confirm on first live dispatch. Env: PRODIGI_WEBHOOK_SECRET."
     },
     {
       "id": "US-MFTF-14.2",
+      "epic": "Epic MFTF-14: Provider Webhooks, Status Mapping & Lifecycle Emails",
       "title": "Provider Status \u2192 Canonical FulfillmentOrder Mapping",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-19",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-19",
+      "testPassedCommit": "pending",
+      "notes": "Canonical mapping + the single FulfillmentOrder transition seam (src/lib/fulfillment/status.ts). SCHEMA: extended the FulfillmentOrderStatus enum to align with the canonical FulfillmentStatus set (US-MFTF-3.1) \u2014 added PRINTING, DELIVERED, CANCELLED (CONFIRMED reused as the PROCESSING base, FAILED == canonical ERROR); no new enum, no new table. prisma generate + db push to main + test DBs. Each provider owns its raw\u2192canonical mapping inside the subclass so vocabulary never leaks: ProdigiFulfillmentProvider.checkFulfillmentStatus maps order.status.stage (mapProdigiStageToStatus: InProgress\u2192PROCESSING, Complete/Dispatched\u2192SHIPPED, Cancelled\u2192CANCELLED, unknown\u2192null+warn); TeemillFulfillmentProvider via mapTeemillStatusToCanonical (// UNVERIFIED raw values). FulfillmentStatusResult gained an optional canonical `status` field (additive; 12.1 fake unaffected). applyFulfillmentTransition(foId, canonical, {tracking}) is the ONE seam both paths use: canonicalToDbStatus reconciles; MONOTONIC forward guard (PENDING<SUBMITTED<CONFIRMED<PRINTING<SHIPPED<DELIVERED) \u2014 a stale earlier-status callback is logged + ignored (no regress); CANCELLED/FAILED are always-allowed terminal transitions from any non-terminal state and absorbing once terminal; unknown provider status = null = logged parse warning, NO transition. SHIPPED persists tracking+carrier. IDEMPOTENT via a guarded updateMany keyed on current status (count===1 = this call transitioned), reusing the 12.5 'row status is the guard' guarantee. checkAndSyncShipments (12.6 polling cron) refactored to feed this seam (now flows PRINTING/DELIVERED too, not just SHIPPED) \u2014 see founder flag below. aggregateOrderStatus treats DELIVERED as shipped-or-beyond; OrderShipments badge config gained PRINTING/DELIVERED/CANCELLED. 10 tests (canonical reconciliation, per-provider mapping incl. unknown\u2192null+warn, monotonic no-regress, idempotency, terminal rules, Prodigi-poll + Teemill-poll drive identical transitions). FOUNDER FLAG: this rewired the US-MFTF-12.6 reconciliation code path \u2014 12.6 status intentionally NOT changed (stays 'Tests Passing \u2014 pending live confirmation'; its flip is the founder's call after the live proofing order)."
     },
     {
       "id": "US-MFTF-14.3",
+      "epic": "Epic MFTF-14: Provider Webhooks, Status Mapping & Lifecycle Emails",
       "title": "Buyer Lifecycle Emails on Each Transition",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-19",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-19",
+      "testPassedCommit": "pending",
+      "notes": "Per-shipment buyer emails fired from applyFulfillmentTransition (US-MFTF-14.2) on transition INTO PRINTING/SHIPPED/DELIVERED (src/lib/payments/email.ts). Added sendShipmentPrintingEmail ('…is being printed') and sendShipmentDeliveredEmail ('…has been delivered'); sendShipmentShippedEmail refactored to share loadShipmentEmailContext and now subjects 'Shipment N of M is on its way!' with tracking number + carrier + a tracking link. Each email lists ONLY that shipment's items and labels it 'Shipment N of M' (single-shipment → 'Your order') — provider/dropshipper names NEVER appear. EXACTLY ONCE per transition: the seam's guarded write means the email only fires when count===1, so a replayed webhook/poll → at most one email per transition (idempotency reuses US-MFTF-12.5). The trigger path is identical whether detected via Prodigi webhook or Teemill polling. ON MAILERSEND FAILURE: the email is awaited with .catch → logged; the status transition is ALREADY persisted and is NEVER rolled back (order state is the source of truth). Automatic re-send is DEFERRED (project-description.md → Open Questions → 'Lifecycle email retry') — no test asserts a re-send. No 'order received' email here (covered by the post-checkout confirmation US-4.5/21.2/12.6). 6 tests (one email per transition w/ correct subject + tracking; no provider names; replayed SHIPPED → one email; two-shipment order → independent 'Shipment 1/2 of 2' emails; MailerSend 500 → transition persisted + failure logged, no re-send; per-item thumbnail+title+selection rendered). ENHANCEMENT (2026-06-20, founder-requested): each lifecycle email now renders a per-item row (thumbnail + title + colour·size/material·size + qty) so buyers can identify the products. Thumbnails are sourced ONLY from our own uploaded images (ApparelListingImage/ArtworkImage on Vercel Blob) — the provider mockup URL fallback is deliberately NOT used because those are hosted on the dropshipper domain (e.g. teemill.com) and would leak the provider into a buyer email, violating buyer-opacity; a referenced listing with no uploaded photo shows no thumbnail. Test asserts the our-domain thumbnail renders and the provider mockup URL does not."
     },
     {
       "id": "US-MFTF-15.1",
+      "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
       "title": "Seller Originals Fulfillment Queue",
       "status": "Not Started",
       "testWrittenDate": null,
@@ -1987,6 +2005,7 @@
     },
     {
       "id": "US-MFTF-15.2",
+      "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
       "title": "Admin Dropship Exception Queue",
       "status": "Not Started",
       "testWrittenDate": null,
@@ -1996,6 +2015,7 @@
     },
     {
       "id": "US-MFTF-15.3",
+      "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
       "title": "Buyer Fulfillment Page Status Source Alignment",
       "status": "Not Started",
       "testWrittenDate": null,
@@ -2005,6 +2025,7 @@
     },
     {
       "id": "US-MFTF-16.1",
+      "epic": "Epic MFTF-16: Storefront & Catalog Corrections",
       "title": "Remove Teemill from Designed-Mode Provider Picker",
       "status": "Not Started",
       "testWrittenDate": null,
@@ -2014,6 +2035,7 @@
     },
     {
       "id": "US-MFTF-16.2",
+      "epic": "Epic MFTF-16: Storefront & Catalog Corrections",
       "title": "Default First Color on Apparel Detail Page",
       "status": "Not Started",
       "testWrittenDate": null,
@@ -2023,6 +2045,7 @@
     },
     {
       "id": "US-MFTF-17.1",
+      "epic": "Epic MFTF-17: Printify Integration",
       "title": "Printify Provider Integration",
       "status": "Deferred",
       "testWrittenDate": null,
@@ -2032,6 +2055,7 @@
     },
     {
       "id": "US-MFTF-18.1",
+      "epic": "Epic MFTF-18: Printful Integration",
       "title": "Printful Provider Integration",
       "status": "Deferred",
       "testWrittenDate": null,
