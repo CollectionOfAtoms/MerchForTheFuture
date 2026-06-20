@@ -2019,11 +2019,12 @@
       "id": "US-MFTF-15.3",
       "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
       "title": "Buyer Fulfillment Page Status Source Alignment",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-20",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-20",
+      "testPassedCommit": "pending",
+      "notes": "Uniformity falls out of the US-MFTF-15.1 decision (originals carry a FulfillmentOrder). The buyer order page (src/app/(main)/buyer/orders/[orderId]/page.tsx) now renders the per-shipment OrderShipments layout whenever getOrderShipmentsView returns non-null (i.e. the order has FulfillmentOrders) instead of only listingType===CART — so a seller-shipped original and a webhook-shipped dropship shipment render through the SAME component with identical status/tracking UI; the buyer never sees who shipped or how status was detected. getOrderShipmentsView (src/lib/checkout/shipments.ts) now includes the parent order.originalListing.artwork and, for a FulfillmentOrder with zero OrderItems (an original), synthesizes a single ShipmentLine from the artwork title; single-shipment orders are labelled 'Your order' (matching the email loader). Legacy single PRINT orders (no FulfillmentOrder rows) keep the legacy single-item layout. No change to the buyer-locked access control (getOrderShipmentsView still scopes by buyerId; another buyer gets null). 4 tests in __tests__/mftf-15-seller-fulfillment/US-MFTF-15.3-buyer-status-source.test.ts (original status derives from the seller transition; no seller identity or 'originals' key leaks; a seller-shipped original and a webhook-shipped dropship render byte-identical status badge + tracking line via renderToStaticMarkup; access control unchanged)."
     },
     {
       "id": "US-MFTF-16.1",

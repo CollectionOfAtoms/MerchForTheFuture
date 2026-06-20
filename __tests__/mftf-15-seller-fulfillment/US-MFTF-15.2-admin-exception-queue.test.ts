@@ -22,7 +22,7 @@ function useProdigiOrderOk() {
   );
 }
 
-async function seedUser(roles: string[]) {
+async function seedUser(roles: Array<"BUYER" | "SELLER" | "ADMIN">) {
   return prisma.user.create({ data: { email: `u-${crypto.randomUUID()}@test.com`, name: "U", passwordHash: "x", roles } });
 }
 
