@@ -391,6 +391,11 @@ model FulfillmentOrder {
   shippingCost    Decimal                @default(0) @db.Decimal(12, 2)
   trackingNumber  String?
   carrier         String?
+  /// Unguessable per-shipment secret embedded in the provider's per-order callback
+  /// URL (US-MFTF-14.1). The Prodigi webhook authenticates AND resolves the shipment
+  /// from this token alone (?token=…), so a leaked token compromises one order only
+  /// and each environment self-addresses its own callbacks. Generated at fan-out.
+  webhookToken    String?                @unique
   notes           String?                @db.Text
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt

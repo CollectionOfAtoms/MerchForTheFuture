@@ -205,6 +205,9 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
       headers: { 'X-API-Key': this.apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         shippingMethod: job.shippingMethod ?? 'Standard',
+        // Per-order status webhook (US-MFTF-14.1). Prodigi POSTs status callbacks to
+        // this exact URL; the embedded token authenticates + resolves the shipment.
+        ...(job.callbackUrl ? { callbackUrl: job.callbackUrl } : {}),
         recipient: {
           name: shippingAddress.name,
           address: {

@@ -5,10 +5,18 @@
  * dispatch is idempotent per FulfillmentOrder (a provider order is never placed
  * twice). Reconciles the legacy print path through the same abstraction.
  */
+import crypto from "node:crypto";
 import { prisma } from "@/lib/db";
 import { getProviderByKey } from "@/lib/fulfillment";
 import { canonicalSizeLabel } from "@/lib/apparel/sizes";
 import type { FulfillmentJob, ShippingQuoteItem, FulfillmentShippingAddress } from "@/lib/fulfillment/types";
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://merchforthefuture.com";
+
+/** Per-shipment status-callback URL carrying an unguessable token (US-MFTF-14.1). */
+function webhookCallbackUrl(provider: string, token: string): string {
+  return `${BASE_URL}/api/webhooks/${provider}?token=${token}`;
+}
 
 const foInclude = {
   order: {
@@ -111,11 +119,25 @@ async function processFulfillmentOrder(fulfillmentOrderId: string): Promise<void
   // Idempotency guard — never place the same provider order twice.
   if (fo.providerOrderId) return;
 
+  // Per-order webhook callback (Prodigi only — Teemill has no webhook). Mint an
+  // unguessable token once and persist it; a retry reuses the same one so the
+  // callback URL is stable. The token both authenticates and resolves the shipment.
+  let callbackUrl: string | undefined;
+  if (fo.provider === "prodigi") {
+    let token = fo.webhookToken;
+    if (!token) {
+      token = crypto.randomBytes(24).toString("hex");
+      await prisma.fulfillmentOrder.update({ where: { id: fo.id }, data: { webhookToken: token } });
+    }
+    callbackUrl = webhookCallbackUrl("prodigi", token);
+  }
+
   const job: FulfillmentJob = {
     items: fo.items.map(toQuoteItem),
     shippingAddress: toAddress(fo.order),
     contact: { email: fo.order.buyer.email ?? "" },
     shippingMethod: fo.shippingMethod ?? undefined,
+    callbackUrl,
   };
 
   try {

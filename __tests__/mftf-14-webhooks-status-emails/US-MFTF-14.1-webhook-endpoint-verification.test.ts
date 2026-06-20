@@ -6,20 +6,19 @@ import { resetDatabase, prisma } from "../helpers/db";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-const WEBHOOK_SECRET = "test-prodigi-webhook-secret";
-process.env.PRODIGI_WEBHOOK_SECRET = WEBHOOK_SECRET;
-
 const { POST } = await import("@/app/api/webhooks/prodigi/route");
+const { dispatchOrderFulfillment } = await import("@/lib/checkout/fanout");
 
-// Prodigi does not sign callbacks — the endpoint is secured by a shared secret token
-// embedded in the registered callback URL (?token=…). See the route's AUTH MODEL note.
-function postEvent(event: unknown, opts: { token?: string } = {}): Promise<Response> {
-  const body = JSON.stringify(event);
-  const token = opts.token ?? WEBHOOK_SECRET;
+const PRODIGI_BASES = ["https://api.prodigi.com/v4.0", "https://api.sandbox.prodigi.com/v4.0"];
+
+// Prodigi does not sign callbacks — the endpoint is secured by an unguessable token
+// unique to each FulfillmentOrder, embedded in the per-order callback URL (?token=…)
+// registered at order creation. The token both authenticates and resolves the shipment.
+function postEvent(event: unknown, token: string): Promise<Response> {
   return POST(new Request(`https://example.com/api/webhooks/prodigi?token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body,
+    body: JSON.stringify(event),
   }));
 }
 
@@ -32,8 +31,9 @@ async function seedProdigiFo(providerOrderId: string, status = "CONFIRMED") {
   const order = await prisma.order.create({
     data: { buyerId: buyer.id, listingType: "CART", status: "PAID", subtotal: 32, totalAmount: 36, shippingCountry: "US" },
   });
+  const webhookToken = `tok-${crypto.randomUUID()}`;
   const fo = await prisma.fulfillmentOrder.create({
-    data: { orderId: order.id, provider: "prodigi", status: status as never, providerOrderId, shippingCost: 0 },
+    data: { orderId: order.id, provider: "prodigi", status: status as never, providerOrderId, webhookToken, shippingCost: 0 },
   });
   await prisma.orderItem.create({
     data: { orderId: order.id, itemKind: "APPAREL", apparelListingId: listing.id, selection: { colorId: "Evergreen", sizeLabel: "M" }, quantity: 1, unitPrice: 32, fulfillmentOrderId: fo.id },
@@ -58,16 +58,15 @@ describe("US-MFTF-14.1 — Prodigi webhook endpoint & verification", () => {
   beforeEach(async () => {
     await resetDatabase();
     vi.clearAllMocks();
-    process.env.PRODIGI_WEBHOOK_SECRET = WEBHOOK_SECRET;
   });
   afterEach(async () => {
     await resetDatabase();
   });
 
-  it("accepts a validly-signed dispatch event → 200 and transitions the FulfillmentOrder", async () => {
+  it("accepts an event on a valid per-order token → 200 and transitions the FulfillmentOrder", async () => {
     const fo = await seedProdigiFo("ord-1");
     countEmails();
-    const res = await postEvent(dispatchEvent("ord-1"));
+    const res = await postEvent(dispatchEvent("ord-1"), fo.webhookToken!);
     expect(res.status).toBe(200);
     const row = await prisma.fulfillmentOrder.findUnique({ where: { id: fo.id } });
     expect(row!.status).toBe("SHIPPED");
@@ -77,7 +76,7 @@ describe("US-MFTF-14.1 — Prodigi webhook endpoint & verification", () => {
 
   it("rejects an invalid/missing token → 401 and does not process", async () => {
     const fo = await seedProdigiFo("ord-1");
-    const res = await postEvent(dispatchEvent("ord-1"), { token: "wrong-token" });
+    const res = await postEvent(dispatchEvent("ord-1"), "wrong-token");
     expect(res.status).toBe(401);
     expect((await prisma.fulfillmentOrder.findUnique({ where: { id: fo.id } }))!.status).toBe("CONFIRMED");
   });
@@ -85,7 +84,7 @@ describe("US-MFTF-14.1 — Prodigi webhook endpoint & verification", () => {
   it("acknowledges an unknown event type with 200 and ignores it (no transition)", async () => {
     const fo = await seedProdigiFo("ord-1");
     const unknown = { type: "com.prodigi.order.something.unhandled#Whatever", data: { order: { id: "ord-1" } } };
-    const res = await postEvent(unknown);
+    const res = await postEvent(unknown, fo.webhookToken!);
     expect(res.status).toBe(200);
     expect((await prisma.fulfillmentOrder.findUnique({ where: { id: fo.id } }))!.status).toBe("CONFIRMED");
   });
@@ -93,9 +92,46 @@ describe("US-MFTF-14.1 — Prodigi webhook endpoint & verification", () => {
   it("is idempotent — a replayed dispatch event transitions (and emails) at most once", async () => {
     const fo = await seedProdigiFo("ord-1");
     const emails = countEmails();
-    await postEvent(dispatchEvent("ord-1"));
-    await postEvent(dispatchEvent("ord-1"));
+    await postEvent(dispatchEvent("ord-1"), fo.webhookToken!);
+    await postEvent(dispatchEvent("ord-1"), fo.webhookToken!);
     expect((await prisma.fulfillmentOrder.findUnique({ where: { id: fo.id } }))!.status).toBe("SHIPPED");
     expect(emails.get()).toBe(1);
+  });
+
+  it("fan-out mints a per-order token and registers it as the Prodigi callbackUrl; that token then drives the webhook end-to-end", async () => {
+    const buyer = await prisma.user.create({ data: { email: `u-${crypto.randomUUID()}@example.com`, roles: ["BUYER"] } });
+    const seller = await prisma.user.create({ data: { email: `s-${crypto.randomUUID()}@example.com`, roles: ["SELLER"] } });
+    const artwork = await prisma.artwork.create({ data: { sellerId: seller.id, title: "Sunrise", description: "x", status: "PUBLISHED" } });
+    const print = await prisma.originalListing.create({
+      data: { artworkId: artwork.id, saleType: "FIXED_PRICE", price: 100, status: "ACTIVE", availableForPrint: true, printSourceImageUrl: "https://b/p.png" },
+    });
+    const order = await prisma.order.create({
+      data: { buyerId: buyer.id, listingType: "CART", status: "PAID", subtotal: 40, totalAmount: 45, shippingName: "A", shippingLine1: "1 St", shippingCity: "NYC", shippingPostal: "10001", shippingCountry: "US" },
+    });
+    const fo = await prisma.fulfillmentOrder.create({ data: { orderId: order.id, provider: "prodigi", status: "PENDING", shippingCost: 4.99 } });
+    await prisma.orderItem.create({
+      data: { orderId: order.id, itemKind: "PRINT", listingId: print.id, selection: { prodigiSku: "GLOBAL-FAP-16X24", attributes: {}, quotedUnitPrice: 40 }, quantity: 1, unitPrice: 40, fulfillmentOrderId: fo.id },
+    });
+
+    // Capture the order body Prodigi receives at creation.
+    let captured: { callbackUrl?: string } | null = null;
+    server.use(...PRODIGI_BASES.map((b) => http.post(`${b}/orders`, async ({ request }) => {
+      captured = (await request.json()) as { callbackUrl?: string };
+      return HttpResponse.json({ outcome: "Created", order: { id: "ord-new", status: { stage: "InProgress" } } });
+    })));
+
+    await dispatchOrderFulfillment(order.id);
+
+    const placed = await prisma.fulfillmentOrder.findUnique({ where: { id: fo.id } });
+    expect(placed!.webhookToken).toBeTruthy();
+    expect(placed!.status).toBe("CONFIRMED");
+    expect(placed!.providerOrderId).toBe("ord-new");
+    expect(captured!.callbackUrl).toContain(`/api/webhooks/prodigi?token=${placed!.webhookToken}`);
+
+    // The registered token authenticates a real callback to that exact shipment.
+    countEmails();
+    const res = await postEvent(dispatchEvent("ord-new"), placed!.webhookToken!);
+    expect(res.status).toBe(200);
+    expect((await prisma.fulfillmentOrder.findUnique({ where: { id: fo.id } }))!.status).toBe("SHIPPED");
   });
 });

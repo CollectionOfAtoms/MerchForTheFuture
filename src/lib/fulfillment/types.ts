@@ -99,6 +99,13 @@ export interface FulfillmentJob {
   contact?: { email?: string; phone?: string };
   /** Chosen shipping method id, when known from the checkout-time quote. */
   shippingMethod?: string;
+  /**
+   * Per-order status-callback URL (US-MFTF-14.1). Providers that support per-order
+   * webhooks (Prodigi's `callbackUrl`) register this so each shipment's status flows
+   * back to a unique, secret-bearing address; the host self-addresses per environment.
+   * Providers without webhook support (Teemill) ignore it.
+   */
+  callbackUrl?: string;
 }
 
 /** Identifies a placed fulfillment order for a status check (12.6). */
