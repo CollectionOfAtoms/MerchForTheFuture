@@ -14,6 +14,7 @@
  *   npx tsx --env-file=.env.local scripts/demo-mixed-order.ts <your-buyer-email>
  */
 import crypto from "node:crypto";
+import { put } from "@vercel/blob";
 import { prisma } from "../src/lib/db";
 
 const email = process.argv[2];
@@ -23,6 +24,26 @@ if (!email) {
 }
 
 const base = process.env.NEXT_PUBLIC_BASE_URL ?? "https://localhost:3000";
+const BLOB_TOKEN = process.env.BLOB_PUBLIC_READ_WRITE_TOKEN ?? process.env.BLOB_READ_WRITE_TOKEN;
+
+/**
+ * Fetch a placeholder image and rehost it on OUR Vercel Blob store, returning the
+ * blob URL. The public browse/shop/seller pages render catalog images through
+ * `next/image`, whose remotePatterns only allow our blob host — seeding an external
+ * URL (e.g. picsum.photos) directly would crash those pages with
+ * "hostname not configured". Rehosting keeps the demo self-contained and safe.
+ */
+async function placeholder(seed: string, w: number, h: number): Promise<string> {
+  const res = await fetch(`https://picsum.photos/seed/${seed}/${w}/${h}`);
+  if (!res.ok) throw new Error(`placeholder fetch failed: ${res.status}`);
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const blob = await put(`demo/${seed}-${w}x${h}-${Date.now()}.jpg`, buffer, {
+    access: "public",
+    contentType: res.headers.get("content-type") ?? "image/jpeg",
+    token: BLOB_TOKEN,
+  });
+  return blob.url;
+}
 const prodigiToken = `demo-${crypto.randomBytes(6).toString("hex")}`;
 const prodigiOrderId = `demo-prodigi-${crypto.randomBytes(3).toString("hex")}`;
 
@@ -34,14 +55,23 @@ async function main() {
   }
   const seller = (await prisma.user.findFirst({ where: { roles: { has: "SELLER" } } })) ?? buyer;
 
+  // Rehost the sample images onto our own blob store first (see placeholder()).
+  const [teeOriginal, teeGrid, printDisplay, printGrid, printSource] = await Promise.all([
+    placeholder("mftf-tee", 600, 600),
+    placeholder("mftf-tee", 240, 240),
+    placeholder("mftf-print", 600, 600),
+    placeholder("mftf-print", 240, 240),
+    placeholder("mftf-print", 1200, 1200),
+  ]);
+
   // ── Shipment A: Teemill referenced apparel (polling path) ──
-  // Sample lifestyle photo is OUR image (picsum); the provider mockup is set too but
-  // is deliberately never used in buyer emails (buyer-opacity).
+  // Sample lifestyle photo is OUR (blob-hosted) image; the provider mockup is set too
+  // but is deliberately never used in buyer emails (buyer-opacity).
   const tee = await prisma.apparelListing.create({
     data: {
       sellerId: seller.id, sourcingMode: "REFERENCED", title: "Powered By Plants Tee", retailPrice: 32, status: "ACTIVE",
       providerKey: "teemill", providerProductRef: "demo",
-      images: { create: [{ originalUrl: "https://picsum.photos/seed/mftf-tee/600/600", gridUrl: "https://picsum.photos/seed/mftf-tee/240/240", isPrimary: true, sortOrder: 0 }] },
+      images: { create: [{ originalUrl: teeOriginal, gridUrl: teeGrid, isPrimary: true, sortOrder: 0 }] },
       referencedVariants: { create: [{ variantRef: "vr-demo", colorName: "Evergreen", colorHex: "#264d3b", sizeLabel: "M", stockLevel: 9, isOrderable: true, mockupUrl: "https://images.teemill.com/demo.png" }] },
     },
   });
@@ -50,11 +80,11 @@ async function main() {
   const artwork = await prisma.artwork.create({
     data: {
       sellerId: seller.id, title: "Sunrise Over Hope Valley", description: "demo", status: "PUBLISHED",
-      images: { create: [{ url: "https://picsum.photos/seed/mftf-print/600/600", gridUrl: "https://picsum.photos/seed/mftf-print/240/240", isPrimary: true, order: 0 }] },
+      images: { create: [{ url: printDisplay, gridUrl: printGrid, isPrimary: true, order: 0 }] },
     },
   });
   const print = await prisma.originalListing.create({
-    data: { artworkId: artwork.id, saleType: "FIXED_PRICE", price: 120, status: "ACTIVE", availableForPrint: true, printSourceImageUrl: "https://picsum.photos/seed/mftf-print/1200/1200" },
+    data: { artworkId: artwork.id, saleType: "FIXED_PRICE", price: 120, status: "ACTIVE", availableForPrint: true, printSourceImageUrl: printSource },
   });
 
   // ── One buyer order, one payment, split into two shipments ──
