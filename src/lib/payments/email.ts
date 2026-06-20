@@ -348,6 +348,15 @@ async function loadShipmentEmailContext(fulfillmentOrderId: string) {
           id: true,
           buyer: { select: { email: true } },
           fulfillmentOrders: { orderBy: { createdAt: "asc" }, select: { id: true } },
+          // Fallback context for a seller-shipped physical original (US-MFTF-15.1):
+          // its FulfillmentOrder carries no OrderItem, so the item row is built from the
+          // parent order's artwork instead. Our-domain ArtworkImage only — never a
+          // provider mockup — preserving buyer-opacity (US-MFTF-14.3).
+          originalListing: {
+            select: {
+              artwork: { select: { title: true, images: { orderBy: [{ isPrimary: "desc" }, { order: "asc" }], take: 1 } } },
+            },
+          },
         },
       },
       items: {
@@ -381,26 +390,42 @@ async function loadShipmentEmailContext(fulfillmentOrderId: string) {
   // One row per item: thumbnail + title + selection (colour · size / material · size)
   // + qty, so the buyer can identify exactly what's in this shipment. Provider names
   // never appear; thumbnails are our-domain images only (see the include note above).
-  const itemsHtml = fo.items
+  type Line = { title: string; thumb: string | null; selection: string; quantity: number };
+  const lines: Line[] =
+    fo.items.length > 0
+      ? fo.items.map((it) => {
+          if (it.itemKind === "APPAREL") {
+            const l = it.apparelListing;
+            const sel = it.selection as { colorId?: string; sizeLabel?: string };
+            const img = l?.images[0];
+            return {
+              title: l?.title ?? "Apparel",
+              thumb: img?.gridUrl ?? img?.displayUrl ?? img?.originalUrl ?? null,
+              selection: [sel.colorId, sel.sizeLabel].filter(Boolean).join(" · "),
+              quantity: it.quantity,
+            };
+          }
+          const a = it.originalListing?.artwork;
+          const sel = it.selection as { prodigiSku?: string };
+          const img = a?.images[0];
+          return {
+            title: a?.title ?? "Print",
+            thumb: img?.gridUrl ?? img?.displayUrl ?? img?.url ?? null,
+            selection: printSelectionSummary(sel.prodigiSku ?? ""),
+            quantity: it.quantity,
+          };
+        })
+      : // A seller-shipped original has no OrderItem rows — synthesize one line from the
+        // parent order's artwork so the buyer still sees a thumbnail + title.
+        (() => {
+          const a = fo.order.originalListing?.artwork;
+          const img = a?.images[0];
+          return [{ title: a?.title ?? "Original artwork", thumb: img?.gridUrl ?? img?.displayUrl ?? img?.url ?? null, selection: "", quantity: 1 }];
+        })();
+
+  const itemsHtml = lines
     .map((it) => {
-      let title: string;
-      let thumb: string | null;
-      let selection: string;
-      if (it.itemKind === "APPAREL") {
-        const l = it.apparelListing;
-        const sel = it.selection as { colorId?: string; sizeLabel?: string };
-        const img = l?.images[0];
-        thumb = img?.gridUrl ?? img?.displayUrl ?? img?.originalUrl ?? null;
-        title = l?.title ?? "Apparel";
-        selection = [sel.colorId, sel.sizeLabel].filter(Boolean).join(" · ");
-      } else {
-        const a = it.originalListing?.artwork;
-        const sel = it.selection as { prodigiSku?: string };
-        const img = a?.images[0];
-        thumb = img?.gridUrl ?? img?.displayUrl ?? img?.url ?? null;
-        title = a?.title ?? "Print";
-        selection = printSelectionSummary(sel.prodigiSku ?? "");
-      }
+      const { title, thumb, selection } = it;
       return `
       <tr>
         <td style="padding:8px 0;width:56px">${thumb ? `<img src="${thumb}" alt="" width="48" height="48" style="width:48px;height:48px;border-radius:8px;object-fit:cover;background:#f5f5f4" />` : ""}</td>

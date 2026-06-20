@@ -138,6 +138,12 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
             </MenuItem>
           )}
 
+          {isSeller && (
+            <MenuItem href="/seller/fulfillment" active={isActive("/seller/fulfillment")}>
+              Originals to ship
+            </MenuItem>
+          )}
+
           {isAdmin && (
             <MenuItem href="/admin/products" active={isActive("/admin/products")}>
               Products

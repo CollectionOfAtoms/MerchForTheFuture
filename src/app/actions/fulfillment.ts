@@ -7,6 +7,8 @@ import { revalidatePath } from "next/cache";
 import { sendShippingNotificationEmail, sendPurchaseConfirmation } from "@/lib/payments/email";
 import { getFulfillmentProvider, createFulfillmentOrder } from "@/lib/fulfillment";
 import { retryFulfillmentOrder } from "@/lib/checkout/fanout";
+import { applyFulfillmentTransition } from "@/lib/fulfillment/status";
+import { ensureOriginalFulfillmentOrder } from "@/lib/fulfillment/originals";
 
 type ActionResult = { error: string } | { success: true };
 
@@ -21,6 +23,33 @@ async function requireAdmin() {
   const user = await requireAuth();
   if (!user.roles?.includes("ADMIN")) redirect("/");
   return user.id!;
+}
+
+async function requireSeller() {
+  const user = await requireAuth();
+  if (!user.roles?.includes("SELLER")) redirect("/");
+  return user.id!;
+}
+
+/**
+ * Load an ORIGINAL order the calling seller owns (via
+ * `originalListing.artwork.sellerId`). Returns null if it isn't theirs or isn't a
+ * shippable original — the caller surfaces a non-leaking error.
+ */
+async function loadOwnedOriginal(orderId: string, sellerId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: {
+      id: true,
+      status: true,
+      buyerId: true,
+      listingType: true,
+      originalListing: { select: { artwork: { select: { sellerId: true } } } },
+    },
+  });
+  if (!order || order.listingType !== "ORIGINAL") return null;
+  if (order.originalListing?.artwork.sellerId !== sellerId) return null;
+  return order;
 }
 
 export async function confirmShippingAction(orderId: string, formData: FormData): Promise<ActionResult> {
@@ -156,5 +185,64 @@ export async function retryFulfillmentAction(fulfillmentOrderId: string): Promis
   await requireAdmin();
   await retryFulfillmentOrder(fulfillmentOrderId);
   revalidatePath("/admin/fulfillment");
+  return { success: true };
+}
+
+/**
+ * Seller marks one of their own physical originals SHIPPED (US-MFTF-15.1). Routes
+ * through the SAME seam as the dropship lifecycle: `ensureOriginalFulfillmentOrder`
+ * gives the order its `originals` FulfillmentOrder, then
+ * `applyFulfillmentTransition(..., "SHIPPED", ...)` persists tracking and fires the
+ * buyer SHIPPED email via the US-MFTF-14.3 path. The Order row is also advanced to
+ * SHIPPED + tracking so the legacy `/buyer/orders` list stays consistent.
+ */
+export async function markOriginalShippedAction(orderId: string, formData: FormData): Promise<ActionResult> {
+  const sellerId = await requireSeller();
+
+  const carrier = (formData.get("carrier") as string)?.trim();
+  const trackingNumber = (formData.get("trackingNumber") as string)?.trim();
+  if (!carrier || !trackingNumber) return { error: "Carrier and tracking number are required." };
+
+  const order = await loadOwnedOriginal(orderId, sellerId);
+  if (!order) return { error: "Order not found." };
+  if (order.status !== "PAID") return { error: "This order cannot be marked shipped." };
+
+  const fo = await ensureOriginalFulfillmentOrder(order.id);
+  await applyFulfillmentTransition(fo.id, "SHIPPED", { trackingNumber, carrier });
+
+  await prisma.order.update({
+    where: { id: order.id },
+    data: { status: "SHIPPED", carrier, trackingNumber },
+  });
+  await prisma.notification.create({
+    data: { userId: order.buyerId, type: "ORDER_SHIPPED", payload: { orderId: order.id, carrier, trackingNumber } },
+  });
+
+  revalidatePath("/seller/fulfillment");
+  revalidatePath(`/buyer/orders/${order.id}`);
+  return { success: true };
+}
+
+/**
+ * Seller marks one of their own physical originals DELIVERED (US-MFTF-15.1). Manual
+ * mark-delivered; fires the buyer DELIVERED email via the US-MFTF-14.3 path.
+ */
+export async function markOriginalDeliveredAction(orderId: string): Promise<ActionResult> {
+  const sellerId = await requireSeller();
+
+  const order = await loadOwnedOriginal(orderId, sellerId);
+  if (!order) return { error: "Order not found." };
+  if (!["PAID", "SHIPPED"].includes(order.status)) return { error: "This order cannot be marked delivered." };
+
+  const fo = await ensureOriginalFulfillmentOrder(order.id);
+  await applyFulfillmentTransition(fo.id, "DELIVERED", {});
+
+  await prisma.order.update({ where: { id: order.id }, data: { status: "DELIVERED" } });
+  await prisma.notification.create({
+    data: { userId: order.buyerId, type: "ORDER_DELIVERED", payload: { orderId: order.id } },
+  });
+
+  revalidatePath("/seller/fulfillment");
+  revalidatePath(`/buyer/orders/${order.id}`);
   return { success: true };
 }
