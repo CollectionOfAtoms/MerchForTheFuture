@@ -80,15 +80,17 @@ async function main() {
 
   console.log(`\n✅ Seeded a 2-shipment order under ${email}`);
   console.log(`   Buyer order page: ${base}/buyer/orders/${order.id}   (log in as ${email})`);
-  console.log(`   Shipment 1 of 2 → apparel  [polling path,  FulfillmentOrder ${teemillFo.id}]`);
-  console.log(`   Shipment 2 of 2 → print    [webhook path]\n`);
+  console.log(`   Shipment 1 of 2 → apparel  [Teemill / polling]   FulfillmentOrder ${teemillFo.id}`);
+  console.log(`   Shipment 2 of 2 → print    [Prodigi / webhook]   FulfillmentOrder ${prodigiFo.id}`);
+  console.log(`   NOTE: the two shipments are SEPARATE orders — drive each with its own commands below.`);
+  console.log(`         DELIVERED is the end of the line (monotonic guard); re-run this script for a fresh order to replay.\n`);
 
-  console.log("── Drive Shipment 2 (webhook path) — fire these one at a time, refreshing the page between ──\n");
+  console.log("── Drive Shipment 2 (Prodigi, webhook path) — fire these one at a time, refreshing the page between ──\n");
   console.log("# → PRINTING\n" + curl("com.prodigi.order.status.details.printStatus#Printing") + "\n");
   console.log("# → SHIPPED (with tracking)\n" + curl("com.prodigi.order.shipments.shipment#Dispatched", `,"shipments":[{"tracking":{"number":"PG-TRACK-9","carrier":"FedEx"}}]`) + "\n");
   console.log("# → DELIVERED\n" + curl("com.prodigi.order.shipments.shipment#Delivered") + "\n");
 
-  console.log("── Drive Shipment 1 (polling path — no webhook; this simulates the daily cron polling Teemill) ──\n");
+  console.log("── Drive Shipment 1 (Teemill, polling path — no webhook; this simulates the daily cron polling Teemill) ──\n");
   console.log("# → PRINTING   (raw Teemill status \"printing\")\n" + poll("printing") + "\n");
   console.log("# → SHIPPED    (raw \"dispatched\" + tracking)\n" + poll("dispatched", ` TM-TRACK-77 "Royal Mail"`) + "\n");
   console.log("# → DELIVERED  (raw \"delivered\")\n" + poll("delivered") + "\n");
