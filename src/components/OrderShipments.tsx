@@ -18,7 +18,7 @@ const STATUS_COPY: Record<string, { label: string; cls: string }> = {
  */
 export default function OrderShipments({ view }: { view: OrderShipmentsView }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="order-shipments">
       {view.shipments.map((s) => {
         const status = STATUS_COPY[s.status] ?? { label: "Processing", cls: "bg-stone-100 text-stone-600" };
         return (

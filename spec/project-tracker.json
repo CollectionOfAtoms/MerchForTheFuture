@@ -188,6 +188,17 @@
       "notes": "Reported 2026-06-03. Portrait (tall/narrow) images come out rotated 90\u00b0 in generated variants (display, grid, thumbnail). Fix 1: add .rotate() as first call in the normalizedBuffer Sharp pipeline (src/lib/artworks/variants.ts). Fix 2: use timestamped filenames for variant blobs so each generation produces a unique URL, defeating Vercel CDN and browser caching of the old rotated variants."
     },
     {
+      "id": "CHORE-18",
+      "epic": "Infrastructure",
+      "title": "Integrate Playwright real-browser E2E + visual snapshots",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-20",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-20",
+      "testPassedCommit": "pending",
+      "notes": "Stood up the real-browser E2E layer the founder wanted (jsdom/unit tests miss visual bugs). Fixed the stale playwright.config.ts (was http:// while the dev server is HTTPS): baseURL now follows NEXT_PUBLIC_BASE_URL (the app canonicalises host to it, so targeting localhost caused a cross-host redirect that broke the auth cookie), ignoreHTTPSErrors for the mkcert cert, a 'setup' project that signs in via the real form and saves storageState, serial workers (specs seed shared DB). First spec __tests__/e2e/buyer-order.spec.ts drives a seeded two-shipment cart order (Teemill apparel + Prodigi print) through the buyer order page and asserts both shipments render, tracking shows on SHIPPED, no provider names leak, and the rollup stays Processing until both ship — with 3 committed visual-snapshot baselines (shipments-processing/one-shipped/delivered). DB seed/verify runs in a tsx subprocess (__tests__/e2e/helpers/seed-cli.ts) because Playwright's ESM transform can't load the CommonJS generated Prisma client; helpers/db.ts shells out to it. Added tsx as a devDependency (was only resolved via npx). data-testid='order-shipments' added to OrderShipments for a stable locator. .gitignore excludes /test-results, /playwright-report, __tests__/e2e/.auth (storageState); snapshot baselines ARE committed. Run: npx playwright test (reuses a running dev server; first run on a new OS regenerates baselines via --update-snapshots). Vitest+MSW remains the logic layer; these add the visual/browser layer. Companion manual dev tooling: scripts/demo-mixed-order.ts and scripts/advance-shipment.ts."
+    },
+    {
       "id": "CHORE-13",
       "epic": "Infrastructure",
       "title": "Fix Vercel TypeScript build error on requestPasswordResetAction",

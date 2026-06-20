@@ -13,6 +13,13 @@
 # testing
 /coverage
 
+# playwright (e2e) — artifacts + saved auth session; snapshot baselines ARE committed
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+__tests__/e2e/.auth/
+
 # next.js
 /.next/
 /out/
