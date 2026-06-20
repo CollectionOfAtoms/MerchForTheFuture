@@ -83,6 +83,38 @@ describe("US-MFTF-14.3 — buyer lifecycle emails", () => {
     expect(all).not.toContain("prodigi");
   });
 
+  it("shows each item's thumbnail (our domain) + title + selection, but never the provider mockup URL", async () => {
+    const buyer = await seedUser();
+    const seller = await seedUser();
+    const order = await prisma.order.create({
+      data: { buyerId: buyer.id, listingType: "CART", status: "PAID", subtotal: 32, totalAmount: 36, shippingCountry: "US" },
+    });
+    const listing = await prisma.apparelListing.create({
+      data: {
+        sellerId: seller.id, sourcingMode: "REFERENCED", title: "Evergreen Tee", retailPrice: 32, status: "ACTIVE", providerKey: "teemill", providerProductRef: "ref",
+        // Our uploaded lifestyle photo (Vercel Blob) — should be used as the thumbnail.
+        images: { create: [{ originalUrl: "https://blob.example.com/orig.png", gridUrl: "https://blob.example.com/grid-evergreen.png", isPrimary: true, sortOrder: 0 }] },
+        // Provider mockup on the dropshipper's domain — must NOT leak into the email.
+        referencedVariants: { create: [{ variantRef: "vr", colorName: "Evergreen", colorHex: "#1", sizeLabel: "M", stockLevel: 5, isOrderable: true, mockupUrl: "https://images.teemill.com/mockup-evergreen.png" }] },
+      },
+    });
+    const fo = await prisma.fulfillmentOrder.create({ data: { orderId: order.id, provider: "teemill", status: "CONFIRMED", providerOrderId: "t-1", shippingCost: 0 } });
+    await prisma.orderItem.create({
+      data: { orderId: order.id, itemKind: "APPAREL", apparelListingId: listing.id, selection: { colorId: "Evergreen", sizeLabel: "M" }, quantity: 2, unitPrice: 32, fulfillmentOrderId: fo.id },
+    });
+
+    const { sends } = captureEmails();
+    await applyFulfillmentTransition(fo.id, "SHIPPED", { trackingNumber: "TM-1", carrier: "X" });
+
+    expect(sends).toHaveLength(1);
+    const html = sends[0].html;
+    expect(html).toContain("https://blob.example.com/grid-evergreen.png"); // our thumbnail
+    expect(html).toContain("Evergreen Tee"); // title
+    expect(html).toContain("Evergreen · M"); // colour · size
+    expect(html.toLowerCase()).not.toContain("teemill"); // provider mockup domain not leaked
+    expect(html).not.toContain("mockup-evergreen"); // provider mockup not used
+  });
+
   it("is idempotent — a replayed SHIPPED transition emails exactly once", async () => {
     const { fos } = await seedOrder(1);
     const { sends } = captureEmails();
