@@ -990,7 +990,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-10",
       "testPassedCommit": "6062d0f",
-      "notes": "/admin/fulfillment page. markShippedAction updates Order to SHIPPED with carrier/trackingNumber. ORDER_SHIPPED notification + email. Mobile layout fix: Carrier and Tracking number fields each full-width on their own row (space-y-3 stack instead of side-by-side flex)."
+      "notes": "/admin/fulfillment page. markShippedAction updates Order to SHIPPED with carrier/trackingNumber. ORDER_SHIPPED notification + email. Mobile layout fix: Carrier and Tracking number fields each full-width on their own row (space-y-3 stack instead of side-by-side flex). SUPERSEDED 2026-06-20 by Epic MFTF-15 (hybrid fulfillment split): the originals-shipping responsibility moved to the seller (US-MFTF-15.1, /seller/fulfillment) and markShippedAction was removed; the admin /admin/fulfillment page was re-homed as the dropship EXCEPTION/retry queue (US-MFTF-15.2). This story's original test file (US-14.5-admin-fulfillment.test.ts) was deleted; its behavior now lives in the MFTF-15 suites. Story kept Passed for history."
     },
     {
       "id": "US-14.6",
@@ -2008,11 +2008,12 @@
       "id": "US-MFTF-15.2",
       "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
       "title": "Admin Dropship Exception Queue",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-20",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-20",
+      "testPassedCommit": "pending",
+      "notes": "Re-homed the admin /admin/fulfillment page (US-14.5) as a dropship EXCEPTION queue: removed the originals-shipping responsibility entirely (deleted the PAID-originals list + the markShippedAction ship forms) and kept only the FAILED FulfillmentOrder retry. New loader getDropshipExceptionQueue() (src/lib/fulfillment/admin.ts) returns FAILED rows with where provider != 'originals' (defensive: an originals FO never fails, but this guarantees physical originals can never appear here per the AC). Retry uses the existing admin-only retryFulfillmentAction -> retryFulfillmentOrder (US-MFTF-12.5): idempotent FAILED -> CONFIRMED via the providerOrderId guard, no duplicate provider order. REMOVED the now-dead admin markShippedAction from src/app/actions/fulfillment.ts (originals shipping moved to the seller in US-MFTF-15.1); its obsolete test __tests__/epic-14-fulfillment/US-14.5-admin-fulfillment.test.ts was deleted (subject re-homed). sendShippingNotificationEmail (the single-order originals email) is left defined but unused by app code. Added the three lifecycle-email exports to the US-14.1/14.2 fulfillment-page test mock because actions/fulfillment now reaches the 14.2 seam. 4 tests in __tests__/mftf-15-seller-fulfillment/US-MFTF-15.2-admin-exception-queue.test.ts (FAILED rows listed w/ error+buyer; originals never appear; admin retry FAILED->CONFIRMED idempotent; non-admin redirected)."
     },
     {
       "id": "US-MFTF-15.3",

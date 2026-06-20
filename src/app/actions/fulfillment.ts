@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { sendShippingNotificationEmail, sendPurchaseConfirmation } from "@/lib/payments/email";
+import { sendPurchaseConfirmation } from "@/lib/payments/email";
 import { getFulfillmentProvider, createFulfillmentOrder } from "@/lib/fulfillment";
 import { retryFulfillmentOrder } from "@/lib/checkout/fanout";
 import { applyFulfillmentTransition } from "@/lib/fulfillment/status";
@@ -141,38 +141,6 @@ export async function confirmShippingAction(orderId: string, formData: FormData)
   }
 
   revalidatePath(`/orders/${orderId}/fulfill`);
-  return { success: true };
-}
-
-export async function markShippedAction(orderId: string, formData: FormData): Promise<ActionResult> {
-  await requireAdmin();
-
-  const carrier = (formData.get("carrier") as string)?.trim();
-  const trackingNumber = (formData.get("trackingNumber") as string)?.trim();
-
-  if (!carrier || !trackingNumber) return { error: "Carrier and tracking number are required." };
-
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
-  if (!order || order.status !== "PAID") return { error: "Order not found or not yet paid." };
-
-  await prisma.order.update({
-    where: { id: orderId },
-    data: { status: "SHIPPED", carrier, trackingNumber },
-  });
-
-  await prisma.notification.create({
-    data: {
-      userId: order.buyerId,
-      type: "ORDER_SHIPPED",
-      payload: { orderId, carrier, trackingNumber },
-    },
-  });
-
-  await sendShippingNotificationEmail(orderId).catch(
-    (e) => console.error("[markShipped] email failed", e)
-  );
-
-  revalidatePath("/admin/fulfillment");
   return { success: true };
 }
 

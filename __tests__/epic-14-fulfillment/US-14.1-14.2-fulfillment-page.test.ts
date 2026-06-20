@@ -14,6 +14,11 @@ vi.mock("@/lib/payments/email", () => ({
   sendPaymentReminderEmail: vi.fn().mockResolvedValue(undefined),
   sendPurchaseConfirmation: vi.fn().mockResolvedValue(undefined),
   sendOutbidEmail: vi.fn().mockResolvedValue(undefined),
+  // actions/fulfillment now reaches the US-MFTF-14.2 transition seam, which imports
+  // the lifecycle emails (US-MFTF-15.1 routes originals through it).
+  sendShipmentPrintingEmail: vi.fn().mockResolvedValue(undefined),
+  sendShipmentShippedEmail: vi.fn().mockResolvedValue(undefined),
+  sendShipmentDeliveredEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 const { confirmShippingAction } = await import("@/app/actions/fulfillment");
