@@ -1,7 +1,7 @@
 # Prodigi API Discovery Notes
 
-**Status:** Print catalog live-verified (via `scripts/probe-prodigi-catalog.ts`); apparel product-details shape (sizes/colours/print areas/fabric) and the Quotes apparel-attribute contract **live-verified 2026-06-17**. Order submission for designed apparel is **not yet run live** (deferred to the first design-proof order).
-**Last updated:** 2026-06-17
+**Status:** Print catalog live-verified (via `scripts/probe-prodigi-catalog.ts`); apparel product-details shape (sizes/colours/print areas/fabric) and the Quotes apparel-attribute contract **live-verified 2026-06-17**. Canvas wrap + `sizing` and SKU-existence **live-verified 2026-06-21** (sandbox, via `scripts/probe-prodigi-canvas-attributes.ts`). Order submission for designed apparel is **not yet run live** (deferred to the first design-proof order).
+**Last updated:** 2026-06-21
 
 > Companion to `docs/teemill-api-notes.md`. Prodigi is the original dropshipper (inherited from the Art & Sol codebase) and the fine-art **print** provider. As of Epic MFTF-12 it is also wired as the `DESIGNED` apparel path — but mostly as a **reference integration** to prove the multi-provider abstraction: Prodigi has **no organic / 100%-cotton apparel option**, so it won't serve production apparel (which is GOTS-certified Teemill). See the cotton-standard note below.
 
@@ -90,6 +90,35 @@ Unlike Teemill's two-step (create → confirm), Prodigi is **single-step**. Requ
 - `sizing: "fillPrintArea"` is carried from the print path. // UNVERIFIED whether `fitPrintArea` is preferable for logo-style apparel designs (fill may crop) — evaluate on the proof print.
 - Response: `{ "order": { "id": "...", "status": { "stage": "..." }, "shipments": [...] } }`. We store `order.id` as `FulfillmentOrder.providerOrderId`.
 - **NOT yet run live for designed apparel** — deferred to the first design-proof order.
+
+---
+
+## Canvas edge wrap + image `sizing` (LIVE-VERIFIED 2026-06-21, sandbox)
+
+Stretched-canvas SKUs (`GLOBAL-CAN-*`) have physical sides, and Prodigi controls
+how they're finished **per line item**. Both confirmed against `api.sandbox.prodigi.com`
+(`scripts/probe-prodigi-canvas-attributes.ts`; sandbox orders `ord_1161006`/`ord_1161007`):
+
+- **Edge wrap → item `attributes.wrap`.** `GET /products/GLOBAL-CAN-{size}` returns
+  `product.attributes.wrap = ["Black", "ImageWrap", "MirrorWrap", "White"]` (also
+  `edge:"38mm"`, `frame:"38mm standard stretcher bar"`, `paperType:"Standard canvas (SC)"`,
+  `substrateWeight:"400gsm"` — all single-valued). `ImageWrap` continues the image around
+  the sides; `MirrorWrap` mirrors it; `Black`/`White` are solid edges.
+  - Accepted on **both** `POST /quotes` and `POST /orders` as `items[].attributes.wrap`, and
+    echoed on the created order's `items[].attributes`.
+  - An invalid value → **`400 ValidationFailed`** with
+    `items[0].attributes[0] → { code: "MustBeInAllowedValues", allowedValues: { name: "wrap", values: [...] } }`.
+  - Paper prints (`GLOBAL-FAP-*`) have **no** `wrap` attribute (no edges) — sending one would 400.
+- **Image fit → item `sizing` (ORDER-ONLY).** `sizing` lives on `POST /orders` items
+  (`fillPrintArea` scales to fill+crop — our current default; `fitPrintArea` fits the whole
+  image, possibly with margins; `stretchToPrintArea` distorts). It is **rejected on `/quotes`**
+  (`ModelBindingFailed → items[0].sizing: UnknownField`) — quotes take only `attributes`.
+- **SKU existence:** `GET /products/{sku}` is **200** for a real SKU, non-200 otherwise — this is
+  the authoritative way to validate any SKU (apparel blank or print) before persisting it.
+
+> Today both order paths in `src/lib/fulfillment/providers/prodigi.ts` hardcode
+> `sizing: "fillPrintArea"` and send **no** `wrap`, so canvas orders take Prodigi's default
+> edge. Seller-selectable wrap/sizing + per-size source cropping is unscoped feature work.
 
 ---
 
@@ -187,7 +216,8 @@ Prodigi's `paperType` attribute reveals fabric composition. The blank used to va
 |---|---|---|
 | 1 | Does omitting `shippingMethod` on `/quotes` return *all* service tiers? | Observed yes; confirm on a live multi-tier quote. |
 | 2 | Is `printArea: "front"` correct for all apparel blanks? | Confirmed for Bella 3001; a blank printing elsewhere would 400 (the failure lists valid print areas). |
-| 3 | `sizing: "fillPrintArea"` vs `"fitPrintArea"` for apparel designs | Unconfirmed — check the proof print for cropping. |
+| 3 | `sizing: "fillPrintArea"` vs `"fitPrintArea"` for apparel designs | Field confirmed (order-only, echoed); which is preferable for logo-style designs still TBD on the proof print. |
+| 6 | Canvas edge wrap attribute name + values | **Resolved 2026-06-21** — `attributes.wrap ∈ {Black, ImageWrap, MirrorWrap, White}`, live-verified on quote + order (sandbox). |
 | 4 | Designed-apparel **order** submission end-to-end (with the design asset) | Not run live — deferred to the first design-proof order. |
 | 5 | Sandbox vs production base URL for dev | Sandbox available; confirm `PRODIGI_API_BASE_URL` points at sandbox in dev so test checkouts don't place real orders. |
 

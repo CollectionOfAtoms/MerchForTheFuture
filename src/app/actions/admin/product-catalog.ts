@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { syncDesignedProductTypeFromProdigi } from "@/lib/apparel/sync-prodigi";
+import { syncDesignedProductTypeFromProdigi, prodigiProductExists } from "@/lib/apparel/sync-prodigi";
 
 type ActionResult = { id: string } | { error: string };
 type SyncResult = { error: string } | { sizes: number; colors: number };
@@ -13,6 +13,24 @@ async function requireAdmin(): Promise<string | null> {
   const user = session?.user as { id?: string; roles?: string[] } | undefined;
   if (!user?.id || !user.roles?.includes("ADMIN")) return null;
   return user.id;
+}
+
+/**
+ * Reject a designed SKU that Prodigi does not recognise, at submit time (BUG-16):
+ * the seller is notified and no product type is persisted. Returns an error
+ * message to surface, or null when the SKU is valid. A transport failure is
+ * surfaced too (don't silently create an unverifiable product type).
+ */
+async function validateProdigiSku(providerSkuBase: string): Promise<string | null> {
+  try {
+    const exists = await prodigiProductExists(providerSkuBase);
+    if (!exists) {
+      return `No Prodigi product found for SKU "${providerSkuBase}". Check the SKU and try again.`;
+    }
+    return null;
+  } catch {
+    return "Could not reach Prodigi to verify the SKU. Please try again.";
+  }
 }
 
 // ─── createProductTypeAction ──────────────────────────────────────────────────
@@ -38,6 +56,9 @@ export async function createProductTypeAction(fd: FormData): Promise<ActionResul
 
   const existing = await prisma.productType.findUnique({ where: { name } });
   if (existing) return { error: `A product type named "${name}" already exists` };
+
+  const skuError = await validateProdigiSku(providerSkuBase);
+  if (skuError) return { error: skuError };
 
   const pt = await prisma.productType.create({
     data: { name, description, fulfillmentProvider: "PRODIGI", providerSkuBase, isActive },
@@ -106,6 +127,9 @@ export async function updateProductTypeAction(id: string, fd: FormData): Promise
     const colorCount = await prisma.productTypeColor.count({ where: { productTypeId: id } });
     if (colorCount === 0) return { error: "At least one color is required before activating a product type" };
   }
+
+  const skuError = await validateProdigiSku(providerSkuBase);
+  if (skuError) return { error: skuError };
 
   const pt = await prisma.productType.update({
     where: { id },

@@ -68,6 +68,20 @@ const prodigiHandlers = PRODIGI_BASES.flatMap((base) => [
       ],
     })
   ),
+  // Single product details. Default: every SKU resolves (200) so existing
+  // create/update flows validate; tests that exercise an INVALID SKU override
+  // this per-test with `server.use(... 404 ...)` (BUG-16).
+  http.get(`${base}/products/:sku`, ({ params }) =>
+    HttpResponse.json({
+      product: {
+        sku: params.sku,
+        description: `Product ${params.sku as string}`,
+        productDimensions: { width: 16, height: 24, units: "inches" },
+        attributes: {},
+        variants: [],
+      },
+    })
+  ),
   http.post(`${base}/orders`, () =>
     HttpResponse.json({
       outcome: "Created",

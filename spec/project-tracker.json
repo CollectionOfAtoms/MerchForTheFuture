@@ -56,6 +56,17 @@
   },
   "stories": [
     {
+      "id": "BUG-16",
+      "epic": "Infrastructure",
+      "title": "Designed product type can be created with a SKU that is not in Prodigi's catalog",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Founder-reported 2026-06-21. createProductTypeAction/updateProductTypeAction (src/app/actions/admin/product-catalog.ts) accepted any non-empty providerSkuBase; the Prodigi auto-sync is best-effort (swallows errors) so a bogus SKU silently created a sizeless/colourless designed blank. Fix: added prodigiProductExists(sku) (src/lib/apparel/sync-prodigi.ts) — GET /products/{sku} is 200 for a real SKU, non-2xx (404) otherwise (live-verified 2026-06-21, see docs/prodigi-api-notes.md). A shared validateProdigiSku() guard runs in both actions before the prisma write: a 404 → 'No Prodigi product found for SKU \"X\"...' (rejected, nothing persisted); a transport error → 'Could not reach Prodigi to verify the SKU. Please try again.' (don't create an unverifiable type). Only reached for PRODIGI types (TEEMILL already rejected by US-MFTF-16.1, which is the only other designed provider). MSW: added a global GET /products/:sku handler (200 for any SKU) so existing create/update flows validate; the BUG-16 test overrides it per-test (known SKUs 200, others 404). Test: __tests__/mftf-16-storefront-corrections/BUG-16-reject-invalid-prodigi-sku.test.ts (create + update reject unknown SKU + no row mutation; valid SKU still creates)."
+    },
+    {
       "id": "BUG-15",
       "epic": "Infrastructure",
       "title": "Cart checkout shipping form does not pre-fill the buyer's primary saved address",
