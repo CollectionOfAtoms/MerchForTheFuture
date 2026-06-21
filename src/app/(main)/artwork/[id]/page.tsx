@@ -137,6 +137,16 @@ export default async function ArtworkDetailPage({ params }: PageProps) {
                     >
                       Sold
                     </button>
+                  ) : isSeller ? (
+                    // A seller can't buy their own listing (also enforced in
+                    // initiateBuyNowAction) — disable for clarity rather than 500 on submit.
+                    <button
+                      disabled
+                      title="You can't buy your own listing"
+                      className="w-full rounded-full bg-stone-200 py-2.5 text-sm font-medium text-stone-400 cursor-not-allowed"
+                    >
+                      Your listing
+                    </button>
                   ) : (
                     <form action={initiateBuyNowAction.bind(null, orig.listingId) as unknown as (formData: FormData) => void}>
                       <button

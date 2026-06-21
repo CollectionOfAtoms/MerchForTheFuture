@@ -56,6 +56,17 @@
   },
   "stories": [
     {
+      "id": "BUG-14",
+      "epic": "Infrastructure",
+      "title": "Buy Now button active on a seller's own artwork listing",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Founder-requested 2026-06-21. On the artwork detail page (src/app/(main)/artwork/[id]/page.tsx) the fixed-price Buy Now button was active even for the seller who owns the listing; clicking it hit initiateBuyNowAction which already rejects 'You cannot buy your own listing' (tested in US-15.1/US-2.3), but the live button was confusing. Fix: when isSeller (sessionUser.id === artwork.sellerId, already computed on the page) and not sold, render a disabled 'Your listing' button (title 'You can't buy your own listing') instead of the Buy Now form. Server-side guard unchanged (defence in depth). Auction bidding for own listings is unchanged (out of scope — request was Buy Now only). Test added to __tests__/epic-16-seller-ux/US-16.2-edit-listing-button-on-artwork-page.test.ts asserting the owner-gating predicate via getArtworkDetail.sellerId (same render-free pattern the page's other seller-gating uses)."
+    },
+    {
       "id": "BUG-13",
       "epic": "Infrastructure",
       "title": "Teemill referenced apparel not orderable at 0 warehouse stock (print-on-demand ignored)",
