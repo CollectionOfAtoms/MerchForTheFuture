@@ -4,6 +4,8 @@ import MobileMenu from "@/components/MobileMenu";
 import NavDropdown from "@/components/NavDropdown";
 import CartBadge from "@/components/CartBadge";
 import { getCartCountForRequest } from "@/lib/cart/request";
+import { countSellerOriginalsToShip } from "@/lib/fulfillment/originals";
+import { countDropshipExceptions } from "@/lib/fulfillment/admin";
 
 const sharedLinks = [
   { href: "/shop", label: "Shop" },
@@ -17,6 +19,12 @@ export default async function Nav() {
   const user = session?.user;
   const roles = (user as { roles?: string[] } | undefined)?.roles ?? [];
   const cartCount = await getCartCountForRequest();
+  // Seller "Fulfillment" badge: originals awaiting shipment (US-MFTF-15.1).
+  // Admin "Dropship exceptions" badge: FAILED dropship shipments (US-MFTF-15.2).
+  const [fulfillmentCount, exceptionCount] = await Promise.all([
+    user && roles.includes("SELLER") ? countSellerOriginalsToShip(user.id!) : Promise.resolve(0),
+    user && roles.includes("ADMIN") ? countDropshipExceptions() : Promise.resolve(0),
+  ]);
   return (
     <header className="border-b border-tuscan-sun/40 bg-tuscan-sun">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -39,6 +47,8 @@ export default async function Nav() {
             <NavDropdown
               user={{ name: user.name, email: user.email }}
               roles={roles}
+              fulfillmentCount={fulfillmentCount}
+              exceptionCount={exceptionCount}
             />
           ) : (
             <>
@@ -60,6 +70,8 @@ export default async function Nav() {
           <MobileMenu
             user={user ? { name: user.name, email: user.email } : null}
             roles={roles}
+            fulfillmentCount={fulfillmentCount}
+            exceptionCount={exceptionCount}
           />
         </div>
       </div>

@@ -67,6 +67,18 @@ describe("US-16.2 — Edit listing button on artwork page", () => {
     expect(detail!.sellerId).not.toBe(sellerB.id);
   });
 
+  it("identifies the owner so the artwork page disables Buy Now for their own listing (BUG-14)", async () => {
+    const seller = await seedSeller("owner");
+    const otherBuyer = await seedSeller("viewer");
+    const { artwork } = await createPublishedArtworkWithListing(seller.id);
+
+    const detail = await getArtworkDetail(artwork.id);
+
+    // The page gates the Buy Now button on `sessionUser.id === artwork.sellerId`.
+    expect(detail!.sellerId === seller.id).toBe(true); // owner → Buy Now disabled ("Your listing")
+    expect(detail!.sellerId === otherBuyer.id).toBe(false); // anyone else → Buy Now active
+  });
+
   it("artwork with no listing still exposes sellerId", async () => {
     const seller = await seedSeller();
     const artwork = await prisma.artwork.create({

@@ -9,6 +9,8 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/payments/email", () => ({
   sendPurchaseConfirmation: vi.fn().mockResolvedValue(undefined),
+  // runFulfillment notifies the seller on an ORIGINAL sale (US-MFTF-15.4).
+  sendSellerSaleNotificationEmail: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/payments/stripe", () => ({ stripe: {} }));
 

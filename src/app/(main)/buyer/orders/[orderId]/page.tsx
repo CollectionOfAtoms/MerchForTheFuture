@@ -42,10 +42,11 @@ export default async function OrderDetailPage({ params }: Props) {
   const order = await getOrderDetail(orderId, user.id!);
   if (!order) notFound();
 
-  // Cart orders (US-MFTF-12.6): render per-shipment groups instead of the
-  // single-item layout — no provider names.
-  if (order.listingType === "CART") {
-    const view = await getOrderShipmentsView(orderId, user.id!);
+  // Any order with FulfillmentOrders renders per-shipment groups (US-MFTF-12.6):
+  // cart orders, and seller-shipped physical originals (US-MFTF-15.3). The status
+  // source is uniform — the buyer never sees who shipped or how it was detected.
+  const view = await getOrderShipmentsView(orderId, user.id!);
+  if (view) {
     return (
       <main className="min-h-screen bg-stone-50 py-12">
         <div className="mx-auto max-w-2xl px-4 sm:px-6">

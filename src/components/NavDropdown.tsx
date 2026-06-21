@@ -8,11 +8,15 @@ import { signOutAction } from "@/app/actions/auth";
 interface NavDropdownProps {
   user: { name?: string | null; email?: string | null } | null;
   roles: string[];
+  /** Seller originals awaiting shipment — drives the fulfillment badge (US-MFTF-15.1). */
+  fulfillmentCount?: number;
+  /** Dropship shipments in an exception state (FAILED) — admin badge (US-MFTF-15.2). */
+  exceptionCount?: number;
   /** Override current pathname — used in tests where Next.js router context is unavailable. */
   currentPath?: string;
 }
 
-export default function NavDropdown({ user, roles, currentPath }: NavDropdownProps) {
+export default function NavDropdown({ user, roles, fulfillmentCount = 0, exceptionCount = 0, currentPath }: NavDropdownProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -70,6 +74,14 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
     : "/buyer/settings";
 
   const label = user.name ?? user.email ?? "Account";
+  // Admins get an admin-focused dropdown: the buyer/seller operational items
+  // (Orders, Listings, seller Fulfillment) are suppressed when isAdmin.
+  const showSellerItems = isSeller && !isAdmin;
+  const showBuyerItems = isBuyer && !isAdmin;
+  const sellerPending = showSellerItems ? fulfillmentCount : 0;
+  const adminPending = isAdmin ? exceptionCount : 0;
+  // One trigger badge summarising everything that needs the user's attention.
+  const triggerCount = sellerPending + adminPending;
 
   function isActive(href: string) {
     return pathname === href;
@@ -108,6 +120,14 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
+        {triggerCount > 0 && (
+          <span
+            aria-label={`${triggerCount} item${triggerCount === 1 ? "" : "s"} needing attention`}
+            className="ml-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-cerulean px-1.5 text-[10px] font-semibold leading-none text-white"
+          >
+            {triggerCount}
+          </span>
+        )}
       </button>
 
       {open && (
@@ -120,21 +140,32 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
             Dashboard
           </MenuItem>
 
-          {isBuyer && (
+          {showBuyerItems && (
             <MenuItem href="/buyer/bids" active={isActive("/buyer/bids")}>
               My Bids
             </MenuItem>
           )}
 
-          {isBuyer && (
+          {showBuyerItems && (
             <MenuItem href="/buyer/orders" active={isActive("/buyer/orders")}>
               Orders
             </MenuItem>
           )}
 
-          {isSeller && (
+          {showSellerItems && (
             <MenuItem href="/seller/listings" active={isActive("/seller/listings")}>
               Listings
+            </MenuItem>
+          )}
+
+          {showSellerItems && (
+            <MenuItem
+              href="/seller/fulfillment"
+              active={isActive("/seller/fulfillment")}
+              badge={fulfillmentCount}
+              highlight={sellerPending > 0}
+            >
+              Fulfillment
             </MenuItem>
           )}
 
@@ -157,7 +188,12 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
           )}
 
           {isAdmin && (
-            <MenuItem href="/admin/fulfillment" active={isActive("/admin/fulfillment")}>
+            <MenuItem
+              href="/admin/fulfillment"
+              active={isActive("/admin/fulfillment")}
+              badge={exceptionCount}
+              highlight={adminPending > 0}
+            >
               Fulfillment
             </MenuItem>
           )}
@@ -187,19 +223,31 @@ function MenuItem({
   href,
   active,
   children,
+  badge = 0,
+  highlight = false,
 }: {
   href: string;
   active: boolean;
   children: React.ReactNode;
+  /** Count rendered as a pill on the right; omitted when 0. */
+  badge?: number;
+  /** Emphasise the item (used alongside a non-zero badge to draw attention). */
+  highlight?: boolean;
 }) {
   return (
     <Link
       href={href}
       role="menuitem"
       data-active={active ? "true" : undefined}
-      className="block px-4 py-2 text-sm text-blue-slate hover:bg-tuscan-sun/5 hover:text-cerulean transition-colors font-medium data-[active=true]:text-cerulean data-[active=true]:underline data-[active=true]:underline-offset-2"
+      data-highlight={highlight ? "true" : undefined}
+      className="flex items-center justify-between gap-2 px-4 py-2 text-sm text-blue-slate hover:bg-tuscan-sun/5 hover:text-cerulean transition-colors font-medium data-[active=true]:text-cerulean data-[active=true]:underline data-[active=true]:underline-offset-2 data-[highlight=true]:bg-cerulean/5 data-[highlight=true]:text-cerulean"
     >
-      {children}
+      <span>{children}</span>
+      {badge > 0 && (
+        <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-cerulean px-1.5 text-[10px] font-semibold leading-none text-white">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }

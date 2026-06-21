@@ -298,6 +298,64 @@ export async function sendShippingNotificationEmail(orderId: string): Promise<vo
   });
 }
 
+/**
+ * Notify the SELLER that one of their physical originals (fixed-price or auction)
+ * has sold and needs shipping (US-MFTF-15.4). Includes the artwork + thumbnail (our
+ * own uploaded image — never a provider mockup), the buyer's name and shipping
+ * address, and a link to the seller fulfillment queue to enter tracking. Sent once,
+ * from the PAID transition (runFulfillment); for originals the shipping address is
+ * always collected before payment, so it is present here.
+ */
+export async function sendSellerSaleNotificationEmail(orderId: string): Promise<void> {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      buyer: { select: { name: true, email: true } },
+      originalListing: {
+        include: { artwork: { include: { images: true, seller: { select: { email: true, name: true } } } } },
+      },
+    },
+  });
+  if (!order || order.listingType !== "ORIGINAL") return;
+  const artwork = order.originalListing?.artwork;
+  const sellerEmail = artwork?.seller.email;
+  if (!artwork || !sellerEmail) return;
+
+  const title = artwork.title;
+  const primaryImage = artwork.images.find((img) => img.isPrimary) ?? artwork.images[0];
+  const thumb = primaryImage?.thumbnailUrl ?? primaryImage?.gridUrl ?? primaryImage?.url ?? null;
+
+  const buyerName = order.buyer.name ?? order.buyer.email ?? "the buyer";
+  const addressLines = [
+    order.shippingName,
+    order.shippingLine1,
+    order.shippingLine2,
+    [order.shippingCity, order.shippingState, order.shippingPostal].filter(Boolean).join(", "),
+    order.shippingCountry,
+  ]
+    .filter(Boolean)
+    .map((l) => escapeHtml(String(l)))
+    .join("<br/>");
+
+  const fulfillUrl = `${BASE_URL}/seller/fulfillment`;
+
+  await mailersend({
+    to: sellerEmail,
+    subject: `You've sold "${title}" — time to ship it`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1c1917">
+        <p style="font-size:18px;font-weight:600;margin-bottom:4px">Your artwork sold!</p>
+        <p style="color:#78716c;margin-top:0"><strong>${escapeHtml(title)}</strong> has been purchased and is ready to ship.</p>
+        ${thumb ? `<img src="${thumb}" alt="${escapeHtml(title)}" style="width:100%;border-radius:8px;margin:16px 0" />` : ""}
+        <p style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#a8a29e;margin-bottom:4px">Ship to</p>
+        <p style="color:#1c1917;font-size:14px;line-height:1.5;margin-top:0">${addressLines}</p>
+        <p style="color:#78716c;font-size:13px;margin-top:8px">Buyer: ${escapeHtml(buyerName)}</p>
+        <a href="${fulfillUrl}" style="display:inline-block;background:#1c1917;color:#fff;padding:10px 20px;border-radius:9999px;text-decoration:none;font-size:14px;font-weight:500;margin-top:8px">Add tracking →</a>
+      </div>
+    `,
+  });
+}
+
 // ─── Per-shipment shipped notification (US-MFTF-12.6) ─────────────────────────
 
 /**
@@ -348,6 +406,15 @@ async function loadShipmentEmailContext(fulfillmentOrderId: string) {
           id: true,
           buyer: { select: { email: true } },
           fulfillmentOrders: { orderBy: { createdAt: "asc" }, select: { id: true } },
+          // Fallback context for a seller-shipped physical original (US-MFTF-15.1):
+          // its FulfillmentOrder carries no OrderItem, so the item row is built from the
+          // parent order's artwork instead. Our-domain ArtworkImage only — never a
+          // provider mockup — preserving buyer-opacity (US-MFTF-14.3).
+          originalListing: {
+            select: {
+              artwork: { select: { title: true, images: { orderBy: [{ isPrimary: "desc" }, { order: "asc" }], take: 1 } } },
+            },
+          },
         },
       },
       items: {
@@ -381,26 +448,42 @@ async function loadShipmentEmailContext(fulfillmentOrderId: string) {
   // One row per item: thumbnail + title + selection (colour · size / material · size)
   // + qty, so the buyer can identify exactly what's in this shipment. Provider names
   // never appear; thumbnails are our-domain images only (see the include note above).
-  const itemsHtml = fo.items
+  type Line = { title: string; thumb: string | null; selection: string; quantity: number };
+  const lines: Line[] =
+    fo.items.length > 0
+      ? fo.items.map((it) => {
+          if (it.itemKind === "APPAREL") {
+            const l = it.apparelListing;
+            const sel = it.selection as { colorId?: string; sizeLabel?: string };
+            const img = l?.images[0];
+            return {
+              title: l?.title ?? "Apparel",
+              thumb: img?.gridUrl ?? img?.displayUrl ?? img?.originalUrl ?? null,
+              selection: [sel.colorId, sel.sizeLabel].filter(Boolean).join(" · "),
+              quantity: it.quantity,
+            };
+          }
+          const a = it.originalListing?.artwork;
+          const sel = it.selection as { prodigiSku?: string };
+          const img = a?.images[0];
+          return {
+            title: a?.title ?? "Print",
+            thumb: img?.gridUrl ?? img?.displayUrl ?? img?.url ?? null,
+            selection: printSelectionSummary(sel.prodigiSku ?? ""),
+            quantity: it.quantity,
+          };
+        })
+      : // A seller-shipped original has no OrderItem rows — synthesize one line from the
+        // parent order's artwork so the buyer still sees a thumbnail + title.
+        (() => {
+          const a = fo.order.originalListing?.artwork;
+          const img = a?.images[0];
+          return [{ title: a?.title ?? "Original artwork", thumb: img?.gridUrl ?? img?.displayUrl ?? img?.url ?? null, selection: "", quantity: 1 }];
+        })();
+
+  const itemsHtml = lines
     .map((it) => {
-      let title: string;
-      let thumb: string | null;
-      let selection: string;
-      if (it.itemKind === "APPAREL") {
-        const l = it.apparelListing;
-        const sel = it.selection as { colorId?: string; sizeLabel?: string };
-        const img = l?.images[0];
-        thumb = img?.gridUrl ?? img?.displayUrl ?? img?.originalUrl ?? null;
-        title = l?.title ?? "Apparel";
-        selection = [sel.colorId, sel.sizeLabel].filter(Boolean).join(" · ");
-      } else {
-        const a = it.originalListing?.artwork;
-        const sel = it.selection as { prodigiSku?: string };
-        const img = a?.images[0];
-        thumb = img?.gridUrl ?? img?.displayUrl ?? img?.url ?? null;
-        title = a?.title ?? "Print";
-        selection = printSelectionSummary(sel.prodigiSku ?? "");
-      }
+      const { title, thumb, selection } = it;
       return `
       <tr>
         <td style="padding:8px 0;width:56px">${thumb ? `<img src="${thumb}" alt="" width="48" height="48" style="width:48px;height:48px;border-radius:8px;object-fit:cover;background:#f5f5f4" />` : ""}</td>

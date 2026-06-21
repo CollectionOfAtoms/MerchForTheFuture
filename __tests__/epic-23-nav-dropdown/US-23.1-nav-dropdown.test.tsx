@@ -220,6 +220,72 @@ describe("US-23.1 — Desktop Nav User Dropdown (NavDropdown)", () => {
     });
   });
 
+  describe("Seller fulfillment badge (US-MFTF-15.1)", () => {
+    it("shows the Fulfillment menu item linking to /seller/fulfillment", () => {
+      render(<NavDropdown user={sellerUser} roles={["SELLER"]} fulfillmentCount={0} />);
+      fireEvent.click(screen.getByRole("button", { name: /sam/i }));
+      const link = screen.getByRole("menuitem", { name: /fulfillment/i });
+      expect(link).toHaveAttribute("href", "/seller/fulfillment");
+    });
+
+    it("badges the trigger AND the Fulfillment item with the count when > 0", () => {
+      render(<NavDropdown user={sellerUser} roles={["SELLER"]} fulfillmentCount={3} />);
+      // Trigger badge: the count is part of the trigger's accessible content.
+      const trigger = screen.getByRole("button", { name: /sam/i });
+      expect(within(trigger).getByText("3")).toBeInTheDocument();
+      // Menu item badge + highlight.
+      fireEvent.click(trigger);
+      const link = screen.getByRole("menuitem", { name: /fulfillment/i });
+      expect(within(link).getByText("3")).toBeInTheDocument();
+      expect(link).toHaveAttribute("data-highlight", "true");
+    });
+
+    it("shows no badge when the count is 0", () => {
+      render(<NavDropdown user={sellerUser} roles={["SELLER"]} fulfillmentCount={0} />);
+      const trigger = screen.getByRole("button", { name: /sam/i });
+      expect(within(trigger).queryByText("0")).not.toBeInTheDocument();
+      fireEvent.click(trigger);
+      const link = screen.getByRole("menuitem", { name: /fulfillment/i });
+      expect(link).not.toHaveAttribute("data-highlight", "true");
+    });
+
+    it("does not badge non-sellers", () => {
+      render(<NavDropdown user={buyerUser} roles={["BUYER"]} fulfillmentCount={5} />);
+      const trigger = screen.getByRole("button", { name: /alice/i });
+      expect(within(trigger).queryByText("5")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Admin dropship-exception badge (US-MFTF-15.2)", () => {
+    it("badges the trigger AND the Fulfillment item when there are exceptions", () => {
+      render(<NavDropdown user={adminUser} roles={["ADMIN"]} exceptionCount={2} />);
+      const trigger = screen.getByRole("button", { name: /admin/i });
+      expect(within(trigger).getByText("2")).toBeInTheDocument();
+      fireEvent.click(trigger);
+      const link = screen.getByRole("menuitem", { name: /fulfillment/i });
+      expect(link).toHaveAttribute("href", "/admin/fulfillment");
+      expect(within(link).getByText("2")).toBeInTheDocument();
+      expect(link).toHaveAttribute("data-highlight", "true");
+    });
+
+    it("shows no badge when there are no exceptions", () => {
+      render(<NavDropdown user={adminUser} roles={["ADMIN"]} exceptionCount={0} />);
+      const trigger = screen.getByRole("button", { name: /admin/i });
+      expect(within(trigger).queryByText("0")).not.toBeInTheDocument();
+    });
+
+    it("for an admin+seller founder the trigger reflects only admin exceptions (seller items suppressed)", () => {
+      render(<NavDropdown user={adminUser} roles={["ADMIN", "SELLER"]} fulfillmentCount={1} exceptionCount={2} />);
+      const trigger = screen.getByRole("button", { name: /admin/i });
+      expect(within(trigger).getByText("2")).toBeInTheDocument(); // exceptions only — not 3
+      fireEvent.click(trigger);
+      // The single Fulfillment item is the admin one and carries the exception count.
+      const fulfillment = screen.getByRole("menuitem", { name: /fulfillment/i });
+      expect(fulfillment).toHaveAttribute("href", "/admin/fulfillment");
+      expect(within(fulfillment).getByText("2")).toBeInTheDocument();
+    });
+  });
+
   describe("Admin role", () => {
     it("shows Tracker link", () => {
       render(<NavDropdown user={adminUser} roles={["ADMIN"]} />);
@@ -241,6 +307,17 @@ describe("US-23.1 — Desktop Nav User Dropdown (NavDropdown)", () => {
       const fulfillmentLink = screen.getByRole("menuitem", { name: /^fulfillment$/i });
       expect(fulfillmentLink).toBeInTheDocument();
       expect(fulfillmentLink).toHaveAttribute("href", "/admin/fulfillment");
+    });
+
+    it("hides buyer Orders and seller Listings/Fulfillment for an admin (admin-focused dropdown)", () => {
+      // A founder holding all roles still gets a clean admin dropdown.
+      render(<NavDropdown user={adminUser} roles={["ADMIN", "SELLER", "BUYER"]} />);
+      fireEvent.click(screen.getByRole("button", { name: /admin/i }));
+      expect(screen.queryByRole("menuitem", { name: /orders/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("menuitem", { name: /listings/i })).not.toBeInTheDocument();
+      // Only the admin Fulfillment (→ /admin/fulfillment) remains, not /seller/fulfillment.
+      const fulfillment = screen.getByRole("menuitem", { name: /^fulfillment$/i });
+      expect(fulfillment).toHaveAttribute("href", "/admin/fulfillment");
     });
 
     it("Dashboard link points to /dashboard/admin", () => {

@@ -95,6 +95,9 @@ export async function getOrderShipmentsView(orderId: string, buyerId: string): P
   const order = await prisma.order.findFirst({
     where: { id: orderId, buyerId },
     include: {
+      // Parent artwork is the fallback line for a seller-shipped physical original
+      // (US-MFTF-15.1) whose FulfillmentOrder carries no OrderItem rows.
+      originalListing: { select: { artwork: { select: { title: true } } } },
       fulfillmentOrders: {
         orderBy: { createdAt: "asc" },
         include: {
@@ -112,26 +115,31 @@ export async function getOrderShipmentsView(orderId: string, buyerId: string): P
 
   const total = order.fulfillmentOrders.length;
   const shipments: ShipmentView[] = order.fulfillmentOrders.map((fo, idx) => ({
-    label: `Shipment ${idx + 1} of ${total}`,
+    label: total > 1 ? `Shipment ${idx + 1} of ${total}` : "Your order",
     status: fo.status,
     trackingNumber: fo.trackingNumber,
     carrier: fo.carrier,
-    items: fo.items.map((it) => {
-      if (it.itemKind === "APPAREL") {
-        const sel = it.selection as { colorId?: string; sizeLabel?: string };
-        return {
-          title: it.apparelListing?.title ?? "Apparel",
-          selectionSummary: [sel.colorId, sel.sizeLabel].filter(Boolean).join(" · "),
-          quantity: it.quantity,
-        };
-      }
-      const sel = it.selection as { prodigiSku?: string };
-      return {
-        title: it.originalListing?.artwork?.title ?? "Print",
-        selectionSummary: printSummary(sel.prodigiSku ?? ""),
-        quantity: it.quantity,
-      };
-    }),
+    // A seller-shipped original has no OrderItem rows — synthesize one line from the
+    // parent order's artwork so the buyer sees the piece (US-MFTF-15.3 uniformity).
+    items:
+      fo.items.length === 0
+        ? [{ title: order.originalListing?.artwork?.title ?? "Original artwork", selectionSummary: "", quantity: 1 }]
+        : fo.items.map((it) => {
+            if (it.itemKind === "APPAREL") {
+              const sel = it.selection as { colorId?: string; sizeLabel?: string };
+              return {
+                title: it.apparelListing?.title ?? "Apparel",
+                selectionSummary: [sel.colorId, sel.sizeLabel].filter(Boolean).join(" · "),
+                quantity: it.quantity,
+              };
+            }
+            const sel = it.selection as { prodigiSku?: string };
+            return {
+              title: it.originalListing?.artwork?.title ?? "Print",
+              selectionSummary: printSummary(sel.prodigiSku ?? ""),
+              quantity: it.quantity,
+            };
+          }),
   }));
 
   return {

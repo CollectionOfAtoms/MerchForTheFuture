@@ -109,27 +109,30 @@ export async function revalidateCheckout(cartId: string): Promise<RevalidationRe
         const cached = listing.referencedVariants.find(
           (v) => v.colorName === colorId && v.sizeLabel === sizeLabel,
         );
-        if (!cached || !cached.isOrderable) {
+        if (!cached) {
           removed.push({ title, reason: `${title} in ${colorId} is no longer available.` });
           toDelete.push(item.id);
           continue;
         }
 
-        // Live stock re-read (Teemill GET /catalog/products). Open Q#3 — rate
-        // limits unknown; on any failure fall back to the cached snapshot rather
-        // than blowing the 10s function budget. // UNVERIFIED
-        let liveStock = cached.stockLevel;
+        // Live orderability re-read (Teemill GET /catalog/products). Teemill is
+        // print-on-demand, so orderability = printable-on-demand OR warehouse stock
+        // (see ingest `isOrderable`) — NOT warehouse stock alone, which would wrongly
+        // drop every made-to-order size. Prefer the live snapshot; fall back to the
+        // cached value if Teemill is unreachable (Open Q#3 — rate limits unknown — so
+        // a failure never blows the 10s budget). // UNVERIFIED
+        let orderable = cached.isOrderable;
         if (listing.providerProductRef) {
           const result = await ingestTeemillProduct(listing.providerProductRef);
           if (result.ok) {
             const live = result.snapshot.variants.find(
               (v) => v.colorName === colorId && v.sizeLabel === sizeLabel,
             );
-            liveStock = live ? live.stockLevel : 0;
+            orderable = !!live && live.isOrderable;
           }
         }
-        if (liveStock <= 0) {
-          removed.push({ title, reason: `${title} in ${colorId} is out of stock.` });
+        if (!orderable) {
+          removed.push({ title, reason: `${title} in ${colorId} is no longer available.` });
           toDelete.push(item.id);
           continue;
         }

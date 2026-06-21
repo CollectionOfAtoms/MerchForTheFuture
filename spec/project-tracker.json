@@ -56,6 +56,39 @@
   },
   "stories": [
     {
+      "id": "BUG-15",
+      "epic": "Infrastructure",
+      "title": "Cart checkout shipping form does not pre-fill the buyer's primary saved address",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Founder-requested 2026-06-21. The originals/auction fulfill page (src/app/(main)/orders/[orderId]/fulfill/page.tsx) already pre-filled shipping from the buyer's default UserAddress, but the CART checkout (src/app/(main)/checkout) started blank. Added getDefaultShippingAddress(userId) (src/lib/account/address.ts) — the buyer's isDefault UserAddress mapped to FulfillmentShippingAddress (null when none; line2/state absence -> empty string), centralizing the lookup duplicated in the fulfill page + saveAddress action. checkout/page.tsx now passes it as CheckoutClient's initialAddress prop; CheckoutClient (src/components/CheckoutClient.tsx) seeds its address useState from initialAddress (falls back to the empty form, country 'US'). Buyer can still edit before calculating shipping. Tests: getDefaultShippingAddress mapping/null/non-default (node, mftf-12 suite) + CheckoutClient pre-fill render (jsdom, US-MFTF-12.3-checkout-client-prefill.test.tsx)."
+    },
+    {
+      "id": "BUG-14",
+      "epic": "Infrastructure",
+      "title": "Buy Now button active on a seller's own artwork listing",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Founder-requested 2026-06-21. On the artwork detail page (src/app/(main)/artwork/[id]/page.tsx) the fixed-price Buy Now button was active even for the seller who owns the listing; clicking it hit initiateBuyNowAction which already rejects 'You cannot buy your own listing' (tested in US-15.1/US-2.3), but the live button was confusing. Fix: when isSeller (sessionUser.id === artwork.sellerId, already computed on the page) and not sold, render a disabled 'Your listing' button (title 'You can't buy your own listing') instead of the Buy Now form. Server-side guard unchanged (defence in depth). Auction bidding for own listings is unchanged (out of scope — request was Buy Now only). Test added to __tests__/epic-16-seller-ux/US-16.2-edit-listing-button-on-artwork-page.test.ts asserting the owner-gating predicate via getArtworkDetail.sellerId (same render-free pattern the page's other seller-gating uses)."
+    },
+    {
+      "id": "BUG-13",
+      "epic": "Infrastructure",
+      "title": "Teemill referenced apparel not orderable at 0 warehouse stock (print-on-demand ignored)",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Reported 2026-06-21. Checkout 'calculate shipping' failed/pruned referenced Teemill sizes that had 0 warehouse stock, even though Teemill is print-on-demand. Root cause: orderability was derived from warehouse stock alone — ingest (src/lib/fulfillment/teemill/ingest.ts) set isOrderable = enabled && stock.level > 0, and checkout revalidate (src/lib/checkout/revalidate.ts) additionally gated on live warehouse stock (liveStock <= 0 -> removed). LIVE-VERIFIED 2026-06-21 against /catalog/products: every variant (incl. 0-warehouse-stock sizes) carries a gfnVariant (Garments-For-Nature on-demand print catalog entry, …/v1/gfn/catalog/variants/…) + a DTG 'front' applications entry, i.e. it is printable on demand; stock.level is only pre-printed warehouse inventory. Fix: isOrderable = product.enabled !== false && (hasGfnVariant || stockLevel > 0); revalidate now bases orderability on the live re-read's isOrderable (POD-aware), existence-checks the cached variant, and no longer prunes on raw warehouse stock. MSW fixture (__tests__/mocks/teemill-fixture.ts) now emits a gfnVariant per variant + a noGfn option for the genuinely-unavailable case; updated tests in mftf-13.2 (isOrderable from POD not stock), mftf-13.3 (publish-blocked needs noGfn), mftf-12.3 (0-stock POD kept; only neither-stock-nor-POD removed). Data backfill: re-ingested live products ('Don't let her burn.', 'Powered By Plants') so cached ReferencedVariant.isOrderable reflects POD. SEPARATE pre-existing issue found same session and fixed by data change (not code): a DESIGNED listing on a Teemill-provider product type ('Kiddo Tee'/RNC1) routed a Prodigi-shaped quote item (no variantRef) to the Teemill quoter -> 400 'variantRef required'; archived that listing + deactivated the 3 designed-Teemill product types (isActive:false). That contradiction is what US-MFTF-16.1 removes from the UI. // PENDING LIVE CONFIRMATION (same gate as US-MFTF-12.5/12.6): the shipping QUOTE step (POST /orders, no charge) exercising a 0-warehouse-stock POD variant, and whether the paid order (POST /orders/{id}/confirm) routes to POD via the catalog variantRef we send vs. needing the gfnVariantRef. Green vs MSW."
+    },
+    {
       "id": "BUG-12",
       "epic": "Infrastructure",
       "title": "Designed (Prodigi) product types have no colours \u2014 can't create a Prodigi designed listing",
@@ -990,7 +1023,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-10",
       "testPassedCommit": "6062d0f",
-      "notes": "/admin/fulfillment page. markShippedAction updates Order to SHIPPED with carrier/trackingNumber. ORDER_SHIPPED notification + email. Mobile layout fix: Carrier and Tracking number fields each full-width on their own row (space-y-3 stack instead of side-by-side flex)."
+      "notes": "/admin/fulfillment page. markShippedAction updates Order to SHIPPED with carrier/trackingNumber. ORDER_SHIPPED notification + email. Mobile layout fix: Carrier and Tracking number fields each full-width on their own row (space-y-3 stack instead of side-by-side flex). SUPERSEDED 2026-06-20 by Epic MFTF-15 (hybrid fulfillment split): the originals-shipping responsibility moved to the seller (US-MFTF-15.1, /seller/fulfillment) and markShippedAction was removed; the admin /admin/fulfillment page was re-homed as the dropship EXCEPTION/retry queue (US-MFTF-15.2). This story's original test file (US-14.5-admin-fulfillment.test.ts) was deleted; its behavior now lives in the MFTF-15 suites. Story kept Passed for history."
     },
     {
       "id": "US-14.6",
@@ -1997,31 +2030,45 @@
       "id": "US-MFTF-15.1",
       "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
       "title": "Seller Originals Fulfillment Queue",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-20",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-20",
+      "testPassedCommit": "pending",
+      "notes": "Seller-locked queue at /seller/fulfillment (requireVerifiedAuth + roles.includes('SELLER') else redirect '/'). KEY DESIGN DECISION (no schema change): physical originals are legacy single-listing Orders (listingType ORIGINAL, no OrderItem/FulfillmentOrder); to ship them through the SAME seam as dropship (US-MFTF-14.2 applyFulfillmentTransition + the 14.3 lifecycle emails) and to make US-MFTF-15.3 uniformity free, each original is represented by ONE FulfillmentOrder with provider='originals' (free-text provider field; status CONFIRMED; no providerOrderId; no OrderItem). ensureOriginalFulfillmentOrder(orderId) (src/lib/fulfillment/originals.ts) creates it idempotently; getSellerOriginalsQueue(sellerId) lists listingType=ORIGINAL + status=PAID + shippingLine1!=null + originalListing.artwork.sellerId match (dropship/CART never appear; once shipped Order leaves PAID and drops out = the 'not yet shipped' filter). New seller actions in src/app/actions/fulfillment.ts: markOriginalShippedAction (validates carrier+tracking, ownership-checked via loadOwnedOriginal, ensures FO -> applyFulfillmentTransition SHIPPED -> fires buyer SHIPPED email via 14.3 path, also sets Order.status=SHIPPED + tracking for the legacy /buyer/orders list, ORDER_SHIPPED notification) and markOriginalDeliveredAction (DELIVERED transition + email, ORDER_DELIVERED notification). loadShipmentEmailContext (src/lib/payments/email.ts) now falls back to the parent order's originalListing.artwork (our-domain ArtworkImage only, never a provider mockup) when a FulfillmentOrder has zero items, so originals still render a thumbnail+title in the lifecycle email. Nav: sellers get an 'Originals to ship' link. originals FO is never dispatched (dispatchOrderFulfillment is CART-only), never polled (checkAndSyncShipments requires providerOrderId), never FAILED -> never enters the admin exception queue (US-MFTF-15.2). 12 tests in __tests__/mftf-15-seller-fulfillment/US-MFTF-15.1-seller-originals-queue.test.ts (queue scoping/filters, ensure-idempotency, seller-locked ship/deliver actions firing the 14.3 emails, ownership + validation + non-seller redirect). NAV (2026-06-21, founder-requested): the seller nav item is 'Fulfillment' (was 'Originals to ship') with a count badge driven by countSellerOriginalsToShip(sellerId) (same filter as the queue) — a badge on the dropdown trigger AND on the highlighted Fulfillment menu item when count>0 (NavDropdown), plus a mobile equivalent (MobileMenu: a Fulfillment link — previously missing on mobile — + a badge on the hamburger). Nav.tsx computes the count for SELLER sessions and passes fulfillmentCount to both. The badge persists until all are shipped (a shipped order leaves PAID -> count drops). The admin nav item was renamed 'Fulfillment' -> 'Dropship exceptions' to disambiguate from the seller item for admin+seller founders and match the US-MFTF-15.2 page title; US-23.1/23.2 nav tests updated + badge tests added."
     },
     {
       "id": "US-MFTF-15.2",
       "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
       "title": "Admin Dropship Exception Queue",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-20",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-20",
+      "testPassedCommit": "pending",
+      "notes": "Re-homed the admin /admin/fulfillment page (US-14.5) as a dropship EXCEPTION queue: removed the originals-shipping responsibility entirely (deleted the PAID-originals list + the markShippedAction ship forms) and kept only the FAILED FulfillmentOrder retry. New loader getDropshipExceptionQueue() (src/lib/fulfillment/admin.ts) returns FAILED rows with where provider != 'originals' (defensive: an originals FO never fails, but this guarantees physical originals can never appear here per the AC). Retry uses the existing admin-only retryFulfillmentAction -> retryFulfillmentOrder (US-MFTF-12.5): idempotent FAILED -> CONFIRMED via the providerOrderId guard, no duplicate provider order. REMOVED the now-dead admin markShippedAction from src/app/actions/fulfillment.ts (originals shipping moved to the seller in US-MFTF-15.1); its obsolete test __tests__/epic-14-fulfillment/US-14.5-admin-fulfillment.test.ts was deleted (subject re-homed). sendShippingNotificationEmail (the single-order originals email) is left defined but unused by app code. Added the three lifecycle-email exports to the US-14.1/14.2 fulfillment-page test mock because actions/fulfillment now reaches the 14.2 seam. 4 tests in __tests__/mftf-15-seller-fulfillment/US-MFTF-15.2-admin-exception-queue.test.ts (FAILED rows listed w/ error+buyer; originals never appear; admin retry FAILED->CONFIRMED idempotent; non-admin redirected). ENHANCEMENTS (2026-06-21, founder-requested): (1) Admin nav badge mirroring the seller one — countDropshipExceptions() (FAILED dropship FOs, originals excluded) drives a badge on the dropdown trigger + the highlighted 'Dropship exceptions' menu item (NavDropdown) and the mobile link + hamburger (MobileMenu). For admin+seller founders the single trigger/hamburger badge SUMS seller fulfillment + admin exceptions, while each menu item keeps its own specific count. Nav.tsx computes both counts per role and passes fulfillmentCount + exceptionCount. (2) Admin /admin/fulfillment page gained a read-only 'Originals awaiting seller shipment' oversight table (getOriginalsAwaitingSellerShipment(): all sellers' PAID address-confirmed originals with the responsible seller name, buyer, destination, date paid, amount) so operators can see what's pending and who owns it WITHOUT acting (sellers ship; data-testid='originals-oversight'). Tests: countDropshipExceptions (originals never counted) + getOriginalsAwaitingSellerShipment (per-seller attribution; dropship + shipped excluded) in the 15.2 suite; admin badge + admin+seller sum tests in US-23.1/23.2. NAV REFINEMENT (2026-06-21, founder-requested): admins get an admin-FOCUSED dropdown — the buyer/seller operational items (Orders, Listings, seller Fulfillment) are now suppressed when isAdmin (gated on !isAdmin in NavDropdown + MobileMenu; My Bids also hidden for admins per founder follow-up), and the admin item was renamed 'Dropship exceptions' -> 'Fulfillment' (still /admin/fulfillment). No collision because admins no longer see the seller Fulfillment item. The trigger/hamburger badge for an admin therefore reflects only adminPending (exceptionCount); sellerPending is zeroed when seller items are hidden. Non-admin sellers are unchanged (see Listings + seller Fulfillment with its badge). US-23.1/23.2 tests updated (admin label back to Fulfillment; new suppression tests; admin+seller trigger = exceptions only)."
     },
     {
       "id": "US-MFTF-15.3",
       "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
       "title": "Buyer Fulfillment Page Status Source Alignment",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-20",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-20",
+      "testPassedCommit": "pending",
+      "notes": "Uniformity falls out of the US-MFTF-15.1 decision (originals carry a FulfillmentOrder). The buyer order page (src/app/(main)/buyer/orders/[orderId]/page.tsx) now renders the per-shipment OrderShipments layout whenever getOrderShipmentsView returns non-null (i.e. the order has FulfillmentOrders) instead of only listingType===CART — so a seller-shipped original and a webhook-shipped dropship shipment render through the SAME component with identical status/tracking UI; the buyer never sees who shipped or how status was detected. getOrderShipmentsView (src/lib/checkout/shipments.ts) now includes the parent order.originalListing.artwork and, for a FulfillmentOrder with zero OrderItems (an original), synthesizes a single ShipmentLine from the artwork title; single-shipment orders are labelled 'Your order' (matching the email loader). Legacy single PRINT orders (no FulfillmentOrder rows) keep the legacy single-item layout. No change to the buyer-locked access control (getOrderShipmentsView still scopes by buyerId; another buyer gets null). 4 tests in __tests__/mftf-15-seller-fulfillment/US-MFTF-15.3-buyer-status-source.test.ts (original status derives from the seller transition; no seller identity or 'originals' key leaks; a seller-shipped original and a webhook-shipped dropship render byte-identical status badge + tracking line via renderToStaticMarkup; access control unchanged)."
+    },
+    {
+      "id": "US-MFTF-15.4",
+      "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
+      "title": "Seller Sale Notification Email",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Founder-requested 2026-06-21. When an original (fixed-price buy-now or auction win) is purchased, the SELLER is emailed that a sale needs shipping. sendSellerSaleNotificationEmail(orderId) (src/lib/payments/email.ts): to artwork.seller.email; subject 'You've sold \"<title>\" — time to ship it'; body has the artwork + thumbnail (our-domain ArtworkImage only — thumbnailUrl/gridUrl/url, never a provider mockup), the ship-to name + full address (shippingName/line1/line2/city/state/postal/country), the buyer name, and an 'Add tracking' button linking to ${BASE_URL}/seller/fulfillment. Wired into runFulfillment (src/lib/payments/webhook.ts) for listingType===ORIGINAL, best-effort (.catch — never blocks the buyer confirmation). Fires exactly once: runFulfillment guards on status===PAID, and all PAID paths (fulfillPayment / fulfillPaymentBySession / resolveSessionFulfillment) funnel through it. Address is guaranteed present because the originals fulfill page collects shipping BEFORE payment (US-MFTF-12.4 retrofit). 4 tests in __tests__/mftf-15-seller-fulfillment/US-MFTF-15.4-seller-sale-notification.test.ts (seller gets artwork+thumbnail+address+tracking link; sent to seller not buyer; no-op for non-ORIGINAL; fires from the fulfillPayment PAID transition). Follow-up: added sendSellerSaleNotificationEmail to the @/lib/payments/email vi.mock in US-15.1-buy-from-listing.test.ts (runFulfillment now calls it on an ORIGINAL sale, so partial email mocks on the fulfillment path must include it). // MailerSend domain caveat (carry-forward): EMAIL_FROM domain must be verified or sends are silently swallowed."
     },
     {
       "id": "US-MFTF-16.1",

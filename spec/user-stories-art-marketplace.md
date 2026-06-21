@@ -2586,6 +2586,23 @@ _Added 2026-06-18. Moves physical-original fulfillment from admin to seller (the
 - Test file: `__tests__/mftf-15-seller-fulfillment/US-MFTF-15.3-buyer-status-source.test.ts`
 - Component/integration: an original marked shipped by its seller and a dropship shipment marked shipped by webhook render identical buyer-facing status/tracking UI
 
+### US-MFTF-15.4 — Seller Sale Notification Email
+
+**As a** seller,
+**I want** an email the moment one of my originals sells,
+**so that** I know to pack and ship it without watching the queue.
+
+**Acceptance Criteria:**
+- [ ] When an original-artwork order (fixed-price buy-now or auction win) is paid, the seller who owns the artwork is emailed exactly once
+- [ ] The email shows the artwork to ship with a thumbnail sourced only from our own uploaded images (never a provider mockup)
+- [ ] The email shows the buyer's name and the confirmed shipping address
+- [ ] The email links to the seller fulfillment page (`/seller/fulfillment`) where the seller enters tracking
+- [ ] Dropshipped (apparel/print) orders do not trigger this email — those fulfill automatically
+
+**TDD Notes:**
+- Test file: `__tests__/mftf-15-seller-fulfillment/US-MFTF-15.4-seller-sale-notification.test.ts`
+- Sent to the seller (not the buyer); fires from the paid transition; no-op for non-original orders
+
 ---
 
 ## Epic MFTF-16: Storefront & Catalog Corrections
