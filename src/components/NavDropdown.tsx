@@ -10,11 +10,13 @@ interface NavDropdownProps {
   roles: string[];
   /** Seller originals awaiting shipment — drives the fulfillment badge (US-MFTF-15.1). */
   fulfillmentCount?: number;
+  /** Dropship shipments in an exception state (FAILED) — admin badge (US-MFTF-15.2). */
+  exceptionCount?: number;
   /** Override current pathname — used in tests where Next.js router context is unavailable. */
   currentPath?: string;
 }
 
-export default function NavDropdown({ user, roles, fulfillmentCount = 0, currentPath }: NavDropdownProps) {
+export default function NavDropdown({ user, roles, fulfillmentCount = 0, exceptionCount = 0, currentPath }: NavDropdownProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -72,7 +74,11 @@ export default function NavDropdown({ user, roles, fulfillmentCount = 0, current
     : "/buyer/settings";
 
   const label = user.name ?? user.email ?? "Account";
-  const showFulfillmentBadge = isSeller && fulfillmentCount > 0;
+  const sellerPending = isSeller ? fulfillmentCount : 0;
+  const adminPending = isAdmin ? exceptionCount : 0;
+  // One trigger badge summarising everything that needs the user's attention; the
+  // menu items break it down (seller fulfillment vs. admin dropship exceptions).
+  const triggerCount = sellerPending + adminPending;
 
   function isActive(href: string) {
     return pathname === href;
@@ -111,12 +117,12 @@ export default function NavDropdown({ user, roles, fulfillmentCount = 0, current
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
-        {showFulfillmentBadge && (
+        {triggerCount > 0 && (
           <span
-            aria-label={`${fulfillmentCount} original${fulfillmentCount === 1 ? "" : "s"} awaiting fulfillment`}
+            aria-label={`${triggerCount} item${triggerCount === 1 ? "" : "s"} needing attention`}
             className="ml-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-cerulean px-1.5 text-[10px] font-semibold leading-none text-white"
           >
-            {fulfillmentCount}
+            {triggerCount}
           </span>
         )}
       </button>
@@ -154,7 +160,7 @@ export default function NavDropdown({ user, roles, fulfillmentCount = 0, current
               href="/seller/fulfillment"
               active={isActive("/seller/fulfillment")}
               badge={fulfillmentCount}
-              highlight={showFulfillmentBadge}
+              highlight={sellerPending > 0}
             >
               Fulfillment
             </MenuItem>
@@ -179,7 +185,12 @@ export default function NavDropdown({ user, roles, fulfillmentCount = 0, current
           )}
 
           {isAdmin && (
-            <MenuItem href="/admin/fulfillment" active={isActive("/admin/fulfillment")}>
+            <MenuItem
+              href="/admin/fulfillment"
+              active={isActive("/admin/fulfillment")}
+              badge={exceptionCount}
+              highlight={adminPending > 0}
+            >
               Dropship exceptions
             </MenuItem>
           )}

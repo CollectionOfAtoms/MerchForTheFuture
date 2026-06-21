@@ -10,6 +10,8 @@ interface MobileMenuProps {
   roles: string[];
   /** Seller originals awaiting shipment — drives the fulfillment badge (US-MFTF-15.1). */
   fulfillmentCount?: number;
+  /** Dropship shipments in an exception state (FAILED) — admin badge (US-MFTF-15.2). */
+  exceptionCount?: number;
   /** Override the current pathname — used in tests where the Next.js router context is unavailable. */
   currentPath?: string;
 }
@@ -21,7 +23,7 @@ const sharedLinks = [
   { href: "/browse?type=print", label: "Prints" },
 ];
 
-export default function MobileMenu({ user, roles, fulfillmentCount = 0, currentPath }: MobileMenuProps) {
+export default function MobileMenu({ user, roles, fulfillmentCount = 0, exceptionCount = 0, currentPath }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   // showLinks lags behind isOpen by ~420ms so links only animate in
   // after the splash overlay has finished expanding.
@@ -100,6 +102,10 @@ export default function MobileMenu({ user, roles, fulfillmentCount = 0, currentP
   const isSeller = roles.includes("SELLER");
   const isBuyer  = roles.includes("BUYER");
 
+  // One hamburger badge summarising everything needing attention; the menu items
+  // break it down (seller fulfillment + admin dropship exceptions).
+  const attentionCount = (isSeller ? fulfillmentCount : 0) + (isAdmin ? exceptionCount : 0);
+
   const dashboardHref = isAdmin
     ? "/dashboard/admin"
     : isSeller
@@ -162,7 +168,7 @@ export default function MobileMenu({ user, roles, fulfillmentCount = 0, currentP
           navLink("/admin/products",   "Products"),
           navLink("/admin/tracker",    "Tracker"),
           navLink("/admin/users",      "Users"),
-          navLink("/admin/fulfillment","Dropship exceptions"),
+          navLink("/admin/fulfillment","Dropship exceptions", exceptionCount),
         ] : []),
         navLink(settingsHref, "Settings"),
         {
@@ -323,8 +329,8 @@ export default function MobileMenu({ user, roles, fulfillmentCount = 0, currentP
         aria-expanded={isOpen}
         aria-controls="mobile-menu"
         aria-label={
-          fulfillmentCount > 0 && !isOpen
-            ? `Toggle menu — ${fulfillmentCount} original${fulfillmentCount === 1 ? "" : "s"} awaiting fulfillment`
+          attentionCount > 0 && !isOpen
+            ? `Toggle menu — ${attentionCount} item${attentionCount === 1 ? "" : "s"} needing attention`
             : "Toggle menu"
         }
         onClick={handleToggle}
@@ -337,13 +343,13 @@ export default function MobileMenu({ user, roles, fulfillmentCount = 0, currentP
           backgroundColor: isOpen ? "white" : undefined,
         }}
       >
-        {/* Notification dot when the seller has originals to ship (hidden while open). */}
-        {fulfillmentCount > 0 && !isOpen && (
+        {/* Notification badge for anything needing attention (hidden while open). */}
+        {attentionCount > 0 && !isOpen && (
           <span
             aria-hidden="true"
             className="absolute right-0 top-0 inline-flex min-w-[16px] items-center justify-center rounded-full bg-cerulean px-1 text-[10px] font-semibold leading-none text-white"
           >
-            {fulfillmentCount}
+            {attentionCount}
           </span>
         )}
         {/*

@@ -10,9 +10,19 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
 const { auth } = await import("@/auth");
-const { getDropshipExceptionQueue } = await import("@/lib/fulfillment/admin");
+const { getDropshipExceptionQueue, countDropshipExceptions, getOriginalsAwaitingSellerShipment } = await import("@/lib/fulfillment/admin");
 const { retryFulfillmentAction } = await import("@/app/actions/fulfillment");
 const { ensureOriginalFulfillmentOrder } = await import("@/lib/fulfillment/originals");
+
+/** A PAID, address-confirmed ORIGINAL order owned by `sellerId`. */
+async function seedOriginalOrder(sellerId: string, title = "Original") {
+  const buyer = await seedUser(["BUYER"]);
+  const artwork = await prisma.artwork.create({ data: { sellerId, title, description: "x", status: "PUBLISHED" } });
+  const listing = await prisma.originalListing.create({ data: { artworkId: artwork.id, saleType: "FIXED_PRICE", price: 500, status: "SOLD" } });
+  return prisma.order.create({
+    data: { buyerId: buyer.id, listingType: "ORIGINAL", originalListingId: listing.id, subtotal: 500, totalAmount: 500, status: "PAID", shippingName: "Jane", shippingLine1: "1 St", shippingCity: "Portland", shippingPostal: "97201", shippingCountry: "US" },
+  });
+}
 
 function useProdigiOrderOk() {
   server.use(
@@ -111,6 +121,45 @@ describe("US-MFTF-15.2 — admin dropship exception queue", () => {
       vi.mocked(auth).mockResolvedValue({ user: { id: seller.id, roles: ["SELLER"] } } as never);
 
       await expect(retryFulfillmentAction(fo.id)).rejects.toThrow("NEXT_REDIRECT");
+    });
+  });
+
+  describe("countDropshipExceptions (admin nav badge)", () => {
+    it("counts only FAILED dropship shipments, never originals", async () => {
+      const seller = await seedUser(["SELLER"]);
+      await seedFailedDropship(seller.id);
+      await seedFailedDropship(seller.id);
+      // A FAILED originals FO must not be counted.
+      const origOrder = await seedOriginalOrder(seller.id);
+      const origFo = await ensureOriginalFulfillmentOrder(origOrder.id);
+      await prisma.fulfillmentOrder.update({ where: { id: origFo.id }, data: { status: "FAILED" } });
+
+      expect(await countDropshipExceptions()).toBe(2);
+    });
+  });
+
+  describe("getOriginalsAwaitingSellerShipment (admin oversight)", () => {
+    it("lists every seller's pending originals with the responsible seller", async () => {
+      const sellerA = await prisma.user.create({ data: { email: `a-${crypto.randomUUID()}@test.com`, name: "Seller A", passwordHash: "x", roles: ["SELLER"] } });
+      const sellerB = await prisma.user.create({ data: { email: `b-${crypto.randomUUID()}@test.com`, name: "Seller B", passwordHash: "x", roles: ["SELLER"] } });
+      await seedOriginalOrder(sellerA.id, "Sunrise");
+      await seedOriginalOrder(sellerB.id, "Moonset");
+
+      const rows = await getOriginalsAwaitingSellerShipment();
+      expect(rows).toHaveLength(2);
+      const byArtwork = Object.fromEntries(rows.map((r) => [r.artworkTitle, r.sellerName]));
+      expect(byArtwork["Sunrise"]).toBe("Seller A");
+      expect(byArtwork["Moonset"]).toBe("Seller B");
+    });
+
+    it("excludes dropship orders and already-shipped originals", async () => {
+      const seller = await seedUser(["SELLER"]);
+      await seedFailedDropship(seller.id); // dropship — never here
+      const shipped = await seedOriginalOrder(seller.id, "Shipped one");
+      await prisma.order.update({ where: { id: shipped.id }, data: { status: "SHIPPED" } });
+
+      const rows = await getOriginalsAwaitingSellerShipment();
+      expect(rows).toHaveLength(0);
     });
   });
 });

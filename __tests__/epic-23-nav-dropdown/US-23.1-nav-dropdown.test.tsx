@@ -256,6 +256,34 @@ describe("US-23.1 — Desktop Nav User Dropdown (NavDropdown)", () => {
     });
   });
 
+  describe("Admin dropship-exception badge (US-MFTF-15.2)", () => {
+    it("badges the trigger AND the Dropship exceptions item when there are exceptions", () => {
+      render(<NavDropdown user={adminUser} roles={["ADMIN"]} exceptionCount={2} />);
+      const trigger = screen.getByRole("button", { name: /admin/i });
+      expect(within(trigger).getByText("2")).toBeInTheDocument();
+      fireEvent.click(trigger);
+      const link = screen.getByRole("menuitem", { name: /dropship exceptions/i });
+      expect(within(link).getByText("2")).toBeInTheDocument();
+      expect(link).toHaveAttribute("data-highlight", "true");
+    });
+
+    it("shows no badge when there are no exceptions", () => {
+      render(<NavDropdown user={adminUser} roles={["ADMIN"]} exceptionCount={0} />);
+      const trigger = screen.getByRole("button", { name: /admin/i });
+      expect(within(trigger).queryByText("0")).not.toBeInTheDocument();
+    });
+
+    it("sums seller fulfillment + admin exceptions on the trigger for admin+seller founders", () => {
+      render(<NavDropdown user={adminUser} roles={["ADMIN", "SELLER"]} fulfillmentCount={1} exceptionCount={2} />);
+      const trigger = screen.getByRole("button", { name: /admin/i });
+      expect(within(trigger).getByText("3")).toBeInTheDocument();
+      // Each item keeps its own specific count.
+      fireEvent.click(trigger);
+      expect(within(screen.getByRole("menuitem", { name: /^fulfillment/i })).getByText("1")).toBeInTheDocument();
+      expect(within(screen.getByRole("menuitem", { name: /dropship exceptions/i })).getByText("2")).toBeInTheDocument();
+    });
+  });
+
   describe("Admin role", () => {
     it("shows Tracker link", () => {
       render(<NavDropdown user={adminUser} roles={["ADMIN"]} />);

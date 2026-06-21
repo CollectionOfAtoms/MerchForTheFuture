@@ -297,12 +297,13 @@ describe("US-23.2 — Restructured Mobile Menu with Role-Aware Sections", () => 
       expect(link).toHaveAttribute("href", "/admin/users");
     });
 
-    it("shows Dropship exceptions link pointing to /admin/fulfillment", () => {
-      render(<MobileMenu user={adminUser} roles={["ADMIN"]} />);
+    it("shows Dropship exceptions link pointing to /admin/fulfillment, badged when there are exceptions", () => {
+      render(<MobileMenu user={adminUser} roles={["ADMIN"]} exceptionCount={3} />);
       open();
       const link = screen.getByRole("link", { name: /dropship exceptions/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/admin/fulfillment");
+      expect(within(link).getByText("3")).toBeInTheDocument();
     });
 
     it("does not show My Bids or Orders", () => {
