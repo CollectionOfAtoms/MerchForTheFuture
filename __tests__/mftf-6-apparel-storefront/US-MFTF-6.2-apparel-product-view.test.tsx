@@ -51,12 +51,14 @@ describe("ApparelProductView", () => {
     expect(screen.getByText(/exact shade may vary slightly by batch/i)).toBeTruthy();
   });
 
-  it("highlights a colour when selected", () => {
+  it("pre-selects the first colour and highlights another when selected (US-MFTF-16.2)", () => {
     renderView();
-    const white = screen.getByRole("button", { name: /white/i });
-    expect(white.getAttribute("aria-pressed")).toBe("false");
-    fireEvent.click(white);
-    expect(white.getAttribute("aria-pressed")).toBe("true");
+    // First offered colour (White) is selected by default on load.
+    expect(screen.getByRole("button", { name: /white/i }).getAttribute("aria-pressed")).toBe("true");
+    const evergreen = screen.getByRole("button", { name: /evergreen/i });
+    expect(evergreen.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(evergreen);
+    expect(evergreen.getAttribute("aria-pressed")).toBe("true");
   });
 
   it("renders a size button per size with none pre-selected", () => {
@@ -68,17 +70,14 @@ describe("ApparelProductView", () => {
     }
   });
 
-  it("disables the add-to-cart button until both a colour and a size are chosen", () => {
+  it("disables the add-to-cart button until a size is chosen (colour defaulted, US-MFTF-16.2)", () => {
     renderView();
     const addBtn = screen.getByRole("button", { name: /add to cart/i }) as HTMLButtonElement;
-    expect(addBtn.disabled).toBe(true);
-
-    fireEvent.click(screen.getByRole("button", { name: /white/i }));
-    expect(addBtn.disabled).toBe(true); // colour only
+    expect(addBtn.disabled).toBe(true); // colour defaulted, but no size yet
 
     const sizeGroup = screen.getByRole("group", { name: /size/i });
     fireEvent.click(within(sizeGroup).getByRole("button", { name: "M" }));
-    expect(addBtn.disabled).toBe(false); // colour + size
+    expect(addBtn.disabled).toBe(false); // size is the only remaining gate
   });
 
   it("keeps the carousel image unchanged when a colour is selected on a lifestyle-photo listing (no colour-tagged images)", () => {

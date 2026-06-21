@@ -2085,11 +2085,12 @@
       "id": "US-MFTF-16.2",
       "epic": "Epic MFTF-16: Storefront & Catalog Corrections",
       "title": "Default First Color on Apparel Detail Page",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "All changes in src/components/ApparelProductView.tsx (the normalized read-shape means one change covers both sourcing modes). colorIndex now initializes to 0 when detail.colors.length > 0, else null; imageIndex initializes to the first colour's per-colour mockup (mockupIndexForColor helper, shared with selectColor) so referenced listings default that colour's cached mockup on load. The existing buy-button predicate (colorIndex !== null && size !== null && !isPending) is unchanged and now collapses to 'size only' when a colour is present and to 'disabled' when there are zero offered colours (graceful degradation — revises US-MFTF-6.2's 'disabled until BOTH'). Size stays un-pre-selected. Helper hint text now gates on size ('Select a size to continue'; 'This item is currently unavailable' when zero colours). Tests: __tests__/mftf-16-storefront-corrections/US-MFTF-16.2-default-first-color.test.tsx (jsdom — first colour pre-selected both modes, size un-selected, buy enables on size only, referenced carousel defaults to first colour's mockup, zero-colour graceful degrade). Regression: US-MFTF-6.2-apparel-product-view.test.tsx updated — 'highlights a colour' now asserts White (colors[0]) pre-selected + Evergreen toggles; 'disables until both' rewritten to gate on size only. Mockup-swap + lifestyle tests unchanged. Data-layer US-MFTF-6.2-apparel-detail-page.test.ts unaffected (projection unchanged)."
     },
     {
       "id": "US-MFTF-17.1",
