@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { stripe } from "./stripe";
-import { sendPurchaseConfirmation, sendCartPurchaseConfirmation } from "./email";
+import { sendPurchaseConfirmation, sendCartPurchaseConfirmation, sendSellerSaleNotificationEmail } from "./email";
 import { clearUserCart } from "@/lib/cart/cart";
 import { dispatchOrderFulfillment } from "@/lib/checkout/fanout";
 
@@ -97,6 +97,14 @@ async function runFulfillment(orderId: string, chargeRef: string): Promise<void>
         console.error("[webhook] Prodigi order creation failed:", err);
       }
     }
+  }
+
+  // Physical originals are shipped by the seller (US-MFTF-15.1) — notify them that a
+  // sale needs shipping (US-MFTF-15.4). Best-effort: never blocks the buyer email.
+  if (order.listingType === "ORIGINAL") {
+    await sendSellerSaleNotificationEmail(order.id).catch((e) =>
+      console.error("[seller-sale email] failed", e),
+    );
   }
 
   await sendPurchaseConfirmation(order.id);

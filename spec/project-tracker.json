@@ -2038,6 +2038,17 @@
       "notes": "Uniformity falls out of the US-MFTF-15.1 decision (originals carry a FulfillmentOrder). The buyer order page (src/app/(main)/buyer/orders/[orderId]/page.tsx) now renders the per-shipment OrderShipments layout whenever getOrderShipmentsView returns non-null (i.e. the order has FulfillmentOrders) instead of only listingType===CART — so a seller-shipped original and a webhook-shipped dropship shipment render through the SAME component with identical status/tracking UI; the buyer never sees who shipped or how status was detected. getOrderShipmentsView (src/lib/checkout/shipments.ts) now includes the parent order.originalListing.artwork and, for a FulfillmentOrder with zero OrderItems (an original), synthesizes a single ShipmentLine from the artwork title; single-shipment orders are labelled 'Your order' (matching the email loader). Legacy single PRINT orders (no FulfillmentOrder rows) keep the legacy single-item layout. No change to the buyer-locked access control (getOrderShipmentsView still scopes by buyerId; another buyer gets null). 4 tests in __tests__/mftf-15-seller-fulfillment/US-MFTF-15.3-buyer-status-source.test.ts (original status derives from the seller transition; no seller identity or 'originals' key leaks; a seller-shipped original and a webhook-shipped dropship render byte-identical status badge + tracking line via renderToStaticMarkup; access control unchanged)."
     },
     {
+      "id": "US-MFTF-15.4",
+      "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
+      "title": "Seller Sale Notification Email",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Founder-requested 2026-06-21. When an original (fixed-price buy-now or auction win) is purchased, the SELLER is emailed that a sale needs shipping. sendSellerSaleNotificationEmail(orderId) (src/lib/payments/email.ts): to artwork.seller.email; subject 'You've sold \"<title>\" — time to ship it'; body has the artwork + thumbnail (our-domain ArtworkImage only — thumbnailUrl/gridUrl/url, never a provider mockup), the ship-to name + full address (shippingName/line1/line2/city/state/postal/country), the buyer name, and an 'Add tracking' button linking to ${BASE_URL}/seller/fulfillment. Wired into runFulfillment (src/lib/payments/webhook.ts) for listingType===ORIGINAL, best-effort (.catch — never blocks the buyer confirmation). Fires exactly once: runFulfillment guards on status===PAID, and all PAID paths (fulfillPayment / fulfillPaymentBySession / resolveSessionFulfillment) funnel through it. Address is guaranteed present because the originals fulfill page collects shipping BEFORE payment (US-MFTF-12.4 retrofit). 4 tests in __tests__/mftf-15-seller-fulfillment/US-MFTF-15.4-seller-sale-notification.test.ts (seller gets artwork+thumbnail+address+tracking link; sent to seller not buyer; no-op for non-ORIGINAL; fires from the fulfillPayment PAID transition). // MailerSend domain caveat (carry-forward): EMAIL_FROM domain must be verified or sends are silently swallowed."
+    },
+    {
       "id": "US-MFTF-16.1",
       "epic": "Epic MFTF-16: Storefront & Catalog Corrections",
       "title": "Remove Teemill from Designed-Mode Provider Picker",
