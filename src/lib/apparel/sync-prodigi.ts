@@ -97,6 +97,22 @@ export async function fetchProdigiBlankAttributes(providerSkuBase: string): Prom
   return { sizes, colors };
 }
 
+/**
+ * Whether Prodigi recognises this SKU. `GET /products/{sku}` returns 200 for a
+ * real catalog SKU and a non-2xx (typically 404) otherwise — the authoritative
+ * existence check used to reject bogus blanks at product-type submit time
+ * (BUG-16). Throws on a network/transport error so the caller can distinguish
+ * "Prodigi says no" (resolves false) from "couldn't reach Prodigi" (rejects).
+ */
+export async function prodigiProductExists(providerSkuBase: string): Promise<boolean> {
+  const apiKey = process.env.PRODIGI_API_KEY ?? "";
+  const res = await fetch(`${PRODIGI_BASE}/products/${encodeURIComponent(providerSkuBase)}`, {
+    headers: { "X-API-Key": apiKey },
+    cache: "no-store",
+  });
+  return res.ok;
+}
+
 export type SyncOneResult =
   | { ok: true; sizes: string[]; colors: string[] }
   | { ok: false; reason: string };

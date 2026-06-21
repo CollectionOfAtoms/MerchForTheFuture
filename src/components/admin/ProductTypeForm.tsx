@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import TeemillProductPicker from "./TeemillProductPicker";
 
 interface Defaults {
   name?: string;
@@ -12,8 +11,11 @@ interface Defaults {
 }
 
 export default function ProductTypeForm({ defaults }: { defaults?: Defaults } = {}) {
+  // Designed product types are Prodigi-only (US-MFTF-16.1). Teemill is a
+  // REFERENCED source added via the referenced-listing path, so it is no longer
+  // offered in this designed-mode picker.
   const [provider, setProvider] = useState(
-    defaults?.fulfillmentProvider ?? "TEEMILL"
+    defaults?.fulfillmentProvider ?? "PRODIGI"
   );
 
   return (
@@ -56,49 +58,55 @@ export default function ProductTypeForm({ defaults }: { defaults?: Defaults } = 
           onChange={(e) => setProvider(e.target.value)}
           className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
         >
-          <option value="TEEMILL">T-Mill</option>
           <option value="PRODIGI">Prodigi</option>
         </select>
       </div>
 
-      {/* Provider-specific product selection */}
-      {provider === "TEEMILL" ? (
+      {/* Where the Teemill option used to be: a note pointing admins to the
+          referenced-listing path. Copy is founder-editable; tests assert the
+          region by test id, not wording (US-MFTF-16.1). */}
+      <div
+        data-testid="teemill-referenced-note"
+        className="rounded-xl border border-cerulean/30 bg-cerulean/5 px-5 py-4 text-sm text-stone-600"
+      >
+        <p className="font-semibold text-stone-800">Looking for Teemill?</p>
+        <p className="mt-1">
+          Teemill products meet the material standard and are added through the
+          referenced-listing path — no designed product type or whitelisting
+          required. Build the product on Teemill and reference it directly when
+          creating the listing.
+        </p>
+      </div>
+
+      {/* Prodigi SKU (designed types are Prodigi-only) */}
+      <div className="space-y-3 rounded-xl border border-stone-200 bg-stone-50 px-5 py-4 text-sm">
+        <p className="font-semibold text-stone-800">Finding a Prodigi SKU</p>
+        <ol className="list-decimal list-inside space-y-1 text-stone-500">
+          <li>
+            Browse the catalog at{" "}
+            <strong className="text-stone-700">prodigi.com/products</strong>
+          </li>
+          <li>Open a product and copy its SKU from the detail page</li>
+          <li>
+            Example:{" "}
+            <code className="rounded bg-stone-200 px-1 text-xs">
+              GLOBAL-FAP-16X20
+            </code>
+          </li>
+        </ol>
         <div>
-          <label className="block text-sm font-medium text-stone-700 mb-3">
-            Product <span className="text-red-500">*</span>
+          <label className="block text-xs font-medium text-stone-600 mb-1">
+            Provider SKU base <span className="text-red-500">*</span>
           </label>
-          <TeemillProductPicker defaultItemCode={defaults?.providerSkuBase} />
+          <input
+            name="providerSkuBase"
+            required
+            defaultValue={defaults?.providerSkuBase}
+            placeholder="e.g. GLOBAL-FAP-16X20"
+            className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
+          />
         </div>
-      ) : (
-        <div className="space-y-3 rounded-xl border border-stone-200 bg-stone-50 px-5 py-4 text-sm">
-          <p className="font-semibold text-stone-800">Finding a Prodigi SKU</p>
-          <ol className="list-decimal list-inside space-y-1 text-stone-500">
-            <li>
-              Browse the catalog at{" "}
-              <strong className="text-stone-700">prodigi.com/products</strong>
-            </li>
-            <li>Open a product and copy its SKU from the detail page</li>
-            <li>
-              Example:{" "}
-              <code className="rounded bg-stone-200 px-1 text-xs">
-                GLOBAL-FAP-16X20
-              </code>
-            </li>
-          </ol>
-          <div>
-            <label className="block text-xs font-medium text-stone-600 mb-1">
-              Provider SKU base <span className="text-red-500">*</span>
-            </label>
-            <input
-              name="providerSkuBase"
-              required
-              defaultValue={defaults?.providerSkuBase}
-              placeholder="e.g. GLOBAL-FAP-16X20"
-              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
-            />
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Active */}
       <div className="flex items-center gap-3">

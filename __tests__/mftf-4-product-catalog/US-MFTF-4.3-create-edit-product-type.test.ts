@@ -25,7 +25,7 @@ function makeProductTypeForm(overrides: Record<string, string> = {}): FormData {
   const fd = new FormData();
   fd.set("name",                overrides.name                ?? "Unisex Tee");
   fd.set("description",         overrides.description         ?? "Great tee");
-  fd.set("fulfillmentProvider", overrides.fulfillmentProvider ?? "TEEMILL");
+  fd.set("fulfillmentProvider", overrides.fulfillmentProvider ?? "PRODIGI");
   fd.set("providerSkuBase",     overrides.providerSkuBase     ?? "RNA1");
   if (overrides.isActive !== undefined) fd.set("isActive", overrides.isActive);
   return fd;
@@ -100,7 +100,7 @@ describe("US-MFTF-4.3 — createProductTypeAction", () => {
 
     const pt = await prisma.productType.findUnique({ where: { name: "Unisex Tee" } });
     expect(pt).not.toBeNull();
-    expect(pt!.fulfillmentProvider).toBe("TEEMILL");
+    expect(pt!.fulfillmentProvider).toBe("PRODIGI");
     expect(pt!.providerSkuBase).toBe("RNA1");
   });
 });

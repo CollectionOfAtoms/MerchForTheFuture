@@ -11,6 +11,11 @@ import { addToCartAction } from "@/app/actions/cart";
  * normalized read-shape, so it renders identically for both sourcing modes and
  * never references a provider name or `sourcingMode`.
  *
+ * The first offered colour is pre-selected on load in both sourcing modes
+ * (US-MFTF-16.2), so the page is immediately complete and the buyer only needs
+ * to choose a size; the buy button gates on size alone. A listing with zero
+ * offered colours degrades gracefully (colour stays null, buy stays disabled).
+ *
  * Selecting a colour jumps the carousel to that colour's mockup when one exists
  * (referenced listings carry one image per colour); lifestyle-photo listings
  * have no colour-tagged images, so the carousel stays put. Manual carousel
@@ -20,9 +25,18 @@ import { addToCartAction } from "@/app/actions/cart";
  * served from `images.podos.io`, which is not in the `next/image` allowlist.
  */
 export default function ApparelProductView({ detail }: { detail: ApparelDetail }) {
-  const [colorIndex, setColorIndex] = useState<number | null>(null);
+  // Index of the per-colour mockup for a given colour, or -1 if none is tagged
+  // (lifestyle-photo listings). Shared by the default-colour initializer and
+  // selectColor so the carousel pairs with the chosen colour consistently.
+  const mockupIndexForColor = (i: number) =>
+    detail.images.findIndex((img) => img.colorName === detail.colors[i]?.name);
+
+  const defaultColorIndex = detail.colors.length > 0 ? 0 : null;
+  const [colorIndex, setColorIndex] = useState<number | null>(defaultColorIndex);
   const [size, setSize] = useState<string | null>(null);
-  const [imageIndex, setImageIndex] = useState(0);
+  const [imageIndex, setImageIndex] = useState(() =>
+    defaultColorIndex !== null ? Math.max(mockupIndexForColor(defaultColorIndex), 0) : 0
+  );
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState(false);
@@ -44,7 +58,7 @@ export default function ApparelProductView({ detail }: { detail: ApparelDetail }
     // one image per colour), jump the carousel to it. Lifestyle-photo listings
     // have no colour-tagged images, so the carousel stays put. Manual carousel
     // navigation never changes the selected colour/size.
-    const match = detail.images.findIndex((img) => img.colorName === detail.colors[i].name);
+    const match = mockupIndexForColor(i);
     if (match >= 0) setImageIndex(match);
   }
 
@@ -188,8 +202,9 @@ export default function ApparelProductView({ detail }: { detail: ApparelDetail }
             </div>
           )}
 
-          {/* Add to cart (US-MFTF-11.2). Disabled until both colour and size are
-              chosen; the buyer stays on the page and the nav badge updates. */}
+          {/* Add to cart (US-MFTF-11.2). The first colour is defaulted on load
+              (US-MFTF-16.2), so the button gates on size alone; the buyer stays
+              on the page and the nav badge updates. */}
           <button
             type="button"
             onClick={handleAddToCart}
@@ -203,8 +218,10 @@ export default function ApparelProductView({ detail }: { detail: ApparelDetail }
           >
             {isPending ? "Adding…" : "Add to cart"}
           </button>
-          {colorIndex === null || size === null ? (
-            <p className="-mt-3 text-center text-xs text-stone-400">Select a color and size to continue</p>
+          {colorIndex === null ? (
+            <p className="-mt-3 text-center text-xs text-stone-400">This item is currently unavailable</p>
+          ) : size === null ? (
+            <p className="-mt-3 text-center text-xs text-stone-400">Select a size to continue</p>
           ) : null}
           {added && (
             <p role="status" className="-mt-3 text-center text-xs font-medium text-emerald-700">

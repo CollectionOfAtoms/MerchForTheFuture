@@ -56,6 +56,17 @@
   },
   "stories": [
     {
+      "id": "BUG-16",
+      "epic": "Infrastructure",
+      "title": "Designed product type can be created with a SKU that is not in Prodigi's catalog",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Founder-reported 2026-06-21. createProductTypeAction/updateProductTypeAction (src/app/actions/admin/product-catalog.ts) accepted any non-empty providerSkuBase; the Prodigi auto-sync is best-effort (swallows errors) so a bogus SKU silently created a sizeless/colourless designed blank. Fix: added prodigiProductExists(sku) (src/lib/apparel/sync-prodigi.ts) — GET /products/{sku} is 200 for a real SKU, non-2xx (404) otherwise (live-verified 2026-06-21, see docs/prodigi-api-notes.md). A shared validateProdigiSku() guard runs in both actions before the prisma write: a 404 → 'No Prodigi product found for SKU \"X\"...' (rejected, nothing persisted); a transport error → 'Could not reach Prodigi to verify the SKU. Please try again.' (don't create an unverifiable type). Only reached for PRODIGI types (TEEMILL already rejected by US-MFTF-16.1, which is the only other designed provider). MSW: added a global GET /products/:sku handler (200 for any SKU) so existing create/update flows validate; the BUG-16 test overrides it per-test (known SKUs 200, others 404). Test: __tests__/mftf-16-storefront-corrections/BUG-16-reject-invalid-prodigi-sku.test.ts (create + update reject unknown SKU + no row mutation; valid SKU still creates)."
+    },
+    {
       "id": "BUG-15",
       "epic": "Infrastructure",
       "title": "Cart checkout shipping form does not pre-fill the buyer's primary saved address",
@@ -2074,21 +2085,23 @@
       "id": "US-MFTF-16.1",
       "epic": "Epic MFTF-16: Storefront & Catalog Corrections",
       "title": "Remove Teemill from Designed-Mode Provider Picker",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Designed product types are Prodigi-only (the code guardrail behind BUG-13's data cleanup). The FulfillmentProviderType enum RETAINS TEEMILL (no migration) — UI-blocked, not deleted. ProductTypeForm (src/components/admin/ProductTypeForm.tsx): provider <select> now offers Prodigi only (T-Mill option removed), default state 'PRODIGI', TeemillProductPicker import dropped; an informational note region (data-testid='teemill-referenced-note', founder-editable copy) renders where Teemill used to be, pointing admins to the referenced-listing path; the Prodigi SKU box now renders unconditionally. Server actions (src/app/actions/admin/product-catalog.ts): both createProductTypeAction and updateProductTypeAction now reject any provider !== 'PRODIGI' ('Teemill is a referenced source and cannot back a designed product type'), guarding stale/direct calls — STRICT literal per founder, so the 3 legacy deactivated designed-Teemill rows can no longer be re-saved via the edit form (intended frozen state). Tests under __tests__/mftf-16-storefront-corrections/: US-MFTF-16.1-teemill-out-of-designed-picker.test.ts (node — create/update reject TEEMILL + no row, Prodigi still succeeds), US-MFTF-16.1-provider-picker-form.test.tsx (jsdom — Prodigi option present, no Teemill option, note region + SKU input render). Regression: US-MFTF-4.3 test default provider flipped TEEMILL→PRODIGI (direct-prisma fixtures keep TEEMILL since the enum retains it). Edit page (admin/products/[id]) unchanged."
     },
     {
       "id": "US-MFTF-16.2",
       "epic": "Epic MFTF-16: Storefront & Catalog Corrections",
       "title": "Default First Color on Apparel Detail Page",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "All changes in src/components/ApparelProductView.tsx (the normalized read-shape means one change covers both sourcing modes). colorIndex now initializes to 0 when detail.colors.length > 0, else null; imageIndex initializes to the first colour's per-colour mockup (mockupIndexForColor helper, shared with selectColor) so referenced listings default that colour's cached mockup on load. The existing buy-button predicate (colorIndex !== null && size !== null && !isPending) is unchanged and now collapses to 'size only' when a colour is present and to 'disabled' when there are zero offered colours (graceful degradation — revises US-MFTF-6.2's 'disabled until BOTH'). Size stays un-pre-selected. Helper hint text now gates on size ('Select a size to continue'; 'This item is currently unavailable' when zero colours). Tests: __tests__/mftf-16-storefront-corrections/US-MFTF-16.2-default-first-color.test.tsx (jsdom — first colour pre-selected both modes, size un-selected, buy enables on size only, referenced carousel defaults to first colour's mockup, zero-colour graceful degrade). Regression: US-MFTF-6.2-apparel-product-view.test.tsx updated — 'highlights a colour' now asserts White (colors[0]) pre-selected + Evergreen toggles; 'disables until both' rewritten to gate on size only. Mockup-swap + lifestyle tests unchanged. Data-layer US-MFTF-6.2-apparel-detail-page.test.ts unaffected (projection unchanged)."
     },
     {
       "id": "US-MFTF-17.1",
