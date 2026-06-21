@@ -210,7 +210,8 @@ describe("US-MFTF-12.3 — checkout revalidation & per-provider shipping", () =>
       expect(result.removed[0].reason).toMatch(/Moss/);
     });
 
-    it("removes a referenced item that is out of stock on live re-read", async () => {
+    it("keeps a referenced item with 0 warehouse stock that is still printable on demand", async () => {
+      // Teemill is print-on-demand: 0 warehouse stock but a gfnVariant present → orderable.
       server.use(
         http.get("https://api.teemill.com/v1/catalog/products", () =>
           HttpResponse.json(buildPoweredByPlantsCatalog({ forceStock: 0 })),
@@ -223,16 +224,19 @@ describe("US-MFTF-12.3 — checkout revalidation & per-provider shipping", () =>
       await addApparel(cart.id, listing.id, { colorId: "Evergreen", sizeLabel: "M" });
 
       const result = await revalidateCheckout(cart.id);
-      expect(result.kept).toHaveLength(0);
-      expect(result.removed[0].reason).toMatch(/out of stock/i);
+      expect(result.kept).toHaveLength(1);
+      expect(result.removed).toHaveLength(0);
     });
 
-    it("removes a referenced item whose cached variant is not orderable", async () => {
+    it("removes a referenced item that is neither in stock nor printable on demand on live re-read", async () => {
+      server.use(
+        http.get("https://api.teemill.com/v1/catalog/products", () =>
+          HttpResponse.json(buildPoweredByPlantsCatalog({ forceStock: 0, noGfn: true })),
+        ),
+      );
       const seller = await seedUser();
       const buyer = await seedUser();
       const listing = await seedReferencedListing(seller.id, { colors: ["Evergreen"], sizes: ["M"] });
-      // Mark the cached variant not orderable.
-      await prisma.referencedVariant.updateMany({ where: { apparelListingId: listing.id }, data: { isOrderable: false } });
       const cart = await userCart(buyer.id);
       await addApparel(cart.id, listing.id, { colorId: "Evergreen", sizeLabel: "M" });
 

@@ -127,8 +127,9 @@ describe("US-MFTF-13.3 — createReferencedListingAction validation", () => {
   });
 
   it("rejects publishing when no variant is orderable", async () => {
+    // Nothing orderable = no warehouse stock AND no print-on-demand path.
     server.use(
-      http.get(CATALOG_URL, () => HttpResponse.json(buildPoweredByPlantsCatalog({ forceStock: 0 }))),
+      http.get(CATALOG_URL, () => HttpResponse.json(buildPoweredByPlantsCatalog({ forceStock: 0, noGfn: true }))),
     );
     const { result } = await submit(validForm());
     expect(result).toMatchObject({ error: expect.stringMatching(/stock|orderable/i) });

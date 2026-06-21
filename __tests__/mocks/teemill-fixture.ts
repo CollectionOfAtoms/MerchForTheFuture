@@ -23,8 +23,9 @@ interface VariantSpec {
   stock: number;
 }
 
-// 3 colours × varying sizes; one (Denim Blue / M) is out of stock so tests can
-// assert `isOrderable` derives from stock level.
+// 3 colours × varying sizes. Denim Blue / M has 0 warehouse stock but — like every
+// Teemill variant — is still printable on demand (carries a gfnVariant), so it stays
+// orderable; that is the print-on-demand orderability rule (live-verified 2026-06-21).
 const VARIANT_SPECS: VariantSpec[] = [
   { id: "v-denimblue-s", colour: "Denim Blue", size: "S", stock: 10 },
   { id: "v-denimblue-m", colour: "Denim Blue", size: "M", stock: 0 },
@@ -51,15 +52,21 @@ export interface BuildOptions {
   basePrice?: number;
   /** Per-variant stock overrides keyed by variant id (e.g. drop one to 0). */
   stockOverrides?: Record<string, number>;
-  /** Force every variant to this stock level (e.g. 0 = nothing orderable). */
+  /** Force every variant to this stock level (e.g. 0 = no warehouse stock). */
   forceStock?: number;
   /** Variant ids to omit entirely (simulate a variant vanishing from the catalog). */
   omit?: string[];
+  /**
+   * Drop the GFN (print-on-demand) entry from every variant — simulating a product
+   * that can no longer be printed on demand. Combined with `forceStock: 0` this makes
+   * every variant genuinely unorderable.
+   */
+  noGfn?: boolean;
 }
 
 /** Build the `/catalog/products` JSON body for the Powered By Plants product. */
 export function buildPoweredByPlantsCatalog(opts: BuildOptions = {}) {
-  const { enabled = true, basePrice = 21, stockOverrides = {}, forceStock, omit = [] } = opts;
+  const { enabled = true, basePrice = 21, stockOverrides = {}, forceStock, omit = [], noGfn = false } = opts;
   const specs = VARIANT_SPECS.filter((s) => !omit.includes(s.id));
 
   const variants = specs.map((s) => {
@@ -73,10 +80,13 @@ export function buildPoweredByPlantsCatalog(opts: BuildOptions = {}) {
       ],
       retailPrice: { amount: basePrice, currencyCode: "GBP" },
       price: { amount: basePrice, currencyCode: "GBP" },
-      stock: { level: stock, locations: [{ country: "GB", level: stock }] },
+      stock: { level: stock, locations: stock > 0 ? [{ country: "GB", level: stock }] : [] },
       applications: [
         { technology: "dtg", placement: "front", src: "https://images.podos.io/design.png", mockup: null },
       ],
+      // Print-on-demand catalog entry — present unless `noGfn`. This (not warehouse
+      // stock) is the real orderability signal for Teemill's made-to-order garments.
+      gfnVariant: noGfn ? null : { id: `gfn-${s.id}`, gfnVariantRef: `https://api.teemill.com/v1/gfn/catalog/variants/uuid-${s.id}` },
       // Per-colour mockups live at product level (linked by variantIds) — variant
       // images intentionally empty so tests exercise the variantIds linkage.
       images: [],

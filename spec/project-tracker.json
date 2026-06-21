@@ -56,6 +56,17 @@
   },
   "stories": [
     {
+      "id": "BUG-13",
+      "epic": "Infrastructure",
+      "title": "Teemill referenced apparel not orderable at 0 warehouse stock (print-on-demand ignored)",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Reported 2026-06-21. Checkout 'calculate shipping' failed/pruned referenced Teemill sizes that had 0 warehouse stock, even though Teemill is print-on-demand. Root cause: orderability was derived from warehouse stock alone — ingest (src/lib/fulfillment/teemill/ingest.ts) set isOrderable = enabled && stock.level > 0, and checkout revalidate (src/lib/checkout/revalidate.ts) additionally gated on live warehouse stock (liveStock <= 0 -> removed). LIVE-VERIFIED 2026-06-21 against /catalog/products: every variant (incl. 0-warehouse-stock sizes) carries a gfnVariant (Garments-For-Nature on-demand print catalog entry, …/v1/gfn/catalog/variants/…) + a DTG 'front' applications entry, i.e. it is printable on demand; stock.level is only pre-printed warehouse inventory. Fix: isOrderable = product.enabled !== false && (hasGfnVariant || stockLevel > 0); revalidate now bases orderability on the live re-read's isOrderable (POD-aware), existence-checks the cached variant, and no longer prunes on raw warehouse stock. MSW fixture (__tests__/mocks/teemill-fixture.ts) now emits a gfnVariant per variant + a noGfn option for the genuinely-unavailable case; updated tests in mftf-13.2 (isOrderable from POD not stock), mftf-13.3 (publish-blocked needs noGfn), mftf-12.3 (0-stock POD kept; only neither-stock-nor-POD removed). Data backfill: re-ingested live products ('Don't let her burn.', 'Powered By Plants') so cached ReferencedVariant.isOrderable reflects POD. SEPARATE pre-existing issue found same session and fixed by data change (not code): a DESIGNED listing on a Teemill-provider product type ('Kiddo Tee'/RNC1) routed a Prodigi-shaped quote item (no variantRef) to the Teemill quoter -> 400 'variantRef required'; archived that listing + deactivated the 3 designed-Teemill product types (isActive:false). That contradiction is what US-MFTF-16.1 removes from the UI. // PENDING LIVE CONFIRMATION (same gate as US-MFTF-12.5/12.6): the shipping QUOTE step (POST /orders, no charge) exercising a 0-warehouse-stock POD variant, and whether the paid order (POST /orders/{id}/confirm) routes to POD via the catalog variantRef we send vs. needing the gfnVariantRef. Green vs MSW."
+    },
+    {
       "id": "BUG-12",
       "epic": "Infrastructure",
       "title": "Designed (Prodigi) product types have no colours \u2014 can't create a Prodigi designed listing",

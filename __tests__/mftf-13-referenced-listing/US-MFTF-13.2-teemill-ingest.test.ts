@@ -116,18 +116,29 @@ describe("US-MFTF-13.2 — ingestTeemillProduct parser", () => {
     expect(evergreen?.mockupUrl).not.toBe(brown?.mockupUrl);
   });
 
-  it("derives isOrderable from stock level (0 stock = not orderable)", async () => {
+  it("derives isOrderable from print-on-demand availability, not warehouse stock", async () => {
     const result = await ingestTeemillProduct(POWERED_BY_PLANTS_PRODUCT_REF);
     if (!result.ok) throw new Error("expected ok");
-    const outOfStock = result.snapshot.variants.find(
+    // Denim Blue / M has 0 warehouse stock but is printable on demand (gfnVariant) →
+    // still orderable. Teemill is print-on-demand; warehouse stock is not the gate.
+    const noWarehouseStock = result.snapshot.variants.find(
       (v) => v.colorName === "Denim Blue" && v.sizeLabel === "M",
     );
     const inStock = result.snapshot.variants.find(
       (v) => v.colorName === "Evergreen" && v.sizeLabel === "M",
     );
-    expect(outOfStock?.stockLevel).toBe(0);
-    expect(outOfStock?.isOrderable).toBe(false);
+    expect(noWarehouseStock?.stockLevel).toBe(0);
+    expect(noWarehouseStock?.isOrderable).toBe(true);
     expect(inStock?.isOrderable).toBe(true);
+  });
+
+  it("marks a variant not orderable only when it has neither stock nor a print-on-demand path", async () => {
+    server.use(
+      http.get(CATALOG_URL, () => HttpResponse.json(buildPoweredByPlantsCatalog({ forceStock: 0, noGfn: true }))),
+    );
+    const result = await ingestTeemillProduct(POWERED_BY_PLANTS_PRODUCT_REF);
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.snapshot.variants.every((v) => v.isOrderable === false)).toBe(true);
   });
 
   it("stores whatever colours the catalog returns (no 3-colour cap enforced)", async () => {

@@ -53,6 +53,12 @@ interface RawVariant {
   price?: RawMoney;
   stock?: { level?: number };
   images?: RawImage[];
+  /// Garments-For-Nature (GFN) on-demand print catalog entry. Present when the variant
+  /// can be PRINTED ON DEMAND — independent of warehouse `stock.level` (live-verified
+  /// 2026-06-21: a 0-warehouse-stock size still carries a gfnVariant + a DTG print
+  /// application). Teemill is print-on-demand, so this — not warehouse stock — is the
+  /// real orderability signal.
+  gfnVariant?: { id?: string; gfnVariantRef?: string } | null;
 }
 interface RawProduct {
   id?: string;
@@ -129,13 +135,17 @@ export async function ingestTeemillProduct(productRef: string): Promise<IngestRe
     const colour = attr(v, "Colour");
     const size = attr(v, "Size");
     const stockLevel = v.stock?.level ?? 0;
+    // Teemill is print-on-demand: a variant is orderable if it can be printed on
+    // demand (has a GFN variant) OR has pre-printed warehouse stock. Using warehouse
+    // stock alone wrongly excludes every made-to-order size (live-verified 2026-06-21).
+    const printableOnDemand = !!v.gfnVariant;
     return {
       variantRef: v.ref,
       colorName: colour?.value ?? "",
       colorHex: colour?.thumbnail?.value ?? "",
       sizeLabel: size?.value ?? "",
       stockLevel,
-      isOrderable: product.enabled !== false && stockLevel > 0,
+      isOrderable: product.enabled !== false && (printableOnDemand || stockLevel > 0),
       mockupUrl: mockupFor(v, product),
     };
   });
