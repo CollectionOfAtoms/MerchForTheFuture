@@ -220,6 +220,42 @@ describe("US-23.1 — Desktop Nav User Dropdown (NavDropdown)", () => {
     });
   });
 
+  describe("Seller fulfillment badge (US-MFTF-15.1)", () => {
+    it("shows the Fulfillment menu item linking to /seller/fulfillment", () => {
+      render(<NavDropdown user={sellerUser} roles={["SELLER"]} fulfillmentCount={0} />);
+      fireEvent.click(screen.getByRole("button", { name: /sam/i }));
+      const link = screen.getByRole("menuitem", { name: /fulfillment/i });
+      expect(link).toHaveAttribute("href", "/seller/fulfillment");
+    });
+
+    it("badges the trigger AND the Fulfillment item with the count when > 0", () => {
+      render(<NavDropdown user={sellerUser} roles={["SELLER"]} fulfillmentCount={3} />);
+      // Trigger badge: the count is part of the trigger's accessible content.
+      const trigger = screen.getByRole("button", { name: /sam/i });
+      expect(within(trigger).getByText("3")).toBeInTheDocument();
+      // Menu item badge + highlight.
+      fireEvent.click(trigger);
+      const link = screen.getByRole("menuitem", { name: /fulfillment/i });
+      expect(within(link).getByText("3")).toBeInTheDocument();
+      expect(link).toHaveAttribute("data-highlight", "true");
+    });
+
+    it("shows no badge when the count is 0", () => {
+      render(<NavDropdown user={sellerUser} roles={["SELLER"]} fulfillmentCount={0} />);
+      const trigger = screen.getByRole("button", { name: /sam/i });
+      expect(within(trigger).queryByText("0")).not.toBeInTheDocument();
+      fireEvent.click(trigger);
+      const link = screen.getByRole("menuitem", { name: /fulfillment/i });
+      expect(link).not.toHaveAttribute("data-highlight", "true");
+    });
+
+    it("does not badge non-sellers", () => {
+      render(<NavDropdown user={buyerUser} roles={["BUYER"]} fulfillmentCount={5} />);
+      const trigger = screen.getByRole("button", { name: /alice/i });
+      expect(within(trigger).queryByText("5")).not.toBeInTheDocument();
+    });
+  });
+
   describe("Admin role", () => {
     it("shows Tracker link", () => {
       render(<NavDropdown user={adminUser} roles={["ADMIN"]} />);
@@ -235,10 +271,10 @@ describe("US-23.1 — Desktop Nav User Dropdown (NavDropdown)", () => {
       expect(usersLink).toHaveAttribute("href", "/admin/users");
     });
 
-    it("shows Fulfillment link pointing to /admin/fulfillment", () => {
+    it("shows Dropship exceptions link pointing to /admin/fulfillment", () => {
       render(<NavDropdown user={adminUser} roles={["ADMIN"]} />);
       fireEvent.click(screen.getByRole("button", { name: /admin/i }));
-      const fulfillmentLink = screen.getByRole("menuitem", { name: /^fulfillment$/i });
+      const fulfillmentLink = screen.getByRole("menuitem", { name: /dropship exceptions/i });
       expect(fulfillmentLink).toBeInTheDocument();
       expect(fulfillmentLink).toHaveAttribute("href", "/admin/fulfillment");
     });

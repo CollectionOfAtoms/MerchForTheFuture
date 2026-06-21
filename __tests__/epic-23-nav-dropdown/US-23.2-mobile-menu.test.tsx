@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import React from "react";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
@@ -268,6 +268,14 @@ describe("US-23.2 — Restructured Mobile Menu with Role-Aware Sections", () => 
       open();
       expect(screen.queryByRole("link", { name: /^orders$/i })).not.toBeInTheDocument();
     });
+
+    it("shows the Fulfillment link, badged when there are originals to ship (US-MFTF-15.1)", () => {
+      render(<MobileMenu user={sellerUser} roles={["SELLER"]} fulfillmentCount={2} />);
+      open();
+      const link = screen.getByRole("link", { name: /fulfillment/i });
+      expect(link).toHaveAttribute("href", "/seller/fulfillment");
+      expect(within(link).getByText("2")).toBeInTheDocument();
+    });
   });
 
   // ─── ADMIN role ───────────────────────────────────────────────────────────
@@ -289,10 +297,10 @@ describe("US-23.2 — Restructured Mobile Menu with Role-Aware Sections", () => 
       expect(link).toHaveAttribute("href", "/admin/users");
     });
 
-    it("shows Fulfillment link pointing to /admin/fulfillment", () => {
+    it("shows Dropship exceptions link pointing to /admin/fulfillment", () => {
       render(<MobileMenu user={adminUser} roles={["ADMIN"]} />);
       open();
-      const link = screen.getByRole("link", { name: /^fulfillment$/i });
+      const link = screen.getByRole("link", { name: /dropship exceptions/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/admin/fulfillment");
     });

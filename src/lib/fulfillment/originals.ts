@@ -32,6 +32,23 @@ export async function ensureOriginalFulfillmentOrder(orderId: string) {
   });
 }
 
+/**
+ * Count of the seller's originals awaiting shipment — drives the nav fulfillment
+ * badge (same filter as `getSellerOriginalsQueue`). The badge persists until every
+ * such order leaves the queue (i.e. is marked shipped), since a shipped order leaves
+ * `PAID`.
+ */
+export async function countSellerOriginalsToShip(sellerId: string): Promise<number> {
+  return prisma.order.count({
+    where: {
+      listingType: "ORIGINAL",
+      status: "PAID",
+      shippingLine1: { not: null },
+      originalListing: { artwork: { sellerId } },
+    },
+  });
+}
+
 export interface SellerOriginalRow {
   orderId: string;
   title: string;

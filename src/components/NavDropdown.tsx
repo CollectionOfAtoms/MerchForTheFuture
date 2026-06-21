@@ -8,11 +8,13 @@ import { signOutAction } from "@/app/actions/auth";
 interface NavDropdownProps {
   user: { name?: string | null; email?: string | null } | null;
   roles: string[];
+  /** Seller originals awaiting shipment — drives the fulfillment badge (US-MFTF-15.1). */
+  fulfillmentCount?: number;
   /** Override current pathname — used in tests where Next.js router context is unavailable. */
   currentPath?: string;
 }
 
-export default function NavDropdown({ user, roles, currentPath }: NavDropdownProps) {
+export default function NavDropdown({ user, roles, fulfillmentCount = 0, currentPath }: NavDropdownProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -70,6 +72,7 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
     : "/buyer/settings";
 
   const label = user.name ?? user.email ?? "Account";
+  const showFulfillmentBadge = isSeller && fulfillmentCount > 0;
 
   function isActive(href: string) {
     return pathname === href;
@@ -108,6 +111,14 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
+        {showFulfillmentBadge && (
+          <span
+            aria-label={`${fulfillmentCount} original${fulfillmentCount === 1 ? "" : "s"} awaiting fulfillment`}
+            className="ml-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-cerulean px-1.5 text-[10px] font-semibold leading-none text-white"
+          >
+            {fulfillmentCount}
+          </span>
+        )}
       </button>
 
       {open && (
@@ -139,8 +150,13 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
           )}
 
           {isSeller && (
-            <MenuItem href="/seller/fulfillment" active={isActive("/seller/fulfillment")}>
-              Originals to ship
+            <MenuItem
+              href="/seller/fulfillment"
+              active={isActive("/seller/fulfillment")}
+              badge={fulfillmentCount}
+              highlight={showFulfillmentBadge}
+            >
+              Fulfillment
             </MenuItem>
           )}
 
@@ -164,7 +180,7 @@ export default function NavDropdown({ user, roles, currentPath }: NavDropdownPro
 
           {isAdmin && (
             <MenuItem href="/admin/fulfillment" active={isActive("/admin/fulfillment")}>
-              Fulfillment
+              Dropship exceptions
             </MenuItem>
           )}
 
@@ -193,19 +209,31 @@ function MenuItem({
   href,
   active,
   children,
+  badge = 0,
+  highlight = false,
 }: {
   href: string;
   active: boolean;
   children: React.ReactNode;
+  /** Count rendered as a pill on the right; omitted when 0. */
+  badge?: number;
+  /** Emphasise the item (used alongside a non-zero badge to draw attention). */
+  highlight?: boolean;
 }) {
   return (
     <Link
       href={href}
       role="menuitem"
       data-active={active ? "true" : undefined}
-      className="block px-4 py-2 text-sm text-blue-slate hover:bg-tuscan-sun/5 hover:text-cerulean transition-colors font-medium data-[active=true]:text-cerulean data-[active=true]:underline data-[active=true]:underline-offset-2"
+      data-highlight={highlight ? "true" : undefined}
+      className="flex items-center justify-between gap-2 px-4 py-2 text-sm text-blue-slate hover:bg-tuscan-sun/5 hover:text-cerulean transition-colors font-medium data-[active=true]:text-cerulean data-[active=true]:underline data-[active=true]:underline-offset-2 data-[highlight=true]:bg-cerulean/5 data-[highlight=true]:text-cerulean"
     >
-      {children}
+      <span>{children}</span>
+      {badge > 0 && (
+        <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-cerulean px-1.5 text-[10px] font-semibold leading-none text-white">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }

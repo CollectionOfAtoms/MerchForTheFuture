@@ -8,6 +8,8 @@ import { signOutAction } from "@/app/actions/auth";
 interface MobileMenuProps {
   user: { name?: string | null; email?: string | null } | null;
   roles: string[];
+  /** Seller originals awaiting shipment — drives the fulfillment badge (US-MFTF-15.1). */
+  fulfillmentCount?: number;
   /** Override the current pathname — used in tests where the Next.js router context is unavailable. */
   currentPath?: string;
 }
@@ -19,7 +21,7 @@ const sharedLinks = [
   { href: "/browse?type=print", label: "Prints" },
 ];
 
-export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps) {
+export default function MobileMenu({ user, roles, fulfillmentCount = 0, currentPath }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   // showLinks lags behind isOpen by ~420ms so links only animate in
   // after the splash overlay has finished expanding.
@@ -112,7 +114,7 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
 
   // ─── Item builders ───────────────────────────────────────────────────────
 
-  function navLink(href: string, label: string) {
+  function navLink(href: string, label: string, badge = 0) {
     return {
       key: href,
       node: (
@@ -120,9 +122,14 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
           href={href}
           onClick={close}
           data-active={isActivePath(href) ? "true" : undefined}
-          className="block px-6 py-3 text-lg font-medium uppercase tracking-widest text-white hover:text-tuscan-sun focus-visible:text-tuscan-sun focus-visible:outline-none transition-colors"
+          className="flex items-center justify-center gap-2 px-6 py-3 text-lg font-medium uppercase tracking-widest text-white hover:text-tuscan-sun focus-visible:text-tuscan-sun focus-visible:outline-none transition-colors"
         >
-          {label}
+          <span>{label}</span>
+          {badge > 0 && (
+            <span className="inline-flex min-w-[20px] items-center justify-center rounded-full bg-white px-1.5 text-xs font-semibold leading-none text-cerulean">
+              {badge}
+            </span>
+          )}
         </Link>
       ),
     };
@@ -150,12 +157,12 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
         },
         navLink(dashboardHref, "Dashboard"),
         ...(isBuyer  ? [navLink("/buyer/bids",         "My Bids"),    navLink("/buyer/orders",      "Orders")]      : []),
-        ...(isSeller ? [navLink("/seller/listings",     "Listings")]                                                 : []),
+        ...(isSeller ? [navLink("/seller/listings", "Listings"), navLink("/seller/fulfillment", "Fulfillment", fulfillmentCount)] : []),
         ...(isAdmin  ? [
           navLink("/admin/products",   "Products"),
           navLink("/admin/tracker",    "Tracker"),
           navLink("/admin/users",      "Users"),
-          navLink("/admin/fulfillment","Fulfillment"),
+          navLink("/admin/fulfillment","Dropship exceptions"),
         ] : []),
         navLink(settingsHref, "Settings"),
         {
@@ -315,9 +322,13 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
         type="button"
         aria-expanded={isOpen}
         aria-controls="mobile-menu"
-        aria-label="Toggle menu"
+        aria-label={
+          fulfillmentCount > 0 && !isOpen
+            ? `Toggle menu — ${fulfillmentCount} original${fulfillmentCount === 1 ? "" : "s"} awaiting fulfillment`
+            : "Toggle menu"
+        }
         onClick={handleToggle}
-        className="rounded-full p-2 transition-colors hover:bg-tuscan-sun/20"
+        className="relative rounded-full p-2 transition-colors hover:bg-tuscan-sun/20"
         style={{
           position: "fixed",
           top: "1rem",
@@ -326,6 +337,15 @@ export default function MobileMenu({ user, roles, currentPath }: MobileMenuProps
           backgroundColor: isOpen ? "white" : undefined,
         }}
       >
+        {/* Notification dot when the seller has originals to ship (hidden while open). */}
+        {fulfillmentCount > 0 && !isOpen && (
+          <span
+            aria-hidden="true"
+            className="absolute right-0 top-0 inline-flex min-w-[16px] items-center justify-center rounded-full bg-cerulean px-1 text-[10px] font-semibold leading-none text-white"
+          >
+            {fulfillmentCount}
+          </span>
+        )}
         {/*
           SVG viewBox is 0 0 50 50, center at (25, 25).
           All three bars are defined at y=25 so their natural position
