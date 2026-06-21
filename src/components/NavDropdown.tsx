@@ -77,7 +77,7 @@ export default function NavDropdown({ user, roles, fulfillmentCount = 0, excepti
   // Admins get an admin-focused dropdown: the buyer/seller operational items
   // (Orders, Listings, seller Fulfillment) are suppressed when isAdmin.
   const showSellerItems = isSeller && !isAdmin;
-  const showBuyerOrders = isBuyer && !isAdmin;
+  const showBuyerItems = isBuyer && !isAdmin;
   const sellerPending = showSellerItems ? fulfillmentCount : 0;
   const adminPending = isAdmin ? exceptionCount : 0;
   // One trigger badge summarising everything that needs the user's attention.
@@ -140,13 +140,13 @@ export default function NavDropdown({ user, roles, fulfillmentCount = 0, excepti
             Dashboard
           </MenuItem>
 
-          {isBuyer && (
+          {showBuyerItems && (
             <MenuItem href="/buyer/bids" active={isActive("/buyer/bids")}>
               My Bids
             </MenuItem>
           )}
 
-          {showBuyerOrders && (
+          {showBuyerItems && (
             <MenuItem href="/buyer/orders" active={isActive("/buyer/orders")}>
               Orders
             </MenuItem>

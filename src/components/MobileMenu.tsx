@@ -105,7 +105,7 @@ export default function MobileMenu({ user, roles, fulfillmentCount = 0, exceptio
   // Admins get an admin-focused menu: buyer/seller operational items (Orders,
   // Listings, seller Fulfillment) are suppressed when isAdmin.
   const showSellerItems = isSeller && !isAdmin;
-  const showBuyerOrders = isBuyer && !isAdmin;
+  const showBuyerItems = isBuyer && !isAdmin;
 
   // One hamburger badge summarising everything needing attention.
   const attentionCount = (showSellerItems ? fulfillmentCount : 0) + (isAdmin ? exceptionCount : 0);
@@ -166,8 +166,7 @@ export default function MobileMenu({ user, roles, fulfillmentCount = 0, exceptio
           ),
         },
         navLink(dashboardHref, "Dashboard"),
-        ...(isBuyer ? [navLink("/buyer/bids", "My Bids")] : []),
-        ...(showBuyerOrders ? [navLink("/buyer/orders", "Orders")] : []),
+        ...(showBuyerItems ? [navLink("/buyer/bids", "My Bids"), navLink("/buyer/orders", "Orders")] : []),
         ...(showSellerItems ? [navLink("/seller/listings", "Listings"), navLink("/seller/fulfillment", "Fulfillment", fulfillmentCount)] : []),
         ...(isAdmin  ? [
           navLink("/admin/products",   "Products"),
