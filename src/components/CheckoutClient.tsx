@@ -19,16 +19,25 @@ const FIELD =
  * before payment (US-MFTF-12.4). Provider names are never shown — only
  * "Shipment 1 / 2".
  */
-export default function CheckoutClient({ view }: { view: CartView }) {
-  const [address, setAddress] = useState<FulfillmentShippingAddress>({
-    name: "",
-    line1: "",
-    line2: "",
-    city: "",
-    state: "",
-    postal: "",
-    country: "US",
-  });
+export default function CheckoutClient({
+  view,
+  initialAddress,
+}: {
+  view: CartView;
+  /** The buyer's primary saved address, pre-filled into the form when present. */
+  initialAddress?: FulfillmentShippingAddress | null;
+}) {
+  const [address, setAddress] = useState<FulfillmentShippingAddress>(
+    initialAddress ?? {
+      name: "",
+      line1: "",
+      line2: "",
+      city: "",
+      state: "",
+      postal: "",
+      country: "US",
+    },
+  );
   const [summary, setSummary] = useState<CheckoutSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);

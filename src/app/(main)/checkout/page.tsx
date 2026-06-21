@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { resolveCartForRead } from "@/lib/cart/request";
 import { getCartView } from "@/lib/cart/cart";
+import { getDefaultShippingAddress } from "@/lib/account/address";
 import CheckoutClient from "@/components/CheckoutClient";
 
 export const metadata: Metadata = {
@@ -28,10 +29,13 @@ export default async function CheckoutPage() {
   const view = cart ? await getCartView(cart.id) : { items: [], subtotal: 0, itemCount: 0 };
   if (view.items.length === 0) redirect("/cart");
 
+  // Pre-fill the shipping form with the buyer's primary saved address, if any.
+  const initialAddress = await getDefaultShippingAddress(user.id);
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <h1 className="text-2xl font-semibold text-stone-900">Checkout</h1>
-      <CheckoutClient view={view} />
+      <CheckoutClient view={view} initialAddress={initialAddress} />
     </main>
   );
 }

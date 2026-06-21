@@ -56,6 +56,17 @@
   },
   "stories": [
     {
+      "id": "BUG-15",
+      "epic": "Infrastructure",
+      "title": "Cart checkout shipping form does not pre-fill the buyer's primary saved address",
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Founder-requested 2026-06-21. The originals/auction fulfill page (src/app/(main)/orders/[orderId]/fulfill/page.tsx) already pre-filled shipping from the buyer's default UserAddress, but the CART checkout (src/app/(main)/checkout) started blank. Added getDefaultShippingAddress(userId) (src/lib/account/address.ts) — the buyer's isDefault UserAddress mapped to FulfillmentShippingAddress (null when none; line2/state absence -> empty string), centralizing the lookup duplicated in the fulfill page + saveAddress action. checkout/page.tsx now passes it as CheckoutClient's initialAddress prop; CheckoutClient (src/components/CheckoutClient.tsx) seeds its address useState from initialAddress (falls back to the empty form, country 'US'). Buyer can still edit before calculating shipping. Tests: getDefaultShippingAddress mapping/null/non-default (node, mftf-12 suite) + CheckoutClient pre-fill render (jsdom, US-MFTF-12.3-checkout-client-prefill.test.tsx)."
+    },
+    {
       "id": "BUG-14",
       "epic": "Infrastructure",
       "title": "Buy Now button active on a seller's own artwork listing",
