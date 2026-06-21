@@ -28,15 +28,19 @@ export async function createProductTypeAction(fd: FormData): Promise<ActionResul
 
   if (!name) return { error: "Product type name is required" };
   if (!providerSkuBase) return { error: "Provider SKU base is required" };
-  if (fulfillmentProvider !== "TEEMILL" && fulfillmentProvider !== "PRODIGI") {
-    return { error: "Invalid fulfillment provider" };
+  // Designed product types are Prodigi-only (US-MFTF-16.1). Teemill is a
+  // REFERENCED source and bypasses the MFTF-4 designed catalog entirely; the
+  // enum retains TEEMILL but it is UI-blocked here and rejected to guard
+  // stale/direct calls.
+  if (fulfillmentProvider !== "PRODIGI") {
+    return { error: "Teemill is a referenced source and cannot back a designed product type" };
   }
 
   const existing = await prisma.productType.findUnique({ where: { name } });
   if (existing) return { error: `A product type named "${name}" already exists` };
 
   const pt = await prisma.productType.create({
-    data: { name, description, fulfillmentProvider: fulfillmentProvider as "TEEMILL" | "PRODIGI", providerSkuBase, isActive },
+    data: { name, description, fulfillmentProvider: "PRODIGI", providerSkuBase, isActive },
   });
 
   const teemillColorsRaw = (fd.get("teemillColorsJson") as string | null)?.trim();
@@ -90,8 +94,9 @@ export async function updateProductTypeAction(id: string, fd: FormData): Promise
 
   if (!name) return { error: "Product type name is required" };
   if (!providerSkuBase) return { error: "Provider SKU base is required" };
-  if (fulfillmentProvider !== "TEEMILL" && fulfillmentProvider !== "PRODIGI") {
-    return { error: "Invalid fulfillment provider" };
+  // Designed product types are Prodigi-only (US-MFTF-16.1) — see createProductTypeAction.
+  if (fulfillmentProvider !== "PRODIGI") {
+    return { error: "Teemill is a referenced source and cannot back a designed product type" };
   }
 
   const nameConflict = await prisma.productType.findFirst({ where: { name, NOT: { id } } });
@@ -104,7 +109,7 @@ export async function updateProductTypeAction(id: string, fd: FormData): Promise
 
   const pt = await prisma.productType.update({
     where: { id },
-    data: { name, description, fulfillmentProvider: fulfillmentProvider as "TEEMILL" | "PRODIGI", providerSkuBase, isActive },
+    data: { name, description, fulfillmentProvider: "PRODIGI", providerSkuBase, isActive },
   });
 
   revalidatePath("/admin/products");

@@ -2074,11 +2074,12 @@
       "id": "US-MFTF-16.1",
       "epic": "Epic MFTF-16: Storefront & Catalog Corrections",
       "title": "Remove Teemill from Designed-Mode Provider Picker",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Designed product types are Prodigi-only (the code guardrail behind BUG-13's data cleanup). The FulfillmentProviderType enum RETAINS TEEMILL (no migration) — UI-blocked, not deleted. ProductTypeForm (src/components/admin/ProductTypeForm.tsx): provider <select> now offers Prodigi only (T-Mill option removed), default state 'PRODIGI', TeemillProductPicker import dropped; an informational note region (data-testid='teemill-referenced-note', founder-editable copy) renders where Teemill used to be, pointing admins to the referenced-listing path; the Prodigi SKU box now renders unconditionally. Server actions (src/app/actions/admin/product-catalog.ts): both createProductTypeAction and updateProductTypeAction now reject any provider !== 'PRODIGI' ('Teemill is a referenced source and cannot back a designed product type'), guarding stale/direct calls — STRICT literal per founder, so the 3 legacy deactivated designed-Teemill rows can no longer be re-saved via the edit form (intended frozen state). Tests under __tests__/mftf-16-storefront-corrections/: US-MFTF-16.1-teemill-out-of-designed-picker.test.ts (node — create/update reject TEEMILL + no row, Prodigi still succeeds), US-MFTF-16.1-provider-picker-form.test.tsx (jsdom — Prodigi option present, no Teemill option, note region + SKU input render). Regression: US-MFTF-4.3 test default provider flipped TEEMILL→PRODIGI (direct-prisma fixtures keep TEEMILL since the enum retains it). Edit page (admin/products/[id]) unchanged."
     },
     {
       "id": "US-MFTF-16.2",
