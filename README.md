@@ -1,6 +1,14 @@
 # Merch For The Future
 
-A storefront for Merch For The Future, a webstore selling our all human designed droppshipped apparel with a focus on sustainability and building positive visions of the future.
+A direct-to-consumer storefront for **Merch for the Future** — sustainability-focused
+apparel and exclusively human-made fine art, built around optimistic, climate-forward
+design. Apparel is drop-shipped (Teemill, Prodigi); fine-art **prints** are drop-shipped
+(Prodigi); fine-art **originals** are shipped by the seller.
+
+> **This is a modified stack.** The installed Next.js (16.2.x App Router) and Stripe SDK
+> carry breaking changes vs. their public releases — always trust the installed types and
+> read `node_modules/next/dist/docs/` before writing routing/data-fetching code. See
+> `AGENTS.md` and `spec/project-description.md` for the architectural ground truth.
 
 ## Tech Stack
 
@@ -8,24 +16,25 @@ A storefront for Merch For The Future, a webstore selling our all human designed
 |---|---|
 | Framework | Next.js 16 (App Router, React 19) |
 | Language | TypeScript |
-| Styling | Tailwind CSS v4 |
+| Styling | Tailwind CSS v4 (tokens in `src/app/globals.css` `@theme`; no `tailwind.config.ts`) |
 | Database | PostgreSQL via [Neon](https://neon.tech) (serverless) |
-| ORM | Prisma 7 (with Neon driver adapter) |
+| ORM | Prisma 7 (Neon driver adapter; client generated to `@/generated/prisma/client`) |
 | Auth | NextAuth.js v5 (credentials + JWT sessions) |
-| Payments | Stripe (Connect for seller payouts) |
+| Payments | Stripe **embedded** Checkout (single-seller model — no Stripe Connect) |
 | Image hosting | Vercel Blob |
-| Email | Resend |
-| Print fulfillment | Prodigi |
-| Tax calculation | TaxJar |
+| Email | MailerSend |
+| Apparel fulfillment | **Teemill** (primary; `REFERENCED` product-ref model) · **Prodigi** (`DESIGNED` blank model) |
+| Fine-art prints | Prodigi |
+| Tax | Stripe Tax — wired in Epic 5, currently **disabled** behind `STRIPE_TAX_ENABLED` |
 | Testing | Vitest + Testing Library + Playwright |
-| API mocking | MSW (Mock Service Worker) |
+| API mocking | MSW (Stripe, Prodigi, Teemill, TaxJar, MailerSend) |
 | Deployment | Vercel |
 
 ## Prerequisites
 
-- Node.js 20+
-- A [Neon](https://neon.tech) PostgreSQL database
-- `npm` (or compatible package manager)
+- Node.js 20+ (22/24 fine)
+- A [Neon](https://neon.tech) PostgreSQL database (plus a second branch/database for tests)
+- [`mkcert`](https://github.com/FiloSottile/mkcert) — the dev server runs over **HTTPS**
 
 ## Local Setup
 
@@ -43,172 +52,187 @@ npm install
 cp .env.local.example .env.local
 ```
 
-Open `.env.local` and fill in your values. The minimum required to run locally:
+Fill in your values. The minimum required to run locally:
 
 | Variable | How to get it |
 |---|---|
 | `DATABASE_URL` | Your Neon connection string (pooled) |
 | `DATABASE_URL_TEST` | A separate Neon branch or database for tests |
 | `NEXTAUTH_SECRET` | Run `openssl rand -base64 32` |
-| `NEXTAUTH_URL` | `http://localhost:3000` |
+| `NEXTAUTH_URL` | `https://localhost:3000` |
+| `NEXT_PUBLIC_BASE_URL` | `https://localhost:3000` (used for email links + provider callbacks) |
 
-External service keys are not required to run the app locally — they are mocked in tests. Stripe, Prodigi, Resend, and Vercel Blob are all integrated. See the sections below for one-time setup steps.
+External service keys (Stripe, Prodigi, Teemill, MailerSend, TaxJar, Vercel Blob) are
+**not required to run the test suite** — they are mocked via MSW. They are needed to
+exercise the corresponding live flows in the running app.
 
-### 3. Apply database migrations
+### 3. Generate the local HTTPS certificate
+
+The dev server runs with `--experimental-https` (NextAuth cookies + RSC payloads behave
+correctly only over a trusted origin). Generate a mkcert cert into `certificates/`
+(git-ignored):
 
 ```bash
-npm run db:migrate
+mkcert -install
+mkcert -cert-file certificates/localhost.pem -key-file certificates/localhost-key.pem \
+  localhost 127.0.0.1 ::1
 ```
 
-This runs all Prisma migrations against your `DATABASE_URL` database.
+### 4. Apply the database schema
 
-### 4. Start the development server
+```bash
+npm run db:push
+```
+
+This project uses `prisma db push` (not migration files) due to historical schema drift.
+After any `schema.prisma` change, run `db:push` against both `DATABASE_URL` and your test
+database, then restart the dev server (it caches a stale Prisma client otherwise).
+
+### 5. Start the development server
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [https://localhost:3000](https://localhost:3000) (accept the local cert warning).
 
 ## Available Scripts
 
 | Script | Description |
 |---|---|
-| `npm run dev` | Start local dev server with Turbopack |
+| `npm run dev` | Start the HTTPS dev server (Turbopack; runs `prisma generate` first) |
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
-| `npm test` | Run unit + integration test suite |
-| `npm run test:watch` | Tests in watch mode |
-| `npm run test:coverage` | Tests with V8 coverage report |
-| `npm run test:e2e` | Playwright end-to-end tests |
-| `npm run db:migrate` | Apply Prisma migrations |
-| `npm run db:generate` | Regenerate Prisma client |
-| `npm run db:push` | Push schema changes without a migration file |
+| `npm test` | Run the Vitest unit + integration suite |
+| `npm run test:watch` | Vitest in watch mode |
+| `npm run test:coverage` | Vitest with V8 coverage |
+| `npm run test:e2e` | Playwright end-to-end tests (separate from `npm test`) |
+| `npm run db:push` | Push `schema.prisma` to the database (preferred) |
+| `npm run db:generate` | Regenerate the Prisma client |
+| `npm run db:migrate` | `prisma migrate dev` (rarely used — `db:push` is the norm here) |
 | `npm run db:studio` | Open Prisma Studio (database GUI) |
 
-## Prodigi Integration
+## Dropshipper Integration
 
-Print fulfillment is handled by [Prodigi](https://www.prodigi.com).
+All providers sit behind the shared fulfillment abstraction in `src/lib/fulfillment/`
+(`FulfillmentProvider` abstract base + factory). A multi-item cart is split into
+per-provider shipments; buyers only ever see "Shipment 1 of 2", never a provider name.
 
-### Sandbox vs. live API
+### Teemill (primary apparel — `REFERENCED`)
 
-Prodigi provides a sandbox environment at `https://api.sandbox.prodigi.com/v4.0` that accepts orders without triggering real fulfillment or charges. Use a sandbox API key (starts with `test_`) from [dashboard.prodigi.com](https://dashboard.prodigi.com) for local development and staging.
+The founder builds a product on Teemill; the app ingests the catalog entry (colours, sizes,
+mockups, base price, orderable variant refs) into a cached snapshot. Teemill is
+**print-on-demand**: a variant is orderable when it can be printed on demand (`gfnVariant`)
+**or** has warehouse stock — not warehouse `stock.level` alone. Auth uses the raw API key
+(no `Bearer`) with `?project={sub}`. No sandbox exists; MSW stubs cover tests. See
+`docs/teemill-api-notes.md`.
 
-Set these two variables in `.env.local`:
+### Prodigi (fine-art prints + `DESIGNED` apparel)
+
+Prodigi provides a sandbox at `https://api.sandbox.prodigi.com/v4.0`. Use a sandbox key
+(`test_...`) for local/staging:
 
 ```
-PRODIGI_API_KEY="test_..."                                   # sandbox key
-PRODIGI_API_BASE_URL="https://api.sandbox.prodigi.com/v4.0" # sandbox endpoint
+PRODIGI_API_KEY="test_..."
+PRODIGI_API_BASE_URL="https://api.sandbox.prodigi.com/v4.0"
 ```
 
-In production (Vercel), set `PRODIGI_API_KEY` to your live key and leave `PRODIGI_API_BASE_URL` unset — the app defaults to the live endpoint automatically.
+In production set `PRODIGI_API_KEY` to your live key and **leave `PRODIGI_API_BASE_URL`
+unset** — the app defaults to the live endpoint. See `docs/prodigi-api-notes.md`.
 
-> **Never set `PRODIGI_API_BASE_URL` in production.** The default is the live API; setting the variable explicitly is only needed to point at the sandbox.
-
-### Print Catalog Maintenance
-
-Two one-time setup scripts manage the static catalog data the app relies on at runtime.
-
-### Discover available SKUs
-
-Prodigi's API has no catalog-listing endpoint. Run this script to probe all candidate sizes and output a verified list:
+**Print catalog scripts** (Prodigi has no catalog-listing endpoint):
 
 ```bash
-PRODIGI_API_KEY=your_key npx tsx scripts/probe-prodigi-catalog.ts
+PRODIGI_API_KEY=your_key npx tsx scripts/probe-prodigi-catalog.ts   # discover valid SKUs
+PRODIGI_API_KEY=your_key npx tsx scripts/fetch-prodigi-costs.ts      # refresh costs.json
 ```
 
-The script queries `/v4.0/products/{sku}` for each candidate, prints ✓/✗ per SKU, then outputs a ready-to-paste `PRINT_CATALOG` constant. Paste the output into `src/lib/print/listing.ts`.
-
-### Update fulfillment cost estimates
-
-The seller edit form shows estimated Prodigi costs (~$X per size) sourced from `src/lib/print/costs.json`. Regenerate after any Prodigi pricing changes:
-
-```bash
-PRODIGI_API_KEY=your_key npx tsx scripts/fetch-prodigi-costs.ts
-```
-
-Commit the updated `costs.json`. No API calls are made at runtime — costs are bundled statically at build time.
+Paste the SKU output into `src/lib/print/listing.ts`; commit the regenerated
+`src/lib/print/costs.json`. No catalog API calls happen at runtime.
 
 ## Project Structure
 
 ```
 src/
-  app/              # Next.js App Router pages and API routes
-    admin/tracker/  # Admin-only development progress dashboard
-  auth.ts           # NextAuth config (Prisma adapter, credentials provider)
-  auth.config.ts    # Edge-safe auth config (used by proxy/middleware)
-  proxy.ts          # Route protection (ADMIN guard for /admin/*)
+  app/(main)/        # App Router pages (storefront, seller, admin, buyer, checkout)
+    admin/           # Admin: products, users, tracker, fulfillment (dropship exceptions)
+    seller/          # Seller: listings, apparel, fulfillment (originals to ship)
+    api/             # Webhooks (Stripe, Prodigi) + cron routes
+  auth.ts            # NextAuth config (credentials provider, JWT)
+  components/        # Shared UI (Nav, cart, checkout, order views)
   lib/
-    db.ts           # Prisma client singleton (Neon adapter)
-    auth/           # Registration, login, seller onboarding logic
-    artworks/       # Artwork CRUD, image handling, listing management
-    print/          # Prodigi catalog, cost estimates, order creation, tracking
-    payments/       # Stripe webhook fulfillment, seller payouts
-    dashboard/      # Seller/buyer dashboard queries
+    db.ts            # Prisma client singleton (Neon adapter)
+    apparel/         # Apparel listings — DESIGNED + REFERENCED read-shape, sizes/colours
+    artworks/        # Artwork CRUD, image variant pipeline (watermarking)
+    cart/            # DB-backed guest-capable cart
+    checkout/        # Cart revalidation, per-provider shipping quote, fan-out, shipments
+    fulfillment/     # Provider abstraction, status seam, Teemill ingest, originals, admin
+    payments/        # Stripe checkout/webhook fulfillment, transactional email
+    print/           # Prodigi catalog, cost estimates, order creation, tracking
+    account/ orders/ dashboard/ auctions/ tax/ seller/
+  generated/prisma/  # Generated Prisma client (import from @/generated/prisma/client)
 
-prisma/
-  schema.prisma     # Database schema
+prisma/schema.prisma # Database schema
 
 __tests__/
-  epic-*/           # Integration tests per user story (run in Node env)
-  components/       # Component tests (run in jsdom)
-  helpers/db.ts     # Test database reset utility
-  mocks/            # MSW handlers for external APIs
+  epic-*/  mftf-*/   # Per-story tests (Node env by default; jsdom via docblock)
+  e2e/               # Playwright specs + committed visual snapshots
+  helpers/db.ts      # Test database reset utility
+  mocks/             # MSW handlers for external APIs
 
-scripts/
-  probe-prodigi-catalog.ts  # One-time: discover valid Prodigi SKUs
-  fetch-prodigi-costs.ts    # One-time: populate costs.json from Prodigi quotes API
+scripts/             # One-off + dev tooling (Prodigi catalog, demo orders, shipment sims)
 
 spec/
-  project-tracker.json        # Story-by-story development progress
+  project-tracker.json             # Authoritative per-story status + epic order
   user-stories-art-marketplace.md  # Full spec and acceptance criteria
+  project-description.md           # Vision, tech rationale, design principles (living doc)
+
+docs/                # Live-verified provider API notes (Teemill, Prodigi)
 ```
 
 ## Testing
 
-Tests follow a strict TDD cycle — tests are written before implementation, confirmed failing (red), then implementation makes them pass (green).
+Strict TDD — tests are written first (red), then implementation makes them pass (green).
 
 ```bash
-# Run all tests
-npm test
-
-# Run a specific epic
-npx vitest run __tests__/epic-6-auth
-
-# Run with coverage
-npm run test:coverage
+npm test                                   # full Vitest suite
+npx vitest run __tests__/mftf-15-seller-fulfillment   # one epic/folder
+npm run test:coverage                      # with coverage
+npm run test:e2e                           # Playwright (separate from npm test)
 ```
 
-Integration tests hit a real database (configured via `DATABASE_URL_TEST`). The test suite resets the database between test files automatically.
+Integration tests hit a real database (`DATABASE_URL_TEST`) and reset it between files.
+External APIs are mocked via MSW (HTTP SDKs) and `vi.mock()` (Node SDK clients) — no live
+calls in any test. The suite can be flaky under parallelism against the shared Neon test
+branch; for a trustworthy result run `npx vitest run --no-file-parallelism`.
 
-External APIs (Stripe, Prodigi, TaxJar, Resend) are mocked via MSW for HTTP-based SDKs and `vi.mock()` for Node SDK clients.
+## Roles & Dashboards
 
-## Admin Dashboard
+- **Buyer** — browse without an account; purchasing requires auth; receives transactional
+  email.
+- **Seller** — manages listings and ships their own physical originals from
+  `/seller/fulfillment`.
+- **Admin** — site config, user/role management, and the dropship-exception retry queue at
+  `/admin/fulfillment`. Drop-shipped fulfillment is fully automated (no human enters
+  dropship tracking).
 
-Development progress is visible at `/admin/tracker` — accessible only to users with the `ADMIN` role. It shows per-epic progress bars and per-story status across all epics.
+Live, per-story development progress is visible at `/admin/tracker` (ADMIN-only) and in
+`spec/project-tracker.json`.
 
 ## Development Status
 
-| Epic | Description | Status |
-|---|---|---|
-| Epic 1 | Artwork Listing & Product Page | ✅ Complete (6/6) |
-| Epic 2 | Fixed-Price Sales | ✅ Complete (4/4) |
-| Epic 3 | Auction Sales | ✅ Complete (6/6) |
-| Epic 4 | Payments | ✅ Complete (4/5 — US-4.3 Stripe Tax deferred) |
-| Epic 5 | Tax Calculation | 🔲 Not started |
-| Epic 6 | User Accounts & Authentication | ✅ Complete (2/3 — US-6.3 dropped) |
-| Epic 7 | Browsing & Discovery | ✅ Complete (4/4) |
-| Epic 8 | Print Shop | ✅ Complete (6/6) |
-| Epic 9 | Seller Dashboard & Listing Management | ✅ Complete (6/6) |
-| Epic 10 | Browse & Product Page UX | ✅ Complete (2/2) |
-| Epic 11 | Seller Listing Lifecycle | ✅ Complete (3/3) |
-| Epic 12 | Buyer Experience | ✅ Complete (4/4) |
-| Epic 13 | Role-Based Dashboards | ✅ Complete (3/3) |
-| Epic 14 | Post-Sale Fulfillment | ✅ Complete (7/7) |
-| Epic 15 | Listing-Page Purchase & Print Availability | ✅ Complete (7/7) |
+Core commerce is built and green: artwork listings, fixed-price + auction sales, payments
+(Stripe embedded Checkout), accounts/auth, browse/search, the print shop, seller/admin
+dashboards, the apparel storefront (both sourcing modes), the DB-backed cart, multi-provider
+checkout & fan-out, provider webhooks + canonical status mapping + buyer lifecycle emails,
+and seller fulfillment for originals (Epic MFTF-15). Next up: Epic 5 (Tax — re-enable
+Stripe `automatic_tax`) and Epic MFTF-16 (storefront/catalog corrections).
+
+`spec/project-tracker.json` is the source of truth for status; this section is a summary.
 
 ## Deployment
 
-The `main` branch deploys automatically to Vercel on push. Feature branches get a Vercel preview deployment when a pull request is opened.
-
-Required environment variables must be set in the Vercel project settings — see `.env.local.example` for the full list.
+`main` deploys automatically to Vercel on push; pull requests get preview deployments.
+Set all required environment variables in the Vercel project settings — see
+`.env.local.example` for the full list. **Never set `PRODIGI_API_BASE_URL` in production**
+(the default is the live API; the variable only exists to point at the sandbox).
