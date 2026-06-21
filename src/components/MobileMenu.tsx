@@ -102,9 +102,13 @@ export default function MobileMenu({ user, roles, fulfillmentCount = 0, exceptio
   const isSeller = roles.includes("SELLER");
   const isBuyer  = roles.includes("BUYER");
 
-  // One hamburger badge summarising everything needing attention; the menu items
-  // break it down (seller fulfillment + admin dropship exceptions).
-  const attentionCount = (isSeller ? fulfillmentCount : 0) + (isAdmin ? exceptionCount : 0);
+  // Admins get an admin-focused menu: buyer/seller operational items (Orders,
+  // Listings, seller Fulfillment) are suppressed when isAdmin.
+  const showSellerItems = isSeller && !isAdmin;
+  const showBuyerOrders = isBuyer && !isAdmin;
+
+  // One hamburger badge summarising everything needing attention.
+  const attentionCount = (showSellerItems ? fulfillmentCount : 0) + (isAdmin ? exceptionCount : 0);
 
   const dashboardHref = isAdmin
     ? "/dashboard/admin"
@@ -162,13 +166,14 @@ export default function MobileMenu({ user, roles, fulfillmentCount = 0, exceptio
           ),
         },
         navLink(dashboardHref, "Dashboard"),
-        ...(isBuyer  ? [navLink("/buyer/bids",         "My Bids"),    navLink("/buyer/orders",      "Orders")]      : []),
-        ...(isSeller ? [navLink("/seller/listings", "Listings"), navLink("/seller/fulfillment", "Fulfillment", fulfillmentCount)] : []),
+        ...(isBuyer ? [navLink("/buyer/bids", "My Bids")] : []),
+        ...(showBuyerOrders ? [navLink("/buyer/orders", "Orders")] : []),
+        ...(showSellerItems ? [navLink("/seller/listings", "Listings"), navLink("/seller/fulfillment", "Fulfillment", fulfillmentCount)] : []),
         ...(isAdmin  ? [
           navLink("/admin/products",   "Products"),
           navLink("/admin/tracker",    "Tracker"),
           navLink("/admin/users",      "Users"),
-          navLink("/admin/fulfillment","Dropship exceptions", exceptionCount),
+          navLink("/admin/fulfillment","Fulfillment", exceptionCount),
         ] : []),
         navLink(settingsHref, "Settings"),
         {

@@ -297,13 +297,22 @@ describe("US-23.2 — Restructured Mobile Menu with Role-Aware Sections", () => 
       expect(link).toHaveAttribute("href", "/admin/users");
     });
 
-    it("shows Dropship exceptions link pointing to /admin/fulfillment, badged when there are exceptions", () => {
+    it("shows Fulfillment link pointing to /admin/fulfillment, badged when there are exceptions", () => {
       render(<MobileMenu user={adminUser} roles={["ADMIN"]} exceptionCount={3} />);
       open();
-      const link = screen.getByRole("link", { name: /dropship exceptions/i });
+      const link = screen.getByRole("link", { name: /fulfillment/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/admin/fulfillment");
       expect(within(link).getByText("3")).toBeInTheDocument();
+    });
+
+    it("hides buyer Orders and seller Listings/Fulfillment for an admin (admin-focused menu)", () => {
+      render(<MobileMenu user={adminUser} roles={["ADMIN", "SELLER", "BUYER"]} />);
+      open();
+      expect(screen.queryByRole("link", { name: /^orders$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /listings/i })).not.toBeInTheDocument();
+      const fulfillment = screen.getByRole("link", { name: /^fulfillment$/i });
+      expect(fulfillment).toHaveAttribute("href", "/admin/fulfillment");
     });
 
     it("does not show My Bids or Orders", () => {

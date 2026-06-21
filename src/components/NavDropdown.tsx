@@ -74,10 +74,13 @@ export default function NavDropdown({ user, roles, fulfillmentCount = 0, excepti
     : "/buyer/settings";
 
   const label = user.name ?? user.email ?? "Account";
-  const sellerPending = isSeller ? fulfillmentCount : 0;
+  // Admins get an admin-focused dropdown: the buyer/seller operational items
+  // (Orders, Listings, seller Fulfillment) are suppressed when isAdmin.
+  const showSellerItems = isSeller && !isAdmin;
+  const showBuyerOrders = isBuyer && !isAdmin;
+  const sellerPending = showSellerItems ? fulfillmentCount : 0;
   const adminPending = isAdmin ? exceptionCount : 0;
-  // One trigger badge summarising everything that needs the user's attention; the
-  // menu items break it down (seller fulfillment vs. admin dropship exceptions).
+  // One trigger badge summarising everything that needs the user's attention.
   const triggerCount = sellerPending + adminPending;
 
   function isActive(href: string) {
@@ -143,19 +146,19 @@ export default function NavDropdown({ user, roles, fulfillmentCount = 0, excepti
             </MenuItem>
           )}
 
-          {isBuyer && (
+          {showBuyerOrders && (
             <MenuItem href="/buyer/orders" active={isActive("/buyer/orders")}>
               Orders
             </MenuItem>
           )}
 
-          {isSeller && (
+          {showSellerItems && (
             <MenuItem href="/seller/listings" active={isActive("/seller/listings")}>
               Listings
             </MenuItem>
           )}
 
-          {isSeller && (
+          {showSellerItems && (
             <MenuItem
               href="/seller/fulfillment"
               active={isActive("/seller/fulfillment")}
@@ -191,7 +194,7 @@ export default function NavDropdown({ user, roles, fulfillmentCount = 0, excepti
               badge={exceptionCount}
               highlight={adminPending > 0}
             >
-              Dropship exceptions
+              Fulfillment
             </MenuItem>
           )}
 
