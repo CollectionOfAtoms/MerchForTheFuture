@@ -59,14 +59,19 @@ export default function PrintConfigForm({
   );
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [showAllSizes, setShowAllSizes] = useState(false);
 
-  const displayCatalog = useMemo(
+  const matchingCatalog = useMemo(
     () => filterByAspectRatio(catalog, artworkDimensions, savedSkus),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [catalog, artworkDimensions],
   );
 
-  const isFiltered = artworkDimensions !== null && displayCatalog.length < catalog.length;
+  // The aspect filter is a default convenience, not a constraint — a seller can opt
+  // to choose from Prodigi's entire catalog (proportions won't match the art, but the
+  // framing tool lets them crop to each chosen size's aspect).
+  const canFilter = artworkDimensions !== null && matchingCatalog.length < catalog.length;
+  const displayCatalog = showAllSizes ? catalog : matchingCatalog;
 
   function toggleProduct(sku: string) {
     setSelected((prev) => {
@@ -160,13 +165,24 @@ export default function PrintConfigForm({
           </div>
 
           <div>
-            <div className="flex items-baseline justify-between mb-1.5">
+            <div className="flex items-baseline justify-between gap-3 mb-1.5">
               <p className={LABEL} style={{ marginBottom: 0 }}>
                 Available sizes &amp; prices <span className="text-red-400">*</span>
               </p>
-              {isFiltered && (
-                <span className="text-xs text-stone-400">
-                  Showing sizes that match your artwork&apos;s proportions
+              {canFilter && (
+                <span className="flex items-baseline gap-2 text-xs text-stone-400">
+                  <span>
+                    {showAllSizes
+                      ? "Showing all Prodigi sizes"
+                      : "Showing sizes that match your artwork’s proportions"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllSizes((v) => !v)}
+                    className="font-medium text-stone-600 underline hover:text-stone-900 transition-colors"
+                  >
+                    {showAllSizes ? "Show matching only" : "Show all sizes"}
+                  </button>
                 </span>
               )}
             </div>

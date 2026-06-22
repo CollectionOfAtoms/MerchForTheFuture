@@ -1115,7 +1115,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "pending",
-      "notes": "filterByAspectRatio() in listing.ts filters catalog to ±10% ratio match, sorted by closeness. // GUARDRAIL re Epic MFTF-PF (2026-06-21): Decision D keeps all aspect-matching sizes — this story's behavior is unchanged; re-run as a regression guard only. RE-RAN under US-MFTF-PF.4 (2026-06-21): green, behavior unchanged."
+      "notes": "filterByAspectRatio() in listing.ts filters catalog to ±10% ratio match, sorted by closeness. // GUARDRAIL re Epic MFTF-PF (2026-06-21): Decision D keeps all aspect-matching sizes — this story's behavior is unchanged; re-run as a regression guard only. RE-RAN under US-MFTF-PF.4 (2026-06-21): green, behavior unchanged. ENHANCEMENT (2026-06-22, founder-requested): the aspect filter is now a default convenience, not a hard limit — PrintConfigForm has a 'Show all sizes' toggle that swaps displayCatalog between filterByAspectRatio (default) and the full Prodigi catalog, so a seller can deliberately offer a non-matching size (the PF.3 framing tool crops the source to that size's aspect; the PF.4 gate then requires framing for it). Pure UI toggle — filterByAspectRatio unchanged. Test: __tests__/epic-15-listing-purchase-prints/print-config-show-all-sizes.test.tsx (jsdom, 3: defaults to matching-only, 'Show all sizes' reveals full catalog, toggles back)."
     },
     {
       "id": "US-15.7",
