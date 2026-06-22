@@ -9,6 +9,9 @@ import {
   toPixelRect,
   toNormalizedRect,
   cropPixelAspect,
+  invertAspect,
+  orientedAspect,
+  variantForPixelAspect,
   MIN_CROP_FRACTION,
 } from "@/lib/print/crop-geometry";
 
@@ -113,6 +116,25 @@ describe("US-MFTF-PF.3 — crop geometry (pure)", () => {
     expect(back.y).toBeCloseTo(rect.y, 2);
     expect(back.w).toBeCloseTo(rect.w, 2);
     expect(back.h).toBeCloseTo(rect.h, 2);
+  });
+
+  it("invertAspect swaps orientation (square unchanged)", () => {
+    expect(invertAspect("11:17")).toBe("17:11");
+    expect(invertAspect("4:5")).toBe("5:4");
+    expect(parseAspect(invertAspect("1:1"))).toBeCloseTo(1);
+  });
+
+  it("orientedAspect picks the orientation matching the source image", () => {
+    // Portrait SKU (11:17) over a LANDSCAPE source (17×11 px) → frame landscape.
+    expect(orientedAspect("11:17", 1700, 1100)).toBe("17:11");
+    // …over a PORTRAIT source → keep portrait.
+    expect(orientedAspect("11:17", 1100, 1700)).toBe("11:17");
+  });
+
+  it("variantForPixelAspect locks to the orientation a stored crop was framed in", () => {
+    // A landscape rect (pixel aspect ~1.5) on an 11:17 SKU → the 17:11 variant.
+    expect(variantForPixelAspect("11:17", 1.55)).toBe("17:11");
+    expect(variantForPixelAspect("11:17", 0.65)).toBe("11:17");
   });
 
   it("produced pixel crop aspect matches target within rounding tolerance", () => {

@@ -130,6 +130,16 @@ how they're finished **per line item**. Both confirmed against `api.sandbox.prod
 > - The **asset URL** is the framed `PrintFraming.croppedUrl` (production file), not the raw
 >   source. Defensive fallback (unreachable for an ACTIVE listing post-gate): no framing row →
 >   original source image + (canvas) `MirrorWrap`, logged as an anomaly (`[print-fanout] ANOMALY`).
+>
+> **// UNVERIFIED — rotated framing orientation.** The framing tool (US-MFTF-PF.3) lets a seller
+> rotate the crop box 90°, so a landscape piece can be framed landscape on a portrait-named SKU
+> (e.g. an exported `croppedUrl` with a ~17:11 pixel aspect sent for `GLOBAL-CAN-11X17`). The
+> `PrintFraming` row is still keyed by the SKU's nominal aspect; only the produced image's
+> orientation differs. **It is not yet confirmed whether Prodigi auto-rotates the asset to the
+> print area or expects it pre-oriented.** With `fitPrintArea` the whole crop should be shown
+> (rotated or letterboxed), but confirm on the first live order that a rotated crop prints
+> correctly — if Prodigi does not auto-rotate, we'd need an explicit orientation field or to
+> rotate the asset server-side before upload.
 
 ---
 

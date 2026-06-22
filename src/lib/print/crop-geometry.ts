@@ -29,6 +29,34 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
 }
 
+/** Swap a ratio's orientation: "11:17" → "17:11" (a square like "1:1" is unchanged). */
+export function invertAspect(aspectRatio: string): string {
+  const [a, b] = aspectRatio.split(":");
+  return `${b}:${a}`;
+}
+
+/**
+ * Choose the orientation (the ratio or its inverse) closest to an observed pixel
+ * aspect. Used to lock the crop box to the orientation the seller actually framed when
+ * re-opening a stored crop. Log-distance so 0.8 vs 1.25 are treated symmetrically.
+ */
+export function variantForPixelAspect(aspectRatio: string, pixelAspect: number): string {
+  const target = parseAspect(aspectRatio);
+  const inverted = parseAspect(invertAspect(aspectRatio));
+  const dTarget = Math.abs(Math.log(pixelAspect) - Math.log(target));
+  const dInverted = Math.abs(Math.log(pixelAspect) - Math.log(inverted));
+  return dInverted < dTarget ? invertAspect(aspectRatio) : aspectRatio;
+}
+
+/**
+ * The aspect orientation that matches the source image's orientation — so a landscape
+ * piece gets a landscape crop box even when the print SKU is named portrait (the print
+ * is simply rotated). The seller can still flip it manually.
+ */
+export function orientedAspect(aspectRatio: string, imgW: number, imgH: number): string {
+  return variantForPixelAspect(aspectRatio, imgW / imgH);
+}
+
 /** Parse "4:5" → the target pixel aspect (width / height), e.g. 0.8. */
 export function parseAspect(aspectRatio: string): number {
   const parts = aspectRatio.split(":");

@@ -131,5 +131,12 @@ describe("US-15.6 — Print Catalog Filtered by Aspect Ratio", () => {
       const skus = filterByAspectRatioStrict(testCatalog, { widthIn: 16, heightIn: 20 }, new Set(["GLOBAL-CAN-8X8"])).map((p) => p.sku);
       expect(skus).toContain("GLOBAL-CAN-8X8");
     });
+
+    it("matches regardless of orientation — a landscape piece surfaces portrait SKUs of the same ratio", () => {
+      // 20×16 landscape (1.25) matches the portrait 4:5 SKUs (max/min ratio is orientation-agnostic).
+      const skus = filterByAspectRatioStrict(testCatalog, { widthIn: 20, heightIn: 16 }).map((p) => p.sku);
+      expect(skus).toContain("GLOBAL-FAP-8X10");
+      expect(skus).toContain("GLOBAL-CAN-16X20");
+    });
   });
 });

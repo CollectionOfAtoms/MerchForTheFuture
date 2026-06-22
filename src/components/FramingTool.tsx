@@ -8,6 +8,11 @@ import {
   clampRect,
   moveRect,
   withWidth,
+  invertAspect,
+  orientedAspect,
+  variantForPixelAspect,
+  cropPixelAspect,
+  parseAspect,
 } from "@/lib/print/crop-geometry";
 
 interface FramingToolProps {
@@ -38,16 +43,38 @@ export default function FramingTool({
   const containerRef = useRef<HTMLDivElement>(null);
   const [imgDims, setImgDims] = useState<{ w: number; h: number } | null>(null);
   const [rect, setRect] = useState<CropRect | null>(initialRect ?? null);
+  // The aspect the crop box is locked to: the SKU's nominal aspect or its inverse
+  // (rotated). A print SKU prints in either orientation, so a landscape piece can be
+  // framed landscape even on a portrait-named SKU. The PrintFraming row is still keyed
+  // by the nominal `aspectRatio`; only the crop's orientation changes.
+  const [activeAspect, setActiveAspect] = useState<string>(aspectRatio);
   const [drag, setDrag] = useState<{ mode: DragMode; startX: number; startY: number; startRect: CropRect } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+
+  // Square SKUs can't be rotated meaningfully.
+  const canRotate = Math.abs(parseAspect(aspectRatio) - 1) > 1e-6;
 
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const el = e.currentTarget;
     const w = el.naturalWidth || 1;
     const h = el.naturalHeight || 1;
     setImgDims({ w, h });
-    if (!rect) setRect(defaultCropRect(aspectRatio, w, h));
+    // Lock to the orientation the seller already framed (re-open), else the one that
+    // matches the source image's orientation.
+    const initialAspect = rect
+      ? variantForPixelAspect(aspectRatio, cropPixelAspect(rect, w, h))
+      : orientedAspect(aspectRatio, w, h);
+    setActiveAspect(initialAspect);
+    if (!rect) setRect(defaultCropRect(initialAspect, w, h));
+  }
+
+  function rotate() {
+    if (!imgDims) return;
+    const next = invertAspect(activeAspect);
+    setActiveAspect(next);
+    // Re-default the box to the rotated aspect (the old rect's proportions no longer fit).
+    setRect(defaultCropRect(next, imgDims.w, imgDims.h));
   }
 
   function containerSize() {
@@ -71,12 +98,12 @@ export default function FramingTool({
     if (drag.mode === "move") {
       setRect(moveRect(drag.startRect, dx, dy));
     } else if (drag.mode === "resize") {
-      setRect(withWidth(drag.startRect, drag.startRect.w + dx, aspectRatio, imgDims.w, imgDims.h));
+      setRect(withWidth(drag.startRect, drag.startRect.w + dx, activeAspect, imgDims.w, imgDims.h));
     }
   }
 
   function endDrag() {
-    if (drag && rect && imgDims) setRect(clampRect(rect, aspectRatio, imgDims.w, imgDims.h));
+    if (drag && rect && imgDims) setRect(clampRect(rect, activeAspect, imgDims.w, imgDims.h));
     setDrag(null);
   }
 
@@ -150,6 +177,18 @@ export default function FramingTool({
         >
           {isPending ? "Saving…" : "Confirm framing"}
         </button>
+        {canRotate && (
+          <button
+            type="button"
+            data-testid="rotate-crop"
+            onClick={rotate}
+            disabled={isPending || !imgDims}
+            className="rounded-full border border-stone-300 px-4 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50 transition-colors"
+            title="Rotate the crop 90° — the print is produced in this orientation"
+          >
+            ↻ Rotate crop ({activeAspect})
+          </button>
+        )}
         {message && (
           <span className={`text-xs ${message.type === "error" ? "text-rose-600" : "text-emerald-700"}`}>
             {message.text}
