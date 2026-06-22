@@ -168,6 +168,8 @@ export interface PrintReadiness {
   mockedSizes: string[];
   /** Offered sizes with no mockup yet. */
   missingSizes: string[];
+  /** Offered aspects whose stored framing is flagged `needsReframe` (a subset of missingAspects). */
+  needsReframeAspects: string[];
   /** True when the listing may go/stay ACTIVE: not prints-enabled, or fully complete. */
   ready: boolean;
 }
@@ -202,6 +204,7 @@ export async function getPrintReadiness(artworkId: string): Promise<PrintReadine
       missingAspects: [],
       mockedSizes: [],
       missingSizes: [],
+      needsReframeAspects: [],
       ready: true,
     };
   }
@@ -214,10 +217,14 @@ export async function getPrintReadiness(artworkId: string): Promise<PrintReadine
   const completeFraming = new Set(
     framings.filter((f) => f.croppedUrl && !f.needsReframe).map((f) => f.aspectRatio),
   );
+  const needsReframeSet = new Set(framings.filter((f) => f.needsReframe).map((f) => f.aspectRatio));
   const mockedSet = new Set(mockups.map((m) => m.sizeSku));
 
   const framedAspects = aspects.filter((a) => completeFraming.has(a.aspectRatio)).map((a) => a.aspectRatio);
   const missingAspects = aspects.filter((a) => !completeFraming.has(a.aspectRatio)).map((a) => a.aspectRatio);
+  const needsReframeAspects = aspects
+    .filter((a) => needsReframeSet.has(a.aspectRatio))
+    .map((a) => a.aspectRatio);
   const mockedSizes = sizes.filter((s) => mockedSet.has(s));
   const missingSizes = sizes.filter((s) => !mockedSet.has(s));
 
@@ -229,8 +236,38 @@ export async function getPrintReadiness(artworkId: string): Promise<PrintReadine
     missingAspects,
     mockedSizes,
     missingSizes,
+    needsReframeAspects,
     ready: missingAspects.length === 0 && missingSizes.length === 0,
   };
+}
+
+/**
+ * A human-readable, itemized reason a prints-enabled listing cannot go ACTIVE
+ * (US-MFTF-PF.4) — never a generic failure. Sizes render with their offered labels.
+ */
+export function itemizePrintReadiness(readiness: PrintReadiness, products: OfferedPrintProduct[]): string {
+  const labelBySku = new Map(products.map((p) => [p.sku, p.size ?? p.sku]));
+  const parts: string[] = [];
+  if (readiness.missingAspects.length > 0) {
+    parts.push(`framing for aspect ${readiness.missingAspects.join(", ")}`);
+  }
+  if (readiness.missingSizes.length > 0) {
+    parts.push(`a buyer mockup for ${readiness.missingSizes.map((s) => labelBySku.get(s) ?? s).join(", ")}`);
+  }
+  return `Can't publish this print listing yet — add ${parts.join("; and ")}.`;
+}
+
+/**
+ * Invalidate every framing crop for an artwork and flag it for reframing (Decision E,
+ * US-MFTF-PF.4): clears `croppedUrl` + the rect and sets `needsReframe=true` on all
+ * rows. Called when the print source art is replaced. Returns the rows affected.
+ */
+export async function invalidateFramingForArtwork(artworkId: string): Promise<number> {
+  const result = await prisma.printFraming.updateMany({
+    where: { artworkId },
+    data: { croppedUrl: null, cropX: null, cropY: null, cropW: null, cropH: null, needsReframe: true },
+  });
+  return result.count;
 }
 
 // ─── Strict one-time backfill (US-MFTF-PF.1) ──────────────────────────────────

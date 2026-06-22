@@ -5,7 +5,14 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { del } from "@vercel/blob";
-import { isSelectableWrap, offeredAspects, upsertFraming } from "@/lib/print/framing";
+import {
+  isSelectableWrap,
+  offeredAspects,
+  upsertFraming,
+  getPrintReadiness,
+  itemizePrintReadiness,
+  invalidateFramingForArtwork,
+} from "@/lib/print/framing";
 import { generatePrintCrop } from "@/lib/artworks/variants";
 
 type ActionResult = { error: string } | { success: true } | undefined;
@@ -170,7 +177,7 @@ export async function updateListingAction(
   return { success: true };
 }
 
-export async function toggleListingStatusAction(listingId: string): Promise<void> {
+export async function toggleListingStatusAction(listingId: string): Promise<ActionResult> {
   const sellerId = await requireSeller();
 
   const listing = await prisma.originalListing.findUnique({
@@ -178,13 +185,25 @@ export async function toggleListingStatusAction(listingId: string): Promise<void
     include: { artwork: true, auction: { select: { bidCount: true } } },
   });
 
-  if (!listing || listing.artwork.sellerId !== sellerId) return;
-  if (listing.status === "SOLD") return;
-  if (listing.auction && (listing.auction.bidCount ?? 0) > 0) return;
+  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+  if (listing.status === "SOLD") return { error: "A sold listing cannot change status." };
+  if (listing.auction && (listing.auction.bidCount ?? 0) > 0) return { error: "An auction with bids cannot change status." };
 
   const next = listing.status === "ACTIVE" ? "ARCHIVED" : "ACTIVE";
+  // Hard gate (US-MFTF-PF.4): a prints-enabled listing can't go ACTIVE until every
+  // offered aspect is framed and every offered size has a mockup.
+  if (next === "ACTIVE" && listing.availableForPrint) {
+    const readiness = await getPrintReadiness(listing.artworkId);
+    if (!readiness.ready) {
+      const products = Array.isArray(listing.printProducts)
+        ? (listing.printProducts as { sku: string; size?: string }[])
+        : [];
+      return { error: itemizePrintReadiness(readiness, products) };
+    }
+  }
   await prisma.originalListing.update({ where: { id: listingId }, data: { status: next } });
   revalidatePath("/seller/listings");
+  return { success: true };
 }
 
 /** Statuses a seller may set a listing to directly (live / pre-launch preview / retired). */
@@ -199,21 +218,33 @@ export type SettableListingStatus = (typeof SETTABLE_LISTING_STATUSES)[number];
 export async function setListingStatusAction(
   listingId: string,
   status: SettableListingStatus,
-): Promise<void> {
+): Promise<ActionResult> {
   const sellerId = await requireSeller();
-  if (!SETTABLE_LISTING_STATUSES.includes(status)) return;
+  if (!SETTABLE_LISTING_STATUSES.includes(status)) return { error: "Invalid status." };
 
   const listing = await prisma.originalListing.findUnique({
     where: { id: listingId },
     include: { artwork: true, auction: { select: { bidCount: true } } },
   });
 
-  if (!listing || listing.artwork.sellerId !== sellerId) return;
-  if (listing.status === "SOLD") return;
-  if (listing.auction && (listing.auction.bidCount ?? 0) > 0) return;
+  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+  if (listing.status === "SOLD") return { error: "A sold listing cannot change status." };
+  if (listing.auction && (listing.auction.bidCount ?? 0) > 0) return { error: "An auction with bids cannot change status." };
+
+  // Hard gate (US-MFTF-PF.4): block ACTIVE for an incomplete prints-enabled listing.
+  if (status === "ACTIVE" && listing.availableForPrint) {
+    const readiness = await getPrintReadiness(listing.artworkId);
+    if (!readiness.ready) {
+      const products = Array.isArray(listing.printProducts)
+        ? (listing.printProducts as { sku: string; size?: string }[])
+        : [];
+      return { error: itemizePrintReadiness(readiness, products) };
+    }
+  }
 
   await prisma.originalListing.update({ where: { id: listingId }, data: { status } });
   revalidatePath("/seller/listings");
+  return { success: true };
 }
 
 export async function deleteListingAction(listingId: string): Promise<ActionResult> {
@@ -281,10 +312,25 @@ export async function updatePrintConfigAction(
       return { error: "At least one print product must be selected." };
     }
 
+    // Decision E (US-MFTF-PF.4): replacing the print source art invalidates every
+    // framing crop and forces a previously-ACTIVE listing out of active-eligible
+    // state until the seller reframes.
+    const sourceReplaced =
+      !!listing.printSourceImageUrl && listing.printSourceImageUrl !== printSourceImageUrl;
+
     await prisma.originalListing.update({
       where: { id: listingId },
-      data: { availableForPrint: true, printSourceImageUrl, printProducts: printProducts as never },
+      data: {
+        availableForPrint: true,
+        printSourceImageUrl,
+        printProducts: printProducts as never,
+        ...(sourceReplaced && listing.status === "ACTIVE" ? { status: "UNLISTED" } : {}),
+      },
     });
+
+    if (sourceReplaced) {
+      await invalidateFramingForArtwork(listing.artworkId);
+    }
   } else {
     await prisma.originalListing.update({
       where: { id: listingId },

@@ -4,9 +4,10 @@ import { redirect, notFound } from "next/navigation";
 import EditListingForm from "./EditListingForm";
 import PrintConfigForm from "@/components/PrintConfigForm";
 import PrintFramingPanel, { type FramingAspect } from "@/components/PrintFramingPanel";
+import PrintReadinessBanner from "@/components/PrintReadinessBanner";
 import ListingStatusControls from "@/components/seller/ListingStatusControls";
 import { getPrintCatalog, parseArtworkDimensions, type CatalogProduct } from "@/lib/print/listing";
-import { getFramingForArtwork, offeredAspects } from "@/lib/print/framing";
+import { getFramingForArtwork, getPrintReadiness, offeredAspects } from "@/lib/print/framing";
 import printCostsJson from "@/lib/print/costs.json";
 
 export default async function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
@@ -53,6 +54,10 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
       })
     : [];
   const printSourceUrl = listing.printSourceImageUrl ?? null;
+  const printReadiness = listing.availableForPrint ? await getPrintReadiness(listing.artworkId) : null;
+  const sizeLabels: Record<string, string> = Object.fromEntries(
+    printProductRows.map((p) => [p.sku, p.size ?? p.sku]),
+  );
 
   const serialized = {
     ...listing,
@@ -91,8 +96,14 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
         <ListingStatusControls kind="ARTWORK" listingId={listing.id} status={listing.status} />
       </div>
 
+      {printReadiness && (
+        <div className="mb-8">
+          <PrintReadinessBanner readiness={printReadiness} sizeLabels={sizeLabels} />
+        </div>
+      )}
+
       <EditListingForm listing={serialized} />
-      <div className="mt-6">
+      <div className="mt-6" id="print-config">
         <PrintConfigForm
           listingId={listing.id}
           initialEnabled={listing.availableForPrint}
@@ -105,7 +116,7 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
         />
       </div>
       {framingAspects.length > 0 && (
-        <div className="mt-6">
+        <div className="mt-6" id="print-framing">
           <PrintFramingPanel listingId={listing.id} sourceUrl={printSourceUrl} aspects={framingAspects} />
         </div>
       )}

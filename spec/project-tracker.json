@@ -1115,7 +1115,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "pending",
-      "notes": "filterByAspectRatio() in listing.ts filters catalog to ±10% ratio match, sorted by closeness. // GUARDRAIL re Epic MFTF-PF (2026-06-21): Decision D keeps all aspect-matching sizes — this story's behavior is unchanged; re-run as a regression guard only."
+      "notes": "filterByAspectRatio() in listing.ts filters catalog to ±10% ratio match, sorted by closeness. // GUARDRAIL re Epic MFTF-PF (2026-06-21): Decision D keeps all aspect-matching sizes — this story's behavior is unchanged; re-run as a regression guard only. RE-RAN under US-MFTF-PF.4 (2026-06-21): green, behavior unchanged."
     },
     {
       "id": "US-15.7",
@@ -2164,12 +2164,12 @@
       "id": "US-MFTF-PF.4",
       "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
       "title": "Publish/Activation Gate + Reframe Alerts",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "HARD GATE: prints-enabled listing cannot go/stay ACTIVE unless every offered aspect has croppedUrl with needsReframe=false AND every offered size has a PrintSizeMockup.mockupUrl (predicate from getPrintReadiness, PF.1). Incomplete activate → itemized error (which aspects need framing, which sizes need a mockup), not generic. Edit page banner/badge enumerates unframed/needsReframe aspects + missing-mockup sizes with fix links. Art-replace (Decision E): clears all PrintFraming crops for the artwork + sets needsReframe=true + banner reflects immediately. Disabling print toggle removes gate; re-enabling re-applies. Server-side enforcement is source of truth; banner advisory. TOUCHES listing status transition used by US-15.2 / seller dashboard (toggleApparelListingStatusAction or artwork equivalent) — re-run; gate is an added precondition, non-print transitions unchanged."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "DONE 2026-06-21. HARD GATE in both artwork status actions (src/app/actions/listings.ts): setListingStatusAction + toggleListingStatusAction now return ActionResult (was void — void callers unaffected; ListingStatusControls/seller listings page ignore the value) and, when the target is ACTIVE and listing.availableForPrint, call getPrintReadiness(artworkId); if !ready they return itemizePrintReadiness(readiness, products) WITHOUT mutating status. Itemized (not generic): 'Can't publish this print listing yet — add framing for aspect 4:5, 2:3; and a buyer mockup for 12×18 in.' (sizes shown via offered labels). Non-ACTIVE targets (UNLISTED/ARCHIVED) and prints-disabled listings are never gated. getPrintReadiness extended with needsReframeAspects (additive; PF.1 tests still green). Advisory banner src/components/PrintReadinessBanner.tsx (role=alert, pure/server-renderable): enumerates never-framed aspects (frame it → #print-framing), needs-reframe aspects (source art changed → reframe it), and missing-mockup sizes by label (add one → #print-config); renders null when disabled or ready. Wired into the edit page above the form (passes getPrintReadiness + sku→label map); added id anchors print-config/print-framing. Decision E art-replace in updatePrintConfigAction: when printSourceImageUrl changes from a prior non-null value, invalidateFramingForArtwork(artworkId) (clears croppedUrl+rect, sets needsReframe=true on all rows) and demotes an ACTIVE listing → UNLISTED (forced out of active-eligible until reframed; re-activation then blocked by the gate). No invalidation when the source URL is unchanged. Tests: US-MFTF-PF.4-publish-gate.test.ts (node, 10: blocks unframed/missing-mockup/needsReframe-with-crop incl status unchanged + itemized text; allows when complete; toggle gated; UNLISTED/ARCHIVED never gated; prints-disabled ungated; art-replace clears+demotes+blocks-reactivate; no-op on unchanged source) + US-MFTF-PF.4-readiness-banner.test.tsx (jsdom, 5: enumerates unframed w/ fix link, distinguishes needs-reframe, lists missing sizes by label, null when ready, null when disabled). TOUCHED listing status transition — re-ran US-9.5 (archive/activate), US-11.2 (deactivate), US-MFTF-6 unlisted-status: all green (33), non-print transitions unchanged. Re-ran US-15.6 guardrail (unchanged, Decision D) green. tsc baseline 16."
     },
     {
       "id": "US-MFTF-PF.5",
