@@ -3,8 +3,10 @@ import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import EditListingForm from "./EditListingForm";
 import PrintConfigForm from "@/components/PrintConfigForm";
+import PrintFramingPanel, { type FramingAspect } from "@/components/PrintFramingPanel";
 import ListingStatusControls from "@/components/seller/ListingStatusControls";
 import { getPrintCatalog, parseArtworkDimensions, type CatalogProduct } from "@/lib/print/listing";
+import { getFramingForArtwork, offeredAspects } from "@/lib/print/framing";
 import printCostsJson from "@/lib/print/costs.json";
 
 export default async function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,6 +29,19 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
 
   const catalog: CatalogProduct[] = getPrintCatalog();
   const artworkDimensions = parseArtworkDimensions(listing.artwork.dimensions);
+
+  // Per-aspect framing controls (Epic MFTF-PF). Only meaningful when prints are on.
+  const printProductRows = Array.isArray(listing.printProducts)
+    ? (listing.printProducts as { sku: string; size?: string }[])
+    : [];
+  const framingRows = listing.availableForPrint ? await getFramingForArtwork(listing.artworkId) : [];
+  const wrapByAspect = new Map(framingRows.map((f) => [f.aspectRatio, f.wrap]));
+  const framingAspects: FramingAspect[] = listing.availableForPrint
+    ? offeredAspects(printProductRows).map((a) => ({
+        ...a,
+        wrap: wrapByAspect.get(a.aspectRatio) ?? null,
+      }))
+    : [];
 
   const serialized = {
     ...listing,
@@ -78,6 +93,11 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
           printCosts={printCostsJson}
         />
       </div>
+      {framingAspects.length > 0 && (
+        <div className="mt-6">
+          <PrintFramingPanel listingId={listing.id} aspects={framingAspects} />
+        </div>
+      )}
     </div>
   );
 }

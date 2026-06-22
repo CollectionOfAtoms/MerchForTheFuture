@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { del } from "@vercel/blob";
+import { isSelectableWrap, offeredAspects, upsertFraming } from "@/lib/print/framing";
 
 type ActionResult = { error: string } | { success: true } | undefined;
 
@@ -292,5 +293,41 @@ export async function updatePrintConfigAction(
 
   revalidatePath(`/seller/listings/${listingId}/edit`);
   revalidatePath(`/artwork/${listing.artworkId}`);
+  return { success: true };
+}
+
+/**
+ * Persist the seller's canvas edge-wrap choice for one offered canvas aspect
+ * (US-MFTF-PF.2). The wrap is validated server-side against the selectable set —
+ * `IMAGE_WRAP` and any out-of-set value are rejected (defence in depth: the
+ * `CanvasWrap` enum still contains `IMAGE_WRAP`, so the guard is application-layer).
+ * Only canvas aspects the listing actually offers accept a wrap; paper aspects do not.
+ */
+export async function setCanvasWrapAction(
+  listingId: string,
+  aspectRatio: string,
+  wrap: string,
+): Promise<ActionResult> {
+  const sellerId = await requireSeller();
+
+  const listing = await prisma.originalListing.findUnique({
+    where: { id: listingId },
+    include: { artwork: true },
+  });
+  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+
+  if (!isSelectableWrap(wrap)) return { error: "Invalid wrap selection." };
+
+  const products = Array.isArray(listing.printProducts)
+    ? (listing.printProducts as { sku: string; size?: string }[])
+    : [];
+  const canvasAspect = offeredAspects(products).find(
+    (a) => a.aspectRatio === aspectRatio && a.isCanvas,
+  );
+  if (!canvasAspect) return { error: "That aspect is not an offered canvas size." };
+
+  await upsertFraming(listing.artworkId, aspectRatio, { wrap });
+
+  revalidatePath(`/seller/listings/${listingId}/edit`);
   return { success: true };
 }
