@@ -15,8 +15,24 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "../../../src/generated/prisma/client";
 import bcrypt from "bcryptjs";
+import sharp from "sharp";
 
 const prisma = new PrismaClient({ adapter: new PrismaNeon({ connectionString: process.env.DATABASE_URL ?? "" }) });
+
+/**
+ * A deterministic, self-contained 4:5 source image as a data URL — no external network
+ * or TLS. The browser <img> loads it instantly (so the crop box mounts without a race)
+ * and the server-side crop in confirmFramingAction fetches it natively (`fetch` handles
+ * `data:`), unlike a mkcert-HTTPS same-origin URL which Node's fetch would reject.
+ */
+async function framingSourceDataUrl(): Promise<string> {
+  const buf = await sharp({
+    create: { width: 400, height: 500, channels: 3, background: { r: 120, g: 90, b: 60 } },
+  })
+    .jpeg({ quality: 70 })
+    .toBuffer();
+  return `data:image/jpeg;base64,${buf.toString("base64")}`;
+}
 const E2E_BUYER = { email: "e2e-buyer@mftf.test", password: "E2eBuyer123!" };
 const E2E_SELLER = { email: "e2e-seller@mftf.test", password: "E2eSeller123!" };
 
@@ -87,17 +103,18 @@ async function ensureSeller() {
 // A prints-enabled listing offering one canvas aspect (8×10 → 4:5) so the edit
 // page renders the framing panel + interactive tool (US-MFTF-PF.3 Playwright cover).
 async function seedFramingListing(sellerId: string) {
+  const source = await framingSourceDataUrl();
   const artwork = await prisma.artwork.create({
     data: {
       sellerId, title: "E2E Framing Source", description: "e2e framing", status: "PUBLISHED",
-      images: { create: [{ url: "https://picsum.photos/seed/e2e-framing/1200/1500", isPrimary: true, order: 0 }] },
+      images: { create: [{ url: source, isPrimary: true, order: 0 }] },
     },
   });
   const listing = await prisma.originalListing.create({
     data: {
       artworkId: artwork.id, saleType: "FIXED_PRICE", price: 100, status: "ACTIVE",
       availableForPrint: true,
-      printSourceImageUrl: "https://picsum.photos/seed/e2e-framing/1200/1500",
+      printSourceImageUrl: source,
       printProducts: [{ sku: "GLOBAL-CAN-8X10", size: "8×10 in", price: 90 }],
     },
   });

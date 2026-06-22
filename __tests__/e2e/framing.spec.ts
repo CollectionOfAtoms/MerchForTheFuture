@@ -25,6 +25,14 @@ test.describe("Interactive framing tool", () => {
     // The offered canvas aspect (8×10 → 4:5) renders in the framing panel.
     await page.getByRole("button", { name: /frame this aspect/i }).click();
 
+    // The crop box only mounts after the source <img> fires `load` (which sets the
+    // initial rect). Wait on that precondition rather than racing the default timeout.
+    const sourceImg = page.getByAltText("Print source");
+    await expect(sourceImg).toBeVisible();
+    await expect
+      .poll(() => sourceImg.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+      .toBe(true);
+
     const cropBox = page.getByTestId("crop-box");
     await expect(cropBox).toBeVisible();
 
