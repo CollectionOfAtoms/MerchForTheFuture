@@ -159,3 +159,46 @@ export function filterByAspectRatio(
 
   return [...base, ...savedOutsideRatio];
 }
+
+/**
+ * Strict aspect-ratio filter for the seller's print-size picker: returns ONLY the
+ * products within ±10% of the artwork's aspect ratio (closest first), plus any
+ * already-saved sizes that fall outside it. Unlike `filterByAspectRatio`, it does NOT
+ * fall back to the whole catalog when nothing matches — an unusual aspect (e.g. 2:1)
+ * yields an empty/short list by design, and the seller opts into the full catalog via
+ * the "Show all sizes" toggle. With no dimensions it returns the full catalog (nothing
+ * to filter on).
+ */
+export function filterByAspectRatioStrict(
+  catalog: CatalogProduct[],
+  dims: { widthIn: number; heightIn: number } | null,
+  savedSkus?: Set<string>,
+): CatalogProduct[] {
+  if (!dims) return catalog;
+
+  const artRatio = normalizedRatio(dims.widthIn, dims.heightIn);
+  const saved = savedSkus ?? new Set<string>();
+
+  const matched: CatalogProduct[] = [];
+  const savedOutsideRatio: CatalogProduct[] = [];
+
+  for (const p of catalog) {
+    const { width, height } = p.productDimensions;
+    const pRatio = normalizedRatio(width, height);
+    const withinTolerance = Math.abs(pRatio - artRatio) / artRatio <= RATIO_TOLERANCE;
+
+    if (withinTolerance) {
+      matched.push(p);
+    } else if (saved.has(p.sku)) {
+      savedOutsideRatio.push(p);
+    }
+  }
+
+  matched.sort((a, b) => {
+    const aRatio = normalizedRatio(a.productDimensions.width, a.productDimensions.height);
+    const bRatio = normalizedRatio(b.productDimensions.width, b.productDimensions.height);
+    return Math.abs(aRatio - artRatio) - Math.abs(bRatio - artRatio);
+  });
+
+  return [...matched, ...savedOutsideRatio];
+}

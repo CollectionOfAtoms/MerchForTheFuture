@@ -62,6 +62,13 @@ export interface ShippingQuoteItem {
   attributes?: Record<string, string>;
   /** Print area for the design asset (Prodigi apparel = "front"; prints = "default"). */
   printArea?: string;
+  /**
+   * True for a print line item whose asset is the seller's exact-aspect framed crop
+   * (US-MFTF-PF.5). Framed items send `sizing: "fitPrintArea"` (the crop already
+   * matches the SKU face, so no fill-crop is wanted); unframed/apparel items keep the
+   * legacy `fillPrintArea`. Canvas wrap travels in `attributes.wrap`.
+   */
+  framed?: boolean;
 }
 
 /** One selectable shipping method for a group (cost in the quote's currency). */

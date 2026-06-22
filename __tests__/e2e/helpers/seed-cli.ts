@@ -15,9 +15,26 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "../../../src/generated/prisma/client";
 import bcrypt from "bcryptjs";
+import sharp from "sharp";
 
 const prisma = new PrismaClient({ adapter: new PrismaNeon({ connectionString: process.env.DATABASE_URL ?? "" }) });
+
+/**
+ * A deterministic, self-contained 4:5 source image as a data URL — no external network
+ * or TLS. The browser <img> loads it instantly (so the crop box mounts without a race)
+ * and the server-side crop in confirmFramingAction fetches it natively (`fetch` handles
+ * `data:`), unlike a mkcert-HTTPS same-origin URL which Node's fetch would reject.
+ */
+async function framingSourceDataUrl(): Promise<string> {
+  const buf = await sharp({
+    create: { width: 400, height: 500, channels: 3, background: { r: 120, g: 90, b: 60 } },
+  })
+    .jpeg({ quality: 70 })
+    .toBuffer();
+  return `data:image/jpeg;base64,${buf.toString("base64")}`;
+}
 const E2E_BUYER = { email: "e2e-buyer@mftf.test", password: "E2eBuyer123!" };
+const E2E_SELLER = { email: "e2e-seller@mftf.test", password: "E2eSeller123!" };
 
 function emit(o: unknown) {
   console.log("RESULT:" + JSON.stringify(o));
@@ -73,6 +90,47 @@ async function setStatus(foId: string, status: string, tracking?: string, carrie
   emit({ ok: true });
 }
 
+async function ensureSeller() {
+  const passwordHash = await bcrypt.hash(E2E_SELLER.password, 12);
+  const u = await prisma.user.upsert({
+    where: { email: E2E_SELLER.email },
+    update: { passwordHash, emailVerified: new Date(), roles: ["SELLER"] },
+    create: { email: E2E_SELLER.email, name: "E2E Seller", passwordHash, emailVerified: new Date(), roles: ["SELLER"] },
+  });
+  emit({ id: u.id });
+}
+
+// A prints-enabled listing offering one canvas aspect (8×10 → 4:5) so the edit
+// page renders the framing panel + interactive tool (US-MFTF-PF.3 Playwright cover).
+async function seedFramingListing(sellerId: string) {
+  const source = await framingSourceDataUrl();
+  const artwork = await prisma.artwork.create({
+    data: {
+      sellerId, title: "E2E Framing Source", description: "e2e framing", status: "PUBLISHED",
+      images: { create: [{ url: source, isPrimary: true, order: 0 }] },
+    },
+  });
+  const listing = await prisma.originalListing.create({
+    data: {
+      artworkId: artwork.id, saleType: "FIXED_PRICE", price: 100, status: "ACTIVE",
+      availableForPrint: true,
+      printSourceImageUrl: source,
+      printProducts: [{ sku: "GLOBAL-CAN-8X10", size: "8×10 in", price: 90 }],
+    },
+  });
+  emit({ listingId: listing.id, artworkId: artwork.id });
+}
+
+async function getFraming(artworkId: string) {
+  const rows = await prisma.printFraming.findMany({ where: { artworkId } });
+  emit({ count: rows.length, framed: rows.filter((r) => r.croppedUrl && !r.needsReframe).map((r) => r.aspectRatio) });
+}
+
+async function cleanupArtwork(artworkId: string) {
+  await prisma.artwork.delete({ where: { id: artworkId } }).catch(() => {}); // cascades OriginalListing + framing + images
+  emit({ ok: true });
+}
+
 async function cleanup(orderId: string, listingId: string, artworkId: string) {
   await prisma.order.delete({ where: { id: orderId } }).catch(() => {}); // cascades OrderItem + FulfillmentOrder
   await prisma.apparelListing.delete({ where: { id: listingId } }).catch(() => {});
@@ -83,7 +141,11 @@ async function cleanup(orderId: string, listingId: string, artworkId: string) {
 const [cmd, ...a] = process.argv.slice(2);
 const dispatch: Record<string, () => Promise<void>> = {
   "ensure-buyer": () => ensureBuyer(),
+  "ensure-seller": () => ensureSeller(),
   "seed-order": () => seedOrder(a[0]),
+  "seed-framing-listing": () => seedFramingListing(a[0]),
+  "get-framing": () => getFraming(a[0]),
+  "cleanup-artwork": () => cleanupArtwork(a[0]),
   "set-status": () => setStatus(a[0], a[1], a[2] || undefined, a[3] || undefined),
   "cleanup": () => cleanup(a[0], a[1], a[2]),
 };

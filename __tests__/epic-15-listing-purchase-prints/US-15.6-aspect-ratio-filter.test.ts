@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseArtworkDimensions, filterByAspectRatio } from "@/lib/print/listing";
+import { parseArtworkDimensions, filterByAspectRatio, filterByAspectRatioStrict } from "@/lib/print/listing";
 import type { CatalogProduct } from "@/lib/print/listing";
 
 // A small, representative sub-catalog for testing
@@ -105,6 +105,38 @@ describe("US-15.6 — Print Catalog Filtered by Aspect Ratio", () => {
           Math.min(curr.productDimensions.width, curr.productDimensions.height);
         expect(Math.abs(prevRatio - artRatio)).toBeLessThanOrEqual(Math.abs(currRatio - artRatio));
       }
+    });
+  });
+
+  describe("filterByAspectRatioStrict (seller picker default — MFTF-PF enhancement)", () => {
+    it("returns the full catalog when dims is null (nothing to filter on)", () => {
+      expect(filterByAspectRatioStrict(testCatalog, null)).toEqual(testCatalog);
+    });
+
+    it("returns only within-10% matches for a 4:5 piece", () => {
+      const skus = filterByAspectRatioStrict(testCatalog, { widthIn: 16, heightIn: 20 }).map((p) => p.sku);
+      expect(skus).toContain("GLOBAL-FAP-8X10");
+      expect(skus).toContain("GLOBAL-CAN-16X20");
+      expect(skus).not.toContain("GLOBAL-FAP-8X12");
+      expect(skus).not.toContain("GLOBAL-FAP-8X8");
+    });
+
+    it("returns an EMPTY list (no whole-catalog fallback) when nothing matches", () => {
+      // 3:7 matches nothing in testCatalog — strict yields [], unlike filterByAspectRatio.
+      expect(filterByAspectRatioStrict(testCatalog, { widthIn: 3, heightIn: 7 })).toHaveLength(0);
+      expect(filterByAspectRatio(testCatalog, { widthIn: 3, heightIn: 7 })).toHaveLength(testCatalog.length);
+    });
+
+    it("still includes a saved out-of-ratio SKU so prior selections stay visible", () => {
+      const skus = filterByAspectRatioStrict(testCatalog, { widthIn: 16, heightIn: 20 }, new Set(["GLOBAL-CAN-8X8"])).map((p) => p.sku);
+      expect(skus).toContain("GLOBAL-CAN-8X8");
+    });
+
+    it("matches regardless of orientation — a landscape piece surfaces portrait SKUs of the same ratio", () => {
+      // 20×16 landscape (1.25) matches the portrait 4:5 SKUs (max/min ratio is orientation-agnostic).
+      const skus = filterByAspectRatioStrict(testCatalog, { widthIn: 20, heightIn: 16 }).map((p) => p.sku);
+      expect(skus).toContain("GLOBAL-FAP-8X10");
+      expect(skus).toContain("GLOBAL-CAN-16X20");
     });
   });
 });

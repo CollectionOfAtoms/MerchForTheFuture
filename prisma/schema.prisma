@@ -103,6 +103,18 @@ enum NotificationType {
   RESERVE_NOT_MET
 }
 
+/// Stretched-canvas edge wrap (US-MFTF-PF). Maps to Prodigi's `attributes.wrap`
+/// values {Black, ImageWrap, MirrorWrap, White} (docs/prodigi-api-notes.md). All
+/// four are modeled even though the seller picker (US-MFTF-PF.2) excludes
+/// IMAGE_WRAP — keeping the value here means re-allowing it later needs no
+/// migration; the exclusion is an application-layer UI + server guard.
+enum CanvasWrap {
+  BLACK
+  IMAGE_WRAP
+  MIRROR_WRAP
+  WHITE
+}
+
 // ─── User & Auth ──────────────────────────────────────────────────────────────
 
 model User {
@@ -223,9 +235,56 @@ model Artwork {
   seller          User             @relation(fields: [sellerId], references: [id])
   images          ArtworkImage[]
   originalListing OriginalListing?
+  printFramings    PrintFraming[]
+  printSizeMockups PrintSizeMockup[]
 
   @@index([sellerId])
   @@index([status])
+}
+
+/// Per-aspect-ratio print framing (US-MFTF-PF). One row per distinct print aspect
+/// a listing offers, keyed by `artworkId` (prints attach 1:1 via OriginalListing →
+/// Artwork). `croppedUrl` + the normalized `[0..1]` crop rect are the production
+/// file sent to Prodigi (US-MFTF-PF.5); `wrap` is non-null only for canvas aspects
+/// (paper has no edges). `wrap` and the crop persist independently — the PF.4 gate
+/// requires the crop (croppedUrl present, needsReframe=false); wrap has a default.
+model PrintFraming {
+  id           String      @id @default(cuid())
+  artworkId    String
+  aspectRatio  String
+  wrap         CanvasWrap?
+  croppedUrl   String?
+  cropX        Float?
+  cropY        Float?
+  cropW        Float?
+  cropH        Float?
+  needsReframe Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  artwork Artwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  @@unique([artworkId, aspectRatio])
+  @@index([artworkId])
+}
+
+/// Per-size buyer-facing print mockup (US-MFTF-PF). One row per offered print size
+/// (`sizeSku`), keyed by `artworkId`. `mockupUrl` is the buyer-facing DISPLAY image
+/// (US-MFTF-PF.6/PF.7) and is NEVER sent to Prodigi — distinct from the production
+/// `PrintFraming.croppedUrl`. One aspect crop can serve several sizes, but each size
+/// still gets its own mockup.
+model PrintSizeMockup {
+  id        String   @id @default(cuid())
+  artworkId String
+  sizeSku   String
+  mockupUrl String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  artwork Artwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  @@unique([artworkId, sizeSku])
+  @@index([artworkId])
 }
 
 model ArtworkImage {

@@ -5,6 +5,17 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { del } from "@vercel/blob";
+import {
+  isSelectableWrap,
+  offeredAspects,
+  upsertFraming,
+  upsertSizeMockup,
+  removeSizeMockup,
+  getPrintReadiness,
+  itemizePrintReadiness,
+  invalidateFramingForArtwork,
+} from "@/lib/print/framing";
+import { generatePrintCrop, generateWatermarkedMockup } from "@/lib/artworks/variants";
 
 type ActionResult = { error: string } | { success: true } | undefined;
 
@@ -168,7 +179,7 @@ export async function updateListingAction(
   return { success: true };
 }
 
-export async function toggleListingStatusAction(listingId: string): Promise<void> {
+export async function toggleListingStatusAction(listingId: string): Promise<ActionResult> {
   const sellerId = await requireSeller();
 
   const listing = await prisma.originalListing.findUnique({
@@ -176,13 +187,25 @@ export async function toggleListingStatusAction(listingId: string): Promise<void
     include: { artwork: true, auction: { select: { bidCount: true } } },
   });
 
-  if (!listing || listing.artwork.sellerId !== sellerId) return;
-  if (listing.status === "SOLD") return;
-  if (listing.auction && (listing.auction.bidCount ?? 0) > 0) return;
+  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+  if (listing.status === "SOLD") return { error: "A sold listing cannot change status." };
+  if (listing.auction && (listing.auction.bidCount ?? 0) > 0) return { error: "An auction with bids cannot change status." };
 
   const next = listing.status === "ACTIVE" ? "ARCHIVED" : "ACTIVE";
+  // Hard gate (US-MFTF-PF.4): a prints-enabled listing can't go ACTIVE until every
+  // offered aspect is framed and every offered size has a mockup.
+  if (next === "ACTIVE" && listing.availableForPrint) {
+    const readiness = await getPrintReadiness(listing.artworkId);
+    if (!readiness.ready) {
+      const products = Array.isArray(listing.printProducts)
+        ? (listing.printProducts as { sku: string; size?: string }[])
+        : [];
+      return { error: itemizePrintReadiness(readiness, products) };
+    }
+  }
   await prisma.originalListing.update({ where: { id: listingId }, data: { status: next } });
   revalidatePath("/seller/listings");
+  return { success: true };
 }
 
 /** Statuses a seller may set a listing to directly (live / pre-launch preview / retired). */
@@ -197,21 +220,33 @@ export type SettableListingStatus = (typeof SETTABLE_LISTING_STATUSES)[number];
 export async function setListingStatusAction(
   listingId: string,
   status: SettableListingStatus,
-): Promise<void> {
+): Promise<ActionResult> {
   const sellerId = await requireSeller();
-  if (!SETTABLE_LISTING_STATUSES.includes(status)) return;
+  if (!SETTABLE_LISTING_STATUSES.includes(status)) return { error: "Invalid status." };
 
   const listing = await prisma.originalListing.findUnique({
     where: { id: listingId },
     include: { artwork: true, auction: { select: { bidCount: true } } },
   });
 
-  if (!listing || listing.artwork.sellerId !== sellerId) return;
-  if (listing.status === "SOLD") return;
-  if (listing.auction && (listing.auction.bidCount ?? 0) > 0) return;
+  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+  if (listing.status === "SOLD") return { error: "A sold listing cannot change status." };
+  if (listing.auction && (listing.auction.bidCount ?? 0) > 0) return { error: "An auction with bids cannot change status." };
+
+  // Hard gate (US-MFTF-PF.4): block ACTIVE for an incomplete prints-enabled listing.
+  if (status === "ACTIVE" && listing.availableForPrint) {
+    const readiness = await getPrintReadiness(listing.artworkId);
+    if (!readiness.ready) {
+      const products = Array.isArray(listing.printProducts)
+        ? (listing.printProducts as { sku: string; size?: string }[])
+        : [];
+      return { error: itemizePrintReadiness(readiness, products) };
+    }
+  }
 
   await prisma.originalListing.update({ where: { id: listingId }, data: { status } });
   revalidatePath("/seller/listings");
+  return { success: true };
 }
 
 export async function deleteListingAction(listingId: string): Promise<ActionResult> {
@@ -279,16 +314,193 @@ export async function updatePrintConfigAction(
       return { error: "At least one print product must be selected." };
     }
 
+    // Decision E (US-MFTF-PF.4): replacing the print source art invalidates every
+    // framing crop and forces a previously-ACTIVE listing out of active-eligible
+    // state until the seller reframes.
+    const sourceReplaced =
+      !!listing.printSourceImageUrl && listing.printSourceImageUrl !== printSourceImageUrl;
+
     await prisma.originalListing.update({
       where: { id: listingId },
-      data: { availableForPrint: true, printSourceImageUrl, printProducts: printProducts as never },
+      data: {
+        availableForPrint: true,
+        printSourceImageUrl,
+        printProducts: printProducts as never,
+        ...(sourceReplaced && listing.status === "ACTIVE" ? { status: "UNLISTED" } : {}),
+      },
     });
+
+    if (sourceReplaced) {
+      await invalidateFramingForArtwork(listing.artworkId);
+    }
   } else {
     await prisma.originalListing.update({
       where: { id: listingId },
       data: { availableForPrint: false },
     });
   }
+
+  revalidatePath(`/seller/listings/${listingId}/edit`);
+  revalidatePath(`/artwork/${listing.artworkId}`);
+  return { success: true };
+}
+
+/**
+ * Persist the seller's canvas edge-wrap choice for one offered canvas aspect
+ * (US-MFTF-PF.2). The wrap is validated server-side against the selectable set —
+ * `IMAGE_WRAP` and any out-of-set value are rejected (defence in depth: the
+ * `CanvasWrap` enum still contains `IMAGE_WRAP`, so the guard is application-layer).
+ * Only canvas aspects the listing actually offers accept a wrap; paper aspects do not.
+ */
+export async function setCanvasWrapAction(
+  listingId: string,
+  aspectRatio: string,
+  wrap: string,
+): Promise<ActionResult> {
+  const sellerId = await requireSeller();
+
+  const listing = await prisma.originalListing.findUnique({
+    where: { id: listingId },
+    include: { artwork: true },
+  });
+  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+
+  if (!isSelectableWrap(wrap)) return { error: "Invalid wrap selection." };
+
+  const products = Array.isArray(listing.printProducts)
+    ? (listing.printProducts as { sku: string; size?: string }[])
+    : [];
+  const canvasAspect = offeredAspects(products).find(
+    (a) => a.aspectRatio === aspectRatio && a.isCanvas,
+  );
+  if (!canvasAspect) return { error: "That aspect is not an offered canvas size." };
+
+  await upsertFraming(listing.artworkId, aspectRatio, { wrap });
+
+  revalidatePath(`/seller/listings/${listingId}/edit`);
+  return { success: true };
+}
+
+/**
+ * Persist a buyer-facing mockup for one offered print size (US-MFTF-PF.6). The image
+ * is uploaded client-side to Blob (same pipeline as other listing images, which
+ * validates type/size); this action validates ownership + that the size is offered and
+ * applies the small **corner** brand mark via the Sharp pipeline, and writes the
+ * watermarked result to `PrintSizeMockup.mockupUrl` keyed by `[artworkId, sizeSku]`.
+ * Mockups are buyer DISPLAY assets only — never sent to Prodigi; the corner mark gives
+ * brand identification without degrading the promotional image (never the diagonal
+ * original-protection overlay).
+ */
+export async function setSizeMockupAction(
+  listingId: string,
+  sizeSku: string,
+  mockupUrl: string,
+): Promise<ActionResult> {
+  const sellerId = await requireSeller();
+
+  const listing = await prisma.originalListing.findUnique({
+    where: { id: listingId },
+    include: { artwork: true },
+  });
+  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+
+  if (!mockupUrl || !/^https?:\/\//.test(mockupUrl)) return { error: "A valid mockup image URL is required." };
+
+  const products = Array.isArray(listing.printProducts)
+    ? (listing.printProducts as { sku: string }[])
+    : [];
+  if (!products.some((p) => p.sku === sizeSku)) return { error: "That size is not offered by this listing." };
+
+  let watermarkedUrl: string;
+  try {
+    watermarkedUrl = await generateWatermarkedMockup(
+      mockupUrl,
+      `print-mockups/${listing.artworkId}/${sizeSku.replace(/[^a-zA-Z0-9-]/g, "_")}`,
+    );
+  } catch (err) {
+    console.error("[setSizeMockupAction] mockup watermarking failed:", err);
+    return { error: "Could not process the mockup image. Please try again." };
+  }
+
+  await upsertSizeMockup(listing.artworkId, sizeSku, watermarkedUrl);
+
+  revalidatePath(`/seller/listings/${listingId}/edit`);
+  revalidatePath(`/artwork/${listing.artworkId}`);
+  return { success: true };
+}
+
+/** Remove a size's buyer mockup (US-MFTF-PF.6); the PF.4 gate then blocks ACTIVE until re-supplied. */
+export async function removeSizeMockupAction(listingId: string, sizeSku: string): Promise<ActionResult> {
+  const sellerId = await requireSeller();
+
+  const listing = await prisma.originalListing.findUnique({
+    where: { id: listingId },
+    include: { artwork: true },
+  });
+  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+
+  await removeSizeMockup(listing.artworkId, sizeSku);
+
+  revalidatePath(`/seller/listings/${listingId}/edit`);
+  revalidatePath(`/artwork/${listing.artworkId}`);
+  return { success: true };
+}
+
+/**
+ * Crop the print source to one offered aspect and persist it (US-MFTF-PF.3). Takes
+ * the normalized `[0..1]` rect from the framing tool, crops via the Sharp pipeline to
+ * the exact aspect, stores the result in Blob, and writes `PrintFraming.croppedUrl` +
+ * the rect, clearing `needsReframe` for that aspect. The cropped asset is the
+ * production file sent to Prodigi (US-MFTF-PF.5).
+ */
+export async function confirmFramingAction(
+  listingId: string,
+  aspectRatio: string,
+  rect: { x: number; y: number; w: number; h: number },
+): Promise<ActionResult> {
+  const sellerId = await requireSeller();
+
+  const listing = await prisma.originalListing.findUnique({
+    where: { id: listingId },
+    include: { artwork: true },
+  });
+  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+
+  const source = listing.printSourceImageUrl;
+  if (!source) return { error: "Set a print source image before framing." };
+
+  const products = Array.isArray(listing.printProducts)
+    ? (listing.printProducts as { sku: string; size?: string }[])
+    : [];
+  if (!offeredAspects(products).some((a) => a.aspectRatio === aspectRatio)) {
+    return { error: "That aspect is not offered by this listing." };
+  }
+
+  const within01 = (v: number) => Number.isFinite(v) && v >= 0 && v <= 1;
+  if (![rect.x, rect.y, rect.w, rect.h].every(within01) || rect.w <= 0 || rect.h <= 0) {
+    return { error: "Invalid crop region." };
+  }
+
+  let croppedUrl: string;
+  try {
+    croppedUrl = await generatePrintCrop(
+      source,
+      rect,
+      `print-crops/${listing.artworkId}/${aspectRatio.replace(":", "x")}`,
+    );
+  } catch (err) {
+    console.error("[confirmFramingAction] crop failed:", err);
+    return { error: "Could not generate the cropped image. Please try again." };
+  }
+
+  await upsertFraming(listing.artworkId, aspectRatio, {
+    croppedUrl,
+    cropX: rect.x,
+    cropY: rect.y,
+    cropW: rect.w,
+    cropH: rect.h,
+    needsReframe: false,
+  });
 
   revalidatePath(`/seller/listings/${listingId}/edit`);
   revalidatePath(`/artwork/${listing.artworkId}`);

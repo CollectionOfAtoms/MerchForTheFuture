@@ -3,8 +3,12 @@ import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import EditListingForm from "./EditListingForm";
 import PrintConfigForm from "@/components/PrintConfigForm";
+import PrintFramingPanel, { type FramingAspect } from "@/components/PrintFramingPanel";
+import PrintReadinessBanner from "@/components/PrintReadinessBanner";
+import SizeMockupUploader, { type MockupSize } from "@/components/SizeMockupUploader";
 import ListingStatusControls from "@/components/seller/ListingStatusControls";
 import { getPrintCatalog, parseArtworkDimensions, type CatalogProduct } from "@/lib/print/listing";
+import { getFramingForArtwork, getMockupsForArtwork, getPrintReadiness, offeredAspects, offeredSizes } from "@/lib/print/framing";
 import printCostsJson from "@/lib/print/costs.json";
 
 export default async function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,6 +31,39 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
 
   const catalog: CatalogProduct[] = getPrintCatalog();
   const artworkDimensions = parseArtworkDimensions(listing.artwork.dimensions);
+
+  // Per-aspect framing controls (Epic MFTF-PF). Only meaningful when prints are on.
+  const printProductRows = Array.isArray(listing.printProducts)
+    ? (listing.printProducts as { sku: string; size?: string }[])
+    : [];
+  const framingRows = listing.availableForPrint ? await getFramingForArtwork(listing.artworkId) : [];
+  const framingByAspect = new Map(framingRows.map((f) => [f.aspectRatio, f]));
+  const framingAspects: FramingAspect[] = listing.availableForPrint
+    ? offeredAspects(printProductRows).map((a) => {
+        const row = framingByAspect.get(a.aspectRatio);
+        const rect =
+          row?.cropX != null && row.cropY != null && row.cropW != null && row.cropH != null
+            ? { x: row.cropX, y: row.cropY, w: row.cropW, h: row.cropH }
+            : null;
+        return {
+          ...a,
+          wrap: row?.wrap ?? null,
+          croppedUrl: row?.croppedUrl ?? null,
+          needsReframe: row?.needsReframe ?? false,
+          rect,
+        };
+      })
+    : [];
+  const printSourceUrl = listing.printSourceImageUrl ?? null;
+  const printReadiness = listing.availableForPrint ? await getPrintReadiness(listing.artworkId) : null;
+  const sizeLabels: Record<string, string> = Object.fromEntries(
+    printProductRows.map((p) => [p.sku, p.size ?? p.sku]),
+  );
+  const mockupRows = listing.availableForPrint ? await getMockupsForArtwork(listing.artworkId) : [];
+  const initialMockups: Record<string, string> = Object.fromEntries(mockupRows.map((m) => [m.sizeSku, m.mockupUrl]));
+  const mockupSizes: MockupSize[] = listing.availableForPrint
+    ? offeredSizes(printProductRows).map((sku) => ({ sku, label: sizeLabels[sku] ?? sku }))
+    : [];
 
   const serialized = {
     ...listing,
@@ -65,8 +102,14 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
         <ListingStatusControls kind="ARTWORK" listingId={listing.id} status={listing.status} />
       </div>
 
+      {printReadiness && (
+        <div className="mb-8">
+          <PrintReadinessBanner readiness={printReadiness} sizeLabels={sizeLabels} />
+        </div>
+      )}
+
       <EditListingForm listing={serialized} />
-      <div className="mt-6">
+      <div className="mt-6" id="print-config">
         <PrintConfigForm
           listingId={listing.id}
           initialEnabled={listing.availableForPrint}
@@ -78,6 +121,16 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
           printCosts={printCostsJson}
         />
       </div>
+      {framingAspects.length > 0 && (
+        <div className="mt-6" id="print-framing">
+          <PrintFramingPanel listingId={listing.id} sourceUrl={printSourceUrl} aspects={framingAspects} />
+        </div>
+      )}
+      {mockupSizes.length > 0 && (
+        <div className="mt-6" id="print-mockups">
+          <SizeMockupUploader listingId={listing.id} sizes={mockupSizes} initialMockups={initialMockups} />
+        </div>
+      )}
     </div>
   );
 }

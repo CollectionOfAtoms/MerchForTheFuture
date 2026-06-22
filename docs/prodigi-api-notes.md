@@ -116,9 +116,30 @@ how they're finished **per line item**. Both confirmed against `api.sandbox.prod
 - **SKU existence:** `GET /products/{sku}` is **200** for a real SKU, non-200 otherwise — this is
   the authoritative way to validate any SKU (apparel blank or print) before persisting it.
 
-> Today both order paths in `src/lib/fulfillment/providers/prodigi.ts` hardcode
-> `sizing: "fillPrintArea"` and send **no** `wrap`, so canvas orders take Prodigi's default
-> edge. Seller-selectable wrap/sizing + per-size source cropping is unscoped feature work.
+> **Implemented in Epic MFTF-PF (2026-06-21).** `src/lib/fulfillment/providers/prodigi.ts`
+> now sends, per print line item:
+> - **`attributes.wrap`** for canvas items (`GLOBAL-CAN-*`), mapped from the seller's
+>   stored `PrintFraming.wrap` (default `MirrorWrap`; `ImageWrap` excluded from the picker).
+>   Paper items (`GLOBAL-FAP-*`) send **no** `wrap`. This rides in the item `attributes`, so
+>   it appears on **both** `POST /orders` and `POST /quotes` (parity).
+> - **`sizing: "fitPrintArea"`** for **framed** items (the asset is the seller's exact-aspect
+>   crop, so we want the whole confirmed crop shown with no fill-crop of the face). The
+>   resolver tags framed items with `framed: true`; the chosen value is `fitPrintArea`.
+>   **Apparel and the defensive fallback path keep `fillPrintArea`** (unchanged). `sizing` is
+>   order-only, so quotes are unaffected.
+> - The **asset URL** is the framed `PrintFraming.croppedUrl` (production file), not the raw
+>   source. Defensive fallback (unreachable for an ACTIVE listing post-gate): no framing row →
+>   original source image + (canvas) `MirrorWrap`, logged as an anomaly (`[print-fanout] ANOMALY`).
+>
+> **// UNVERIFIED — rotated framing orientation.** The framing tool (US-MFTF-PF.3) lets a seller
+> rotate the crop box 90°, so a landscape piece can be framed landscape on a portrait-named SKU
+> (e.g. an exported `croppedUrl` with a ~17:11 pixel aspect sent for `GLOBAL-CAN-11X17`). The
+> `PrintFraming` row is still keyed by the SKU's nominal aspect; only the produced image's
+> orientation differs. **It is not yet confirmed whether Prodigi auto-rotates the asset to the
+> print area or expects it pre-oriented.** With `fitPrintArea` the whole crop should be shown
+> (rotated or letterboxed), but confirm on the first live order that a rotated crop prints
+> correctly — if Prodigi does not auto-rotate, we'd need an explicit orientation field or to
+> rotate the asset server-side before upload.
 
 ---
 

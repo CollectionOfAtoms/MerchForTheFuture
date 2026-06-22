@@ -42,6 +42,10 @@ async function quoteBatch(skus: typeof catalog): Promise<Record<string, number>>
         sku: p.sku,
         copies: 1,
         assets: [{ printArea: "default" }],
+        // Canvas quotes require a wrap attribute. "White" is an arbitrary INTERNAL
+        // cost-probe reference only — wrap barely shifts Prodigi canvas price, so the
+        // estimate is wrap-agnostic. It is NOT the seller-facing default: that is
+        // MirrorWrap (US-MFTF-PF.2, DEFAULT_CANVAS_WRAP in src/lib/print/framing.ts).
         ...(p.sku.startsWith("GLOBAL-CAN-") && { attributes: { wrap: "White" } }),
       })),
     }),

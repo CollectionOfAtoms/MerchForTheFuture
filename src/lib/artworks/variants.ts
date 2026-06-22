@@ -163,6 +163,78 @@ export async function generateApparelImageVariants(
   }
 }
 
+/**
+ * Crop a print source image to a normalized `[0..1]` rect and upload the result to
+ * Blob (US-MFTF-PF.3). The rect is resolved against the rotated (EXIF-corrected)
+ * source pixels so the produced crop's pixel aspect matches the locked target. Returns
+ * the public URL. Used by the framing confirm action; the resulting `croppedUrl` is the
+ * production file sent to Prodigi (US-MFTF-PF.5) — never watermarked.
+ */
+export async function generatePrintCrop(
+  sourceUrl: string,
+  rect: { x: number; y: number; w: number; h: number },
+  pathPrefix: string,
+): Promise<string> {
+  const sourceBuffer = await fetchImageBuffer(sourceUrl);
+  // Apply EXIF rotation first so the rect is resolved against the displayed pixels.
+  const rotated = await sharp(sourceBuffer).rotate().toColorspace("srgb").toBuffer();
+  const { width: W = 0, height: H = 0 } = await sharp(rotated).metadata();
+  if (!W || !H) throw new Error("Could not read source image dimensions for crop.");
+
+  const left = Math.min(Math.max(Math.round(rect.x * W), 0), W - 1);
+  const top = Math.min(Math.max(Math.round(rect.y * H), 0), H - 1);
+  const width = Math.min(Math.max(Math.round(rect.w * W), 1), W - left);
+  const height = Math.min(Math.max(Math.round(rect.h * H), 1), H - top);
+
+  const cropped = await sharp(rotated)
+    .extract({ left, top, width, height })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+
+  const blob = await put(`${pathPrefix}-${Date.now()}.jpg`, cropped, {
+    access: "public",
+    contentType: "image/jpeg",
+    token: BLOB_TOKEN,
+  });
+  return blob.url;
+}
+
+/**
+ * Watermark a seller-uploaded buyer mockup with the small **corner** brand mark
+ * (US-MFTF-PF.6) and upload the result to Blob, returning the public URL. Uses the
+ * corner mark — never the diagonal original-protection overlay — because a mockup is a
+ * promotional preview, not the at-home-printable original; the corner mark gives brand
+ * identification without degrading the marketing image. Single output (not the 3-variant
+ * set). Mockups are buyer DISPLAY assets and are never sent to Prodigi.
+ */
+export async function generateWatermarkedMockup(
+  sourceUrl: string,
+  pathPrefix: string,
+): Promise<string> {
+  const sourceBuffer = await fetchImageBuffer(sourceUrl);
+  const normalizedBuffer = await sharp(sourceBuffer)
+    .rotate()
+    .toColorspace("srgb")
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
+    .toBuffer();
+  const resizedBuffer = await sharp(normalizedBuffer)
+    .resize({ width: 2400, height: 2400, fit: "inside", withoutEnlargement: true })
+    .toBuffer();
+  const { width: W = 2400, height: H = 2400 } = await sharp(resizedBuffer).metadata();
+  const watermarkSvg = buildCornerWatermarkSvg(W, H);
+  const outputBuffer = await sharp(resizedBuffer)
+    .composite([{ input: watermarkSvg, gravity: "center" }])
+    .jpeg({ quality: 85 })
+    .toBuffer();
+
+  const blob = await put(`${pathPrefix}-${Date.now()}.jpg`, outputBuffer, {
+    access: "public",
+    contentType: "image/jpeg",
+    token: BLOB_TOKEN,
+  });
+  return blob.url;
+}
+
 function buildWatermarkSvg(width: number, height: number): Buffer {
   const cx = Math.round(width / 2);
   const cy = Math.round(height / 2);

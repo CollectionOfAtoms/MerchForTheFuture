@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useMemo, useTransition, useRef } from "react";
-import { upload } from "@vercel/blob/client";
+import { useState, useMemo, useTransition } from "react";
 import { updatePrintConfigAction } from "@/app/actions/listings";
-import { filterByAspectRatio } from "@/lib/print/listing";
+import { filterByAspectRatioStrict } from "@/lib/print/listing";
 
 interface CatalogProduct {
   sku: string;
@@ -15,12 +14,10 @@ interface SavedProduct {
   sku: string;
   size: string;
   price: number;
-  mockupUrl?: string | null;
 }
 
 interface SkuState {
   price: number | null;
-  mockupUrl: string | null;
 }
 
 const FIELD = "rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-stone-400 focus:outline-none w-full";
@@ -58,20 +55,23 @@ export default function PrintConfigForm({
   const [enabled, setEnabled] = useState(initialEnabled);
   const [sourceUrl, setSourceUrl] = useState(initialSourceUrl ?? primaryArtworkUrl ?? "");
   const [selected, setSelected] = useState<Map<string, SkuState>>(
-    () => new Map(initialProducts?.map((p) => [p.sku, { price: p.price, mockupUrl: p.mockupUrl ?? null }]) ?? [])
+    () => new Map(initialProducts?.map((p) => [p.sku, { price: p.price }]) ?? [])
   );
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [uploadingSku, setUploadingSku] = useState<string | null>(null);
-  const mockupFileRef = useRef<HTMLInputElement>(null);
+  const [showAllSizes, setShowAllSizes] = useState(false);
 
-  const displayCatalog = useMemo(
-    () => filterByAspectRatio(catalog, artworkDimensions, savedSkus),
+  const matchingCatalog = useMemo(
+    () => filterByAspectRatioStrict(catalog, artworkDimensions, savedSkus),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [catalog, artworkDimensions],
   );
 
-  const isFiltered = artworkDimensions !== null && displayCatalog.length < catalog.length;
+  // The aspect filter is a default convenience, not a constraint — a seller can opt
+  // to choose from Prodigi's entire catalog (proportions won't match the art, but the
+  // framing tool lets them crop to each chosen size's aspect).
+  const canFilter = artworkDimensions !== null && matchingCatalog.length < catalog.length;
+  const displayCatalog = showAllSizes ? catalog : matchingCatalog;
 
   function toggleProduct(sku: string) {
     setSelected((prev) => {
@@ -80,7 +80,7 @@ export default function PrintConfigForm({
         next.delete(sku);
       } else {
         const saved = savedMap.get(sku);
-        next.set(sku, { price: saved?.price ?? null, mockupUrl: saved?.mockupUrl ?? null });
+        next.set(sku, { price: saved?.price ?? null });
       }
       return next;
     });
@@ -89,42 +89,10 @@ export default function PrintConfigForm({
   function setPrice(sku: string, price: number | null) {
     setSelected((prev) => {
       const next = new Map(prev);
-      const current = next.get(sku) ?? { price: null, mockupUrl: null };
+      const current = next.get(sku) ?? { price: null };
       next.set(sku, { ...current, price });
       return next;
     });
-  }
-
-  function setMockupUrl(sku: string, url: string | null) {
-    setSelected((prev) => {
-      const next = new Map(prev);
-      const current = next.get(sku) ?? { price: null, mockupUrl: null };
-      next.set(sku, { ...current, mockupUrl: url });
-      return next;
-    });
-  }
-
-  function triggerMockupUpload(sku: string) {
-    setUploadingSku(sku);
-    mockupFileRef.current?.click();
-  }
-
-  async function handleMockupFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !uploadingSku) return;
-    try {
-      const ext = file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".")) : "";
-      const blob = await upload(`mockups/${listingId}/${uploadingSku}${ext}`, file, {
-        access: "public",
-        handleUploadUrl: "/api/blob/upload",
-      });
-      setMockupUrl(uploadingSku, blob.url);
-    } catch {
-      setMessage({ type: "error", text: "Mockup upload failed. Please try again." });
-    } finally {
-      setUploadingSku(null);
-      if (mockupFileRef.current) mockupFileRef.current.value = "";
-    }
   }
 
   function handleSave() {
@@ -136,8 +104,8 @@ export default function PrintConfigForm({
       const products: SavedProduct[] = [];
       for (const item of catalog) {
         if (selected.has(item.sku)) {
-          const { price, mockupUrl } = selected.get(item.sku)!;
-          products.push({ sku: item.sku, size: formatSize(item), price: price ?? 0, mockupUrl: mockupUrl ?? null });
+          const { price } = selected.get(item.sku)!;
+          products.push({ sku: item.sku, size: formatSize(item), price: price ?? 0 });
         }
       }
       fd.set("printProducts", JSON.stringify(products));
@@ -154,15 +122,6 @@ export default function PrintConfigForm({
 
   return (
     <section className="rounded-2xl border border-stone-200 bg-white p-6 space-y-5">
-      {/* Hidden file input for mockup uploads */}
-      <input
-        ref={mockupFileRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="sr-only"
-        onChange={handleMockupFile}
-      />
-
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-stone-800">Fine art prints</h2>
         <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -206,24 +165,46 @@ export default function PrintConfigForm({
           </div>
 
           <div>
-            <div className="flex items-baseline justify-between mb-1.5">
+            <div className="flex items-baseline justify-between gap-3 mb-1.5">
               <p className={LABEL} style={{ marginBottom: 0 }}>
                 Available sizes &amp; prices <span className="text-red-400">*</span>
               </p>
-              {isFiltered && (
-                <span className="text-xs text-stone-400">
-                  Showing sizes that match your artwork&apos;s proportions
+              {canFilter && (
+                <span className="flex items-baseline gap-2 text-xs text-stone-400">
+                  <span>
+                    {showAllSizes
+                      ? "Showing all Prodigi sizes"
+                      : "Showing sizes that match your artwork’s proportions"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllSizes((v) => !v)}
+                    className="font-medium text-stone-600 underline hover:text-stone-900 transition-colors"
+                  >
+                    {showAllSizes ? "Show matching only" : "Show all sizes"}
+                  </button>
                 </span>
               )}
             </div>
             {catalog.length === 0 ? (
               <p className="text-sm text-stone-400">Could not load print catalog. Try refreshing the page.</p>
+            ) : displayCatalog.length === 0 ? (
+              <p className="text-sm text-stone-400">
+                No standard sizes match this piece&apos;s proportions. Use{" "}
+                <button
+                  type="button"
+                  onClick={() => setShowAllSizes(true)}
+                  className="font-medium text-stone-600 underline hover:text-stone-900 transition-colors"
+                >
+                  Show all sizes
+                </button>{" "}
+                to choose from the full catalog (you&apos;ll crop each one when framing).
+              </p>
             ) : (
               <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
                 {displayCatalog.map((item) => {
                   const isChecked = selected.has(item.sku);
                   const skuState = selected.get(item.sku);
-                  const isUploadingThis = uploadingSku === item.sku;
 
                   return (
                     <div key={item.sku} className={`rounded-xl border p-3 transition-colors ${isChecked ? "border-stone-300 bg-stone-50" : "border-transparent"}`}>
@@ -262,48 +243,6 @@ export default function PrintConfigForm({
                           </div>
                         )}
                       </div>
-
-                      {/* Mockup upload — shown when SKU is selected */}
-                      {isChecked && (
-                        <div className="mt-2.5 ml-7 flex items-center gap-3">
-                          {skuState?.mockupUrl ? (
-                            <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={skuState.mockupUrl}
-                                alt="Mockup preview"
-                                className="h-14 w-20 rounded-lg object-cover border border-stone-200"
-                              />
-                              <div className="flex flex-col gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => triggerMockupUpload(item.sku)}
-                                  disabled={isUploadingThis}
-                                  className="text-xs text-stone-500 hover:text-stone-900 transition-colors"
-                                >
-                                  {isUploadingThis ? "Uploading…" : "Replace mockup"}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setMockupUrl(item.sku, null)}
-                                  className="text-xs text-rose-500 hover:text-rose-700 transition-colors"
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            </>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => triggerMockupUpload(item.sku)}
-                              disabled={isUploadingThis}
-                              className="text-xs text-stone-500 hover:text-stone-900 border border-dashed border-stone-300 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
-                            >
-                              {isUploadingThis ? "Uploading…" : "+ Add mockup image"}
-                            </button>
-                          )}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
