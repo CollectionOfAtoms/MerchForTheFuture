@@ -9,6 +9,7 @@ import crypto from "node:crypto";
 import { prisma } from "@/lib/db";
 import { getProviderByKey } from "@/lib/fulfillment";
 import { canonicalSizeLabel } from "@/lib/apparel/sizes";
+import { resolvePrintFanout } from "@/lib/print/framing";
 import type { FulfillmentJob, ShippingQuoteItem, FulfillmentShippingAddress } from "@/lib/fulfillment/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://merchforthefuture.com";
@@ -48,7 +49,7 @@ const foInclude = {
           referencedVariants: { select: { variantRef: true, colorName: true, sizeLabel: true } },
         },
       },
-      originalListing: { select: { printSourceImageUrl: true } },
+      originalListing: { select: { artworkId: true, printSourceImageUrl: true, printProducts: true } },
     },
   },
 } as const;
@@ -73,7 +74,7 @@ function toAddress(order: LoadedFulfillmentOrder["order"]): FulfillmentShippingA
   };
 }
 
-function toQuoteItem(item: LoadedFulfillmentOrder["items"][number]): ShippingQuoteItem {
+async function toQuoteItem(item: LoadedFulfillmentOrder["items"][number]): Promise<ShippingQuoteItem> {
   if (item.itemKind === "APPAREL") {
     const sel = item.selection as { colorId?: string; sizeLabel?: string };
     const listing = item.apparelListing;
@@ -99,12 +100,26 @@ function toQuoteItem(item: LoadedFulfillmentOrder["items"][number]): ShippingQuo
       sourceImageUrl: listing?.designImageUrl ?? undefined,
     };
   }
-  // PRINT (Prodigi).
+  // PRINT (Prodigi). Send the seller's framed crop + (canvas) wrap (US-MFTF-PF.5).
   const sel = item.selection as { prodigiSku?: string };
+  const sku = sel.prodigiSku ?? "";
+  const listing = item.originalListing;
+  const products = Array.isArray(listing?.printProducts)
+    ? (listing!.printProducts as { sku: string; size?: string }[])
+    : [];
+  const sizeLabel = products.find((p) => p.sku === sku)?.size;
+  const resolved = await resolvePrintFanout({
+    artworkId: listing?.artworkId ?? "",
+    sku,
+    sizeLabel,
+    fallbackSourceUrl: listing?.printSourceImageUrl,
+  });
   return {
-    sku: sel.prodigiSku ?? "",
+    sku,
     quantity: item.quantity,
-    sourceImageUrl: item.originalListing?.printSourceImageUrl ?? undefined,
+    sourceImageUrl: resolved.sourceImageUrl,
+    attributes: resolved.attributes,
+    framed: resolved.framed,
   };
 }
 
@@ -133,7 +148,7 @@ async function processFulfillmentOrder(fulfillmentOrderId: string): Promise<void
   }
 
   const job: FulfillmentJob = {
-    items: fo.items.map(toQuoteItem),
+    items: await Promise.all(fo.items.map(toQuoteItem)),
     shippingAddress: toAddress(fo.order),
     contact: { email: fo.order.buyer.email ?? "" },
     shippingMethod: fo.shippingMethod ?? undefined,

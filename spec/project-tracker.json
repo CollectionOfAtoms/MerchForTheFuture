@@ -2175,12 +2175,12 @@
       "id": "US-MFTF-PF.5",
       "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
       "title": "Fan-Out Sends Wrap + Cropped Asset to Prodigi",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "src/lib/fulfillment/providers/prodigi.ts: createProviderOrder for CANVAS line item sends framed croppedUrl + attributes:{wrap} from PrintFraming.wrap; PAPER line item sends croppedUrl + NO wrap. Remove hardcoded sizing:'fillPrintArea' for framed items (exact-aspect asset makes face sizing moot); document sizing value sent in docs/prodigi-api-notes.md. quoteShipping includes wrap for canvas (parity with order body). DEFENSIVE fallback: no PrintFraming row (unreachable for ACTIVE post-gate) → original source image + MirrorWrap (canvas), logged as anomaly. No change to apparel fan-out. MSW asserts EXACT order + quote bodies. Re-run US-MFTF-3.2 + US-8.3 order suites (apparel/other paths unchanged)."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "DONE 2026-06-21. Shared resolver resolvePrintFanout({artworkId, sku, sizeLabel, fallbackSourceUrl}) in src/lib/print/framing.ts: derives aspect (aspectForProduct) + canvas-ness (isCanvasSku), looks up PrintFraming[artworkId,aspect]; if croppedUrl → {sourceImageUrl:croppedUrl, attributes: canvas?{wrap:WRAP_API_VALUE[row.wrap??MIRROR_WRAP]}:{}, framed:true}; else DEFENSIVE fallback {sourceImageUrl:fallback original, attributes: canvas?{wrap:'MirrorWrap'}:{}, framed:false} + console.warn('[print-fanout] ANOMALY...'). ShippingQuoteItem gained framed?:boolean; wrap rides in attributes (so it appears on BOTH order + quote — parity, no separate quote change needed since quoteShipping already forwards attributes). prodigi.ts createProviderOrder: sizing = framed?'fitPrintArea':'fillPrintArea' (was hardcoded fillPrintArea); attributes only spread when non-empty (paper sends none); asset url unchanged mechanism. Wired resolver into BOTH item builders: checkout/fanout.ts toQuoteItem (now async; PRINT branch resolves via originalListing.artworkId+printProducts size label; Promise.all in processFulfillmentOrder; foInclude now selects artworkId+printProducts) and checkout/revalidate.ts (PRINT kept branch resolves for quote-time parity; originalListing select gained artworkId). CHOSE sizing='fitPrintArea' for framed items (exact-aspect crop → show whole confirmed crop, no face re-crop); apparel + fallback keep fillPrintArea; documented in docs/prodigi-api-notes.md (replaced the 'unscoped feature work' note with the implemented contract). Test __tests__/print-framing/US-MFTF-PF.5-prodigi-fanout.test.ts (8: resolver canvas-wrap/default-MirrorWrap/paper-no-wrap/anomaly-fallback; order body canvas fitPrintArea+wrap+croppedUrl asset, paper fitPrintArea+no-attributes+croppedUrl, apparel UNCHANGED fillPrintArea+size/color; quote canvas attributes.wrap parity — exact bodies via MSW server.use capture). Re-ran US-MFTF-3.2 prodigi-provider + US-MFTF-12.3 revalidation-shipping (37) + US-MFTF-12.5 fanout (5, its pre-PF unframed print seed now exercises the defensive fallback + anomaly log — expected): all green, apparel/other paths unchanged. (No US-8.3 suite exists; epic-8 print-shop tests not affected.) tsc baseline 16. // STILL UNVERIFIED against a real paid order — sandbox-verified only (ord_1161006/1161007); confirm wrap+fitPrintArea+croppedUrl on first live paid canvas order."
     },
     {
       "id": "US-MFTF-PF.6",

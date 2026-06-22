@@ -221,10 +221,14 @@ export class ProdigiFulfillmentProvider extends FulfillmentProvider {
         items: job.items.map((i) => ({
           sku: i.sku,
           copies: i.quantity,
-          sizing: 'fillPrintArea',
-          // Designed apparel needs size/colour attributes; the design asset goes on
-          // the item's print area ("front" for apparel, "default" for prints).
-          ...(i.attributes ? { attributes: i.attributes } : {}),
+          // A framed print carries the seller's exact-aspect crop, so we send
+          // `fitPrintArea` (show the whole confirmed crop, never re-crop the face);
+          // apparel/unframed items keep the legacy `fillPrintArea`. (US-MFTF-PF.5)
+          sizing: i.framed ? 'fitPrintArea' : 'fillPrintArea',
+          // Designed apparel needs size/colour attributes; canvas prints carry
+          // `attributes.wrap`. Paper prints have no attributes. The asset goes on the
+          // item's print area ("front" for apparel, "default" for prints).
+          ...(i.attributes && Object.keys(i.attributes).length > 0 ? { attributes: i.attributes } : {}),
           assets: i.sourceImageUrl ? [{ printArea: i.printArea ?? 'default', url: i.sourceImageUrl }] : [],
         })),
       }),

@@ -11,6 +11,7 @@ import { prisma } from "@/lib/db";
 import { getApparelListingDetail } from "@/lib/apparel/detail";
 import { canonicalSizeLabel } from "@/lib/apparel/sizes";
 import { ingestTeemillProduct } from "@/lib/fulfillment/teemill/ingest";
+import { resolvePrintFanout } from "@/lib/print/framing";
 import type { KeptItem, RemovedItem, PriceChange, RevalidationResult } from "./types";
 
 const MATERIAL_LABELS: Record<string, string> = { FAP: "Fine Art Paper", CAN: "Stretched Canvas" };
@@ -56,6 +57,7 @@ export async function revalidateCheckout(cartId: string): Promise<RevalidationRe
       originalListing: {
         select: {
           id: true,
+          artworkId: true,
           status: true,
           availableForPrint: true,
           printProducts: true,
@@ -205,6 +207,15 @@ export async function revalidateCheckout(cartId: string): Promise<RevalidationRe
       priceChanges.push({ title, from: snapshot, to: unitPrice });
     }
 
+    // Resolve the framed crop + (canvas) wrap so the shipping quote carries the same
+    // attributes as the eventual order (US-MFTF-PF.5 parity).
+    const fanout = await resolvePrintFanout({
+      artworkId: listing.artworkId,
+      sku,
+      sizeLabel: product.size,
+      fallbackSourceUrl: listing.printSourceImageUrl,
+    });
+
     kept.push({
       cartItemId: item.id,
       kind: "PRINT",
@@ -214,7 +225,13 @@ export async function revalidateCheckout(cartId: string): Promise<RevalidationRe
       unitPrice,
       quantity: item.quantity,
       lineTotal: unitPrice * item.quantity,
-      quoteItem: { sku, quantity: item.quantity, sourceImageUrl: listing.printSourceImageUrl ?? undefined },
+      quoteItem: {
+        sku,
+        quantity: item.quantity,
+        sourceImageUrl: fanout.sourceImageUrl,
+        attributes: fanout.attributes,
+        framed: fanout.framed,
+      },
       apparelListingId: null,
       listingId: listing.id,
       selection: { prodigiSku: sku, attributes: sel.attributes ?? {}, quotedUnitPrice: unitPrice },

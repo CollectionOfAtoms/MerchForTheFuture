@@ -270,6 +270,57 @@ export async function invalidateFramingForArtwork(artworkId: string): Promise<nu
   return result.count;
 }
 
+// ─── Fan-out resolution (US-MFTF-PF.5) ────────────────────────────────────────
+
+export interface PrintFanoutResolution {
+  /** Asset URL to send to Prodigi — the framed crop, or the original source on fallback. */
+  sourceImageUrl: string | undefined;
+  /** Prodigi item attributes — `{ wrap }` for canvas, `{}` for paper. */
+  attributes: Record<string, string>;
+  /** True when the seller's exact-aspect crop is used (drives `sizing: fitPrintArea`). */
+  framed: boolean;
+}
+
+/**
+ * Resolve the Prodigi asset + attributes for one print line item (US-MFTF-PF.5):
+ * the seller's framed `croppedUrl` plus, for canvas, `attributes.wrap` from the stored
+ * `PrintFraming.wrap` (default MirrorWrap). Defensive fallback (unreachable for an
+ * ACTIVE listing post-gate): no framing crop → the original source image and, for
+ * canvas, MirrorWrap, logged as an anomaly.
+ */
+export async function resolvePrintFanout(opts: {
+  artworkId: string;
+  sku: string;
+  sizeLabel?: string;
+  fallbackSourceUrl?: string | null;
+}): Promise<PrintFanoutResolution> {
+  const canvas = isCanvasSku(opts.sku);
+  const aspect = aspectForProduct({ sku: opts.sku, size: opts.sizeLabel });
+  const row = aspect
+    ? await prisma.printFraming.findUnique({
+        where: { artworkId_aspectRatio: { artworkId: opts.artworkId, aspectRatio: aspect } },
+      })
+    : null;
+
+  if (row?.croppedUrl) {
+    return {
+      sourceImageUrl: row.croppedUrl,
+      attributes: canvas ? { wrap: WRAP_API_VALUE[row.wrap ?? DEFAULT_CANVAS_WRAP] } : {},
+      framed: true,
+    };
+  }
+
+  console.warn(
+    `[print-fanout] ANOMALY: no framing crop for artwork ${opts.artworkId} aspect ${aspect ?? "?"} ` +
+      `(sku ${opts.sku}) — falling back to the original source${canvas ? " + MirrorWrap" : ""}`,
+  );
+  return {
+    sourceImageUrl: opts.fallbackSourceUrl ?? undefined,
+    attributes: canvas ? { wrap: WRAP_API_VALUE[DEFAULT_CANVAS_WRAP] } : {},
+    framed: false,
+  };
+}
+
 // ─── Strict one-time backfill (US-MFTF-PF.1) ──────────────────────────────────
 
 /**
