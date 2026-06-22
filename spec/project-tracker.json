@@ -1,6 +1,6 @@
 {
   "epicOrder": {
-    "description": "Authoritative implementation sequence for epics with open stories. Claude Code works the first epic in 'sequence' that has stories not yet Passed/Dropped/Deferred, unless the handoff prompt says otherwise. Maintained only via tdd-spec-session \u2014 implementation sessions never reorder this.",
+    "description": "Authoritative implementation sequence for epics with open stories. Claude Code works the first epic in 'sequence' that has stories not yet Passed/Dropped/Deferred, unless the handoff prompt says otherwise. Maintained only via tdd-spec-session — implementation sessions never reorder this.",
     "sequence": [
       {
         "epic": "Epic MFTF-5: Apparel Listing Creation",
@@ -28,11 +28,15 @@
       },
       {
         "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
-        "rationale": "Hybrid split: physical-original fulfillment moves admin\u2192seller (seller-scoped queue); admin retains a dropship-exception/retry queue re-homed from US-14.5. Dropship fulfillment stays fully automated. Depends on MFTF-14 for status/email plumbing."
+        "rationale": "Hybrid split: physical-original fulfillment moves admin→seller (seller-scoped queue); admin retains a dropship-exception/retry queue re-homed from US-14.5. Dropship fulfillment stays fully automated. Depends on MFTF-14 for status/email plumbing."
       },
       {
         "epic": "Epic MFTF-16: Storefront & Catalog Corrections",
         "rationale": "Two small Passed-story revisions: remove Teemill from the designed-mode provider picker (enum retained, UI-blocked); default the first colour on the apparel detail page (size stays un-pre-selected). Independent of fulfillment; can land alongside MFTF-14/15."
+      },
+      {
+        "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
+        "rationale": "Print fidelity: seller-controlled per-aspect framing crop (canvas+paper) + canvas wrap (seller-fixed, MirrorWrap default, ImageWrap UI-blocked) + seller-uploaded per-size buyer mockups. Hard gate blocks ACTIVE until every offered aspect is framed AND every offered size has a mockup; strict archive-on-deploy for non-compliant live listings. Touches Passed US-15.2/15.4/15.6/15.7 and replaces the hardcoded fillPrintArea/no-wrap path in prodigi.ts. Independent of the fulfillment loop; slotted after MFTF-16 around the print work. Founder-ratified 2026-06-21."
       },
       {
         "epic": "Epic 5: Tax Calculation",
@@ -48,8 +52,8 @@
       }
     ],
     "deferred": [
-      "Epic MFTF-17: Printify Integration (deferred \u2014 material-standard gate before scheduling)",
-      "Epic MFTF-18: Printful Integration (deferred \u2014 material-standard gate before scheduling)",
+      "Epic MFTF-17: Printify Integration (deferred — material-standard gate before scheduling)",
+      "Epic MFTF-18: Printful Integration (deferred — material-standard gate before scheduling)",
       "Epic MFTF-8: T-Mill Mockup Generation",
       "Epic MFTF-9: Seller Apparel Product Management"
     ]
@@ -102,13 +106,13 @@
     {
       "id": "BUG-12",
       "epic": "Infrastructure",
-      "title": "Designed (Prodigi) product types have no colours \u2014 can't create a Prodigi designed listing",
+      "title": "Designed (Prodigi) product types have no colours — can't create a Prodigi designed listing",
       "status": "Passed",
       "testWrittenDate": "2026-06-17",
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-17",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-17. Sibling of BUG-11: createProductTypeAction seeds ProductTypeColor rows only from teemillColorsJson, so PRODIGI product types had zero colours; the seller new-listing colour picker (productType.colors) was empty and publish stayed disabled (canSubmit requires offeredForType.size > 0). Fix: extended the Prodigi sync (renamed src/lib/apparel/sync-sizes.ts \u2192 sync-prodigi.ts; syncDesignedAttributesFromProdigi) to also pull COLOURS from /v4.0/products/{sku} and create ProductTypeColor rows ADDITIVELY (create missing by name only \u2014 ApparelListingColor holds a required, non-cascade FK to ProductTypeColor, so deleting would break referential integrity). Sync is per-product: 'Sync from Prodigi' button on the product EDIT page (syncProductTypeFromProdigiAction \u2192 syncDesignedProductTypeFromProdigi(id)) syncs that one type's sizes + colours, and createProductTypeAction AUTO-SYNCS once on creation of a PRODIGI type (best-effort; never fails creation). The bulk syncDesignedAttributesFromProdigi() is retained (cron-friendly) but no longer wired to UI. Name-only colours render as selectable buttons. COLOUR SHAPE CONFIRMED LIVE (2026-06-17): Prodigi product details expose colour as a lowercase NAME string per variant (variants[].attributes.color e.g. 'navy blue','natural','baby blue') with NO hex/code/swatch image of any kind (also confirmed sizes are lowercase 'xs'..'2xl'). To render colours as colours we derive an approximate hex from the name at read time (src/lib/apparel/color-hex.ts colorNameToHex; keyed to the live lowercase names) \u2014 applied in toColors (buyer page hex swatch), the admin product edit page, and the seller new-listing picker; unknown names fall back to a neutral chip, an uploaded colorImageUrl still wins. No schema change (hex derived, not stored). Folded into PR #11. NOTE: the test blank (Bella+Canvas 1010) is 52% cotton / 48% polyester \u2014 conflicts with the 100%-cotton brand principle; flagged to founder."
+      "notes": "Reported 2026-06-17. Sibling of BUG-11: createProductTypeAction seeds ProductTypeColor rows only from teemillColorsJson, so PRODIGI product types had zero colours; the seller new-listing colour picker (productType.colors) was empty and publish stayed disabled (canSubmit requires offeredForType.size > 0). Fix: extended the Prodigi sync (renamed src/lib/apparel/sync-sizes.ts → sync-prodigi.ts; syncDesignedAttributesFromProdigi) to also pull COLOURS from /v4.0/products/{sku} and create ProductTypeColor rows ADDITIVELY (create missing by name only — ApparelListingColor holds a required, non-cascade FK to ProductTypeColor, so deleting would break referential integrity). Sync is per-product: 'Sync from Prodigi' button on the product EDIT page (syncProductTypeFromProdigiAction → syncDesignedProductTypeFromProdigi(id)) syncs that one type's sizes + colours, and createProductTypeAction AUTO-SYNCS once on creation of a PRODIGI type (best-effort; never fails creation). The bulk syncDesignedAttributesFromProdigi() is retained (cron-friendly) but no longer wired to UI. Name-only colours render as selectable buttons. COLOUR SHAPE CONFIRMED LIVE (2026-06-17): Prodigi product details expose colour as a lowercase NAME string per variant (variants[].attributes.color e.g. 'navy blue','natural','baby blue') with NO hex/code/swatch image of any kind (also confirmed sizes are lowercase 'xs'..'2xl'). To render colours as colours we derive an approximate hex from the name at read time (src/lib/apparel/color-hex.ts colorNameToHex; keyed to the live lowercase names) — applied in toColors (buyer page hex swatch), the admin product edit page, and the seller new-listing picker; unknown names fall back to a neutral chip, an uploaded colorImageUrl still wins. No schema change (hex derived, not stored). Folded into PR #11. NOTE: the test blank (Bella+Canvas 1010) is 52% cotton / 48% polyester — conflicts with the 100%-cotton brand principle; flagged to founder."
     },
     {
       "id": "BUG-11",
@@ -119,7 +123,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-17",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-17. Designed (Prodigi) listings showed no sizes \u2192 Add to cart permanently disabled (referenced/Teemill unaffected). Cause: toSizes() (src/lib/apparel/detail.ts) read ProductType.sizes (ProductTypeSizeOption rows), which are only created by the admin add-size action; when size whitelisting was dropped that step went unused, so the list was empty. Fix: toSizes() reads ProductTypeSizeOption rows (honored if present) and falls back to an XS\u2013XXL default (src/lib/apparel/sizes.ts) so every blank stays orderable. Per-blank truth is provider-sourced and AUTOMATED: syncDesignedSizesFromProdigi() (src/lib/apparel/sync-sizes.ts) enumerates ALL designed (PRODIGI) product types and GETs each blank's sizes from /v4.0/products/{sku} (Prodigi has no bulk-list endpoint, so we drive it from our own providerSkuBase values \u2014 no manual SKU list/paste), persisting them as ProductTypeSizeOption rows; exposed as a one-click admin 'Sync sizes' button (syncDesignedSizesAction on /admin/products) and reusable by a cron. // UNVERIFIED Prodigi size field paths (attributes.size / variant attributes) until a live run. No schema change/migration; fixes both the product page and checkout revalidation (shared getApparelListingDetail). Committed on feat/epic-mftf-12 per founder (folded into PR #11) though unrelated to MFTF-12. FOLLOW-UPS: (1) click 'Sync sizes' (or wire the cron) to populate real per-blank runs \u2014 default XS\u2013XXL until then; confirm the Prodigi size field paths on first run; (2) pre-existing \u2014 designed fulfillment sends only providerSkuBase, so the chosen size/color are not yet encoded into the Prodigi SKU at order time (fanout.ts/revalidate.ts). FOLLOW-UP (2026-06-17): Prodigi sizes arrive lowercase + unordered ('2xl','l','m','s','xl') and were rendering raw. Added a canonical size enum (src/lib/apparel/sizes.ts: canonicalSizeLabel/sizeRank/normalizeSizes) \u2014 sync now stores the canonical label ('M','XXL') + raw providerSizeCode + rank order, and toSizes normalizes+sorts at read time so display is always standard and smallest\u2192largest regardless of stored spelling/order. FOLLOW-UP 2 (2026-06-17): designed Prodigi shipping quote 400'd \u2014 Prodigi apparel requires per-item attributes {size,color} in RAW provider spelling + assets printArea 'front' (not 'default'); we sent neither. Fixed: ShippingQuoteItem carries attributes + printArea; revalidate resolves raw size from ProductTypeSizeOption.providerSizeCode (matched by canonical label) and raw colour from ProductTypeColor.providerColorCode, and sets printArea 'front'; Prodigi quoteShipping + createProviderOrder forward them (prints unchanged: no attributes, 'default' area). RESOLVED post-payment (2026-06-17): fanout toQuoteItem now resolves the same raw size/colour and attaches the listing's designImageUrl as the asset on the 'front' print area, so Prodigi createProviderOrder sends sku + attributes{size,color} + assets[{printArea:'front',url:design}] \u2014 the full designed\u2192Prodigi path (quote \u2192 pay \u2192 order with the design on the product) works end-to-end. Test asserts the Prodigi order body. Closes the long-standing 'designed fulfillment only sends providerSkuBase' gap. // 'front' assumed for apparel (live-confirmed for the Bella 3001 blank); a blank printing elsewhere would surface via the captured Prodigi error."
+      "notes": "Reported 2026-06-17. Designed (Prodigi) listings showed no sizes → Add to cart permanently disabled (referenced/Teemill unaffected). Cause: toSizes() (src/lib/apparel/detail.ts) read ProductType.sizes (ProductTypeSizeOption rows), which are only created by the admin add-size action; when size whitelisting was dropped that step went unused, so the list was empty. Fix: toSizes() reads ProductTypeSizeOption rows (honored if present) and falls back to an XS–XXL default (src/lib/apparel/sizes.ts) so every blank stays orderable. Per-blank truth is provider-sourced and AUTOMATED: syncDesignedSizesFromProdigi() (src/lib/apparel/sync-sizes.ts) enumerates ALL designed (PRODIGI) product types and GETs each blank's sizes from /v4.0/products/{sku} (Prodigi has no bulk-list endpoint, so we drive it from our own providerSkuBase values — no manual SKU list/paste), persisting them as ProductTypeSizeOption rows; exposed as a one-click admin 'Sync sizes' button (syncDesignedSizesAction on /admin/products) and reusable by a cron. // UNVERIFIED Prodigi size field paths (attributes.size / variant attributes) until a live run. No schema change/migration; fixes both the product page and checkout revalidation (shared getApparelListingDetail). Committed on feat/epic-mftf-12 per founder (folded into PR #11) though unrelated to MFTF-12. FOLLOW-UPS: (1) click 'Sync sizes' (or wire the cron) to populate real per-blank runs — default XS–XXL until then; confirm the Prodigi size field paths on first run; (2) pre-existing — designed fulfillment sends only providerSkuBase, so the chosen size/color are not yet encoded into the Prodigi SKU at order time (fanout.ts/revalidate.ts). FOLLOW-UP (2026-06-17): Prodigi sizes arrive lowercase + unordered ('2xl','l','m','s','xl') and were rendering raw. Added a canonical size enum (src/lib/apparel/sizes.ts: canonicalSizeLabel/sizeRank/normalizeSizes) — sync now stores the canonical label ('M','XXL') + raw providerSizeCode + rank order, and toSizes normalizes+sorts at read time so display is always standard and smallest→largest regardless of stored spelling/order. FOLLOW-UP 2 (2026-06-17): designed Prodigi shipping quote 400'd — Prodigi apparel requires per-item attributes {size,color} in RAW provider spelling + assets printArea 'front' (not 'default'); we sent neither. Fixed: ShippingQuoteItem carries attributes + printArea; revalidate resolves raw size from ProductTypeSizeOption.providerSizeCode (matched by canonical label) and raw colour from ProductTypeColor.providerColorCode, and sets printArea 'front'; Prodigi quoteShipping + createProviderOrder forward them (prints unchanged: no attributes, 'default' area). RESOLVED post-payment (2026-06-17): fanout toQuoteItem now resolves the same raw size/colour and attaches the listing's designImageUrl as the asset on the 'front' print area, so Prodigi createProviderOrder sends sku + attributes{size,color} + assets[{printArea:'front',url:design}] — the full designed→Prodigi path (quote → pay → order with the design on the product) works end-to-end. Test asserts the Prodigi order body. Closes the long-standing 'designed fulfillment only sends providerSkuBase' gap. // 'front' assumed for apparel (live-confirmed for the Bella 3001 blank); a blank printing elsewhere would surface via the captured Prodigi error."
     },
     {
       "id": "BUG-8",
@@ -163,7 +167,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Regression introduced when the splash overlay was changed from always-mounted to conditionally-mounted (splashMounted state). The element now enters the DOM with isOpen already true, so the transform starts at scale(1) immediately \u2014 no prior scale(0) state to transition from. Close animation was unaffected because the element is already at scale(1) in the DOM when isOpen goes false. Fix: added splashVisible state (separate from splashMounted). On open: element mounts at scale(0), then a double requestAnimationFrame defers setSplashVisible(true) by two paint frames so the browser renders the starting state before the transition fires. The circle-expand and circle-collapse animations are both driven by splashVisible."
+      "notes": "Regression introduced when the splash overlay was changed from always-mounted to conditionally-mounted (splashMounted state). The element now enters the DOM with isOpen already true, so the transform starts at scale(1) immediately — no prior scale(0) state to transition from. Close animation was unaffected because the element is already at scale(1) in the DOM when isOpen goes false. Fix: added splashVisible state (separate from splashMounted). On open: element mounts at scale(0), then a double requestAnimationFrame defers setSplashVisible(true) by two paint frames so the browser renders the starting state before the transition fires. The circle-expand and circle-collapse animations are both driven by splashVisible."
     },
     {
       "id": "BUG-3",
@@ -185,29 +189,29 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. Symptom: sign-in form shows 'Signing in\u2026' indefinitely; refreshing lands on the correct dashboard (session was created server-side). Root cause: the mkcert certificate in certificates/localhost.pem covered only localhost/127.0.0.1/::1/0.0.0.0 \u2014 not 192.168.68.54. When accessing the dev server from the network at https://192.168.68.54:3000, browsers allow the initial HTML page load (user clicks through the cert warning) but silently block all subsequent JS-driven subresource requests including RSC payload fetches. After signInAction throws NEXT_REDIRECT, the client router tries to fetch the RSC payload for the destination route \u2014 that fetch is blocked, leaving useActionState pending:true forever. Fix: (1) regenerated the mkcert cert with mkcert -cert-file certificates/localhost.pem -key-file certificates/localhost-key.pem localhost 127.0.0.1 ::1 192.168.68.54; (2) updated the dev script in package.json to explicitly pass --experimental-https-key and --experimental-https-cert so Next.js uses the custom cert. Previous partial fix (direct-role redirect in signInAction to avoid the double-hop) is kept as a latency improvement."
+      "notes": "Reported 2026-06-11. Symptom: sign-in form shows 'Signing in…' indefinitely; refreshing lands on the correct dashboard (session was created server-side). Root cause: the mkcert certificate in certificates/localhost.pem covered only localhost/127.0.0.1/::1/0.0.0.0 — not 192.168.68.54. When accessing the dev server from the network at https://192.168.68.54:3000, browsers allow the initial HTML page load (user clicks through the cert warning) but silently block all subsequent JS-driven subresource requests including RSC payload fetches. After signInAction throws NEXT_REDIRECT, the client router tries to fetch the RSC payload for the destination route — that fetch is blocked, leaving useActionState pending:true forever. Fix: (1) regenerated the mkcert cert with mkcert -cert-file certificates/localhost.pem -key-file certificates/localhost-key.pem localhost 127.0.0.1 ::1 192.168.68.54; (2) updated the dev script in package.json to explicitly pass --experimental-https-key and --experimental-https-cert so Next.js uses the custom cert. Previous partial fix (direct-role redirect in signInAction to avoid the double-hop) is kept as a latency improvement."
     },
     {
       "id": "BUG-5",
       "epic": "Infrastructure",
-      "title": "Buyer dashboard 'View \u2192' link 404s \u2014 wrong route /listings instead of /artwork",
+      "title": "Buyer dashboard 'View →' link 404s — wrong route /listings instead of /artwork",
       "status": "Passed",
       "testWrittenDate": null,
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. Both 'View \u2192' links on the buyer dashboard (winning bids highlight and active bids list) used href /listings/${bid.listingId}. The route is /artwork/[id] keyed by artwork ID. Fix: added artworkId to BuyerActiveBid interface and query (selected artwork.id), changed both hrefs to /artwork/${bid.artworkId}."
+      "notes": "Reported 2026-06-11. Both 'View →' links on the buyer dashboard (winning bids highlight and active bids list) used href /listings/${bid.listingId}. The route is /artwork/[id] keyed by artwork ID. Fix: added artworkId to BuyerActiveBid interface and query (selected artwork.id), changed both hrefs to /artwork/${bid.artworkId}."
     },
     {
       "id": "BUG-4",
       "epic": "Infrastructure",
-      "title": "NavDropdown unclickable and sign-in hangs on network dev \u2014 mkcert cert missing 192.168.68.54 SAN",
+      "title": "NavDropdown unclickable and sign-in hangs on network dev — mkcert cert missing 192.168.68.54 SAN",
       "status": "Passed",
       "testWrittenDate": null,
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "Reported 2026-06-11. NavDropdown button showed hover styles (CSS worked) but clicking gave no feedback in any browser (Chrome, Waterfox) when accessed via https://192.168.68.54:3000. Root cause: same as BUG-6 \u2014 mkcert cert did not list 192.168.68.54 as a Subject Alternative Name. Browsers load the initial HTML (user accepts the cert warning for the page) but block JS subresource fetches to an untrusted HTTPS origin. Without JS loading, React never hydrates, event handlers are never attached, and the dropdown cannot open. The 'sometimes works' behavior occurred on fresh page loads where the browser's cert exception was still active in memory. Fixed by the same cert regeneration as BUG-6. Earlier code-level fixes (conditional MobileMenu mounting, pointer-events:none on SVG, direct-role redirect in signInAction) remain as defensive improvements but were not the root cause."
+      "notes": "Reported 2026-06-11. NavDropdown button showed hover styles (CSS worked) but clicking gave no feedback in any browser (Chrome, Waterfox) when accessed via https://192.168.68.54:3000. Root cause: same as BUG-6 — mkcert cert did not list 192.168.68.54 as a Subject Alternative Name. Browsers load the initial HTML (user accepts the cert warning for the page) but block JS subresource fetches to an untrusted HTTPS origin. Without JS loading, React never hydrates, event handlers are never attached, and the dropdown cannot open. The 'sometimes works' behavior occurred on fresh page loads where the browser's cert exception was still active in memory. Fixed by the same cert regeneration as BUG-6. Earlier code-level fixes (conditional MobileMenu mounting, pointer-events:none on SVG, direct-role redirect in signInAction) remain as defensive improvements but were not the root cause."
     },
     {
       "id": "BUG-2",
@@ -229,7 +233,7 @@
       "testWrittenCommit": "a714364",
       "testPassedDate": "2026-06-03",
       "testPassedCommit": "a163102",
-      "notes": "Reported 2026-06-03. Portrait (tall/narrow) images come out rotated 90\u00b0 in generated variants (display, grid, thumbnail). Fix 1: add .rotate() as first call in the normalizedBuffer Sharp pipeline (src/lib/artworks/variants.ts). Fix 2: use timestamped filenames for variant blobs so each generation produces a unique URL, defeating Vercel CDN and browser caching of the old rotated variants."
+      "notes": "Reported 2026-06-03. Portrait (tall/narrow) images come out rotated 90° in generated variants (display, grid, thumbnail). Fix 1: add .rotate() as first call in the normalizedBuffer Sharp pipeline (src/lib/artworks/variants.ts). Fix 2: use timestamped filenames for variant blobs so each generation produces a unique URL, defeating Vercel CDN and browser caching of the old rotated variants."
     },
     {
       "id": "CHORE-18",
@@ -306,7 +310,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "pending",
-      "notes": "53 tests across US-9.1\u2013US-9.6 covering nav role logic, listings index data, createListingAction validation and success paths, updateListingAction, toggleListingStatusAction with browse visibility, and tracker JSON structure. Epic 11/12 statuses corrected from Complete to Passed with dates and commit refs."
+      "notes": "53 tests across US-9.1–US-9.6 covering nav role logic, listings index data, createListingAction validation and success paths, updateListingAction, toggleListingStatusAction with browse visibility, and tracker JSON structure. Epic 11/12 statuses corrected from Complete to Passed with dates and commit refs."
     },
     {
       "id": "US-1.1",
@@ -515,7 +519,7 @@
       "testWrittenCommit": "c0e7a59",
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Deferred \u2014 single-seller model; no Stripe Connect onboarding"
+      "notes": "Deferred — single-seller model; no Stripe Connect onboarding"
     },
     {
       "id": "US-4.4",
@@ -625,7 +629,7 @@
       "testWrittenCommit": "dbd05a8",
       "testPassedDate": "2026-06-04",
       "testPassedCommit": "33df65e",
-      "notes": "On sign-up: show holding page, send 'You're almost done' email with single-use magic-link token (24h expiry). Clicking link opens new tab, shows verified confirmation, redirects to buyer dashboard. Expired/used tokens show error + resend option. Unverified users hitting auth pages redirected to holding page. Sets emailVerified timestamp on user record. Data migration: backfill emailVerified=createdAt for existing users on deploy. Post-merge fix: narrowed result.error type on verify-email page (string|undefined \u2192 string) to resolve Vercel TypeScript build error."
+      "notes": "On sign-up: show holding page, send 'You're almost done' email with single-use magic-link token (24h expiry). Clicking link opens new tab, shows verified confirmation, redirects to buyer dashboard. Expired/used tokens show error + resend option. Unverified users hitting auth pages redirected to holding page. Sets emailVerified timestamp on user record. Data migration: backfill emailVerified=createdAt for existing users on deploy. Post-merge fix: narrowed result.error type on verify-email page (string|undefined → string) to resolve Vercel TypeScript build error."
     },
     {
       "id": "US-7.1",
@@ -757,7 +761,7 @@
       "testWrittenCommit": "9e790dc",
       "testPassedDate": "2026-05-09",
       "testPassedCommit": "9e790dc",
-      "notes": "Grid of all seller listings with status badge, price, sale type, and action buttons. Mobile fix: each listing row wraps to two lines \u2014 thumbnail+title on line 1, status badge+actions on line 2. Header also stacks on mobile with Add listing button left-aligned."
+      "notes": "Grid of all seller listings with status badge, price, sale type, and action buttons. Mobile fix: each listing row wraps to two lines — thumbnail+title on line 1, status badge+actions on line 2. Header also stacks on mobile with Add listing button left-aligned."
     },
     {
       "id": "US-9.3",
@@ -838,7 +842,7 @@
       "commitLog": [
         {
           "hash": "pending",
-          "message": "feat(epic-11): implement US-11.1 \u2014 require image on listing creation (tests only)"
+          "message": "feat(epic-11): implement US-11.1 — require image on listing creation (tests only)"
         }
       ]
     },
@@ -855,7 +859,7 @@
       "commitLog": [
         {
           "hash": "pending",
-          "message": "feat(epic-11): implement US-11.2 \u2014 deactivate listing with auction bid guard"
+          "message": "feat(epic-11): implement US-11.2 — deactivate listing with auction bid guard"
         }
       ]
     },
@@ -872,7 +876,7 @@
       "commitLog": [
         {
           "hash": "pending",
-          "message": "feat(epic-11): implement US-11.3 \u2014 delete unsold listing"
+          "message": "feat(epic-11): implement US-11.3 — delete unsold listing"
         }
       ]
     },
@@ -906,7 +910,7 @@
       "commitLog": [
         {
           "hash": "9f739e6",
-          "message": "feat(epic-12): implement US-12.2 \u2014 my bids page with full bid history"
+          "message": "feat(epic-12): implement US-12.2 — my bids page with full bid history"
         }
       ]
     },
@@ -923,7 +927,7 @@
       "commitLog": [
         {
           "hash": "ba5c9c6",
-          "message": "feat(epic-12): implement US-12.3 \u2014 outbid email notification via Resend"
+          "message": "feat(epic-12): implement US-12.3 — outbid email notification via Resend"
         }
       ]
     },
@@ -940,7 +944,7 @@
       "commitLog": [
         {
           "hash": "0b5c10e",
-          "message": "feat(epic-12): implement US-12.4 \u2014 buyer account settings (profile, shipping, notifications)"
+          "message": "feat(epic-12): implement US-12.4 — buyer account settings (profile, shipping, notifications)"
         },
         {
           "hash": "4b19739",
@@ -957,7 +961,7 @@
       "testWrittenCommit": "1330b55",
       "testPassedDate": "2026-05-09",
       "testPassedCommit": "02b719b",
-      "notes": "PRIORITY \u2014 implement before Epics 10-12. 14 tests passing. Tracker summary, site metrics, activity feed. Homepage redirects admin to /dashboard/admin. Mobile fix: header stacks vertically on small screens, buttons expand to fill row width."
+      "notes": "PRIORITY — implement before Epics 10-12. 14 tests passing. Tracker summary, site metrics, activity feed. Homepage redirects admin to /dashboard/admin. Mobile fix: header stacks vertically on small screens, buttons expand to fill row width."
     },
     {
       "id": "US-13.2",
@@ -968,7 +972,7 @@
       "testWrittenCommit": "b1dfabf",
       "testPassedDate": "2026-05-09",
       "testPassedCommit": "8e92e98",
-      "notes": "PRIORITY \u2014 implement before Epics 10-12. 17 tests passing. Listings summary, active listings grid, activity feed, revenue snapshot. Homepage redirects seller to /dashboard/seller. UPDATED 2026-06-15 (MFTF-6 follow-up): getSellerActiveListings now returns the unified SellerListingRow[] (ACTIVE subset of getSellerListings) so the dashboard 'Active Listings' grid shows apparel (designed + referenced) alongside artwork, not artwork only. Its US-13.2 integration tests were rewritten to the unified shape (row.kind/title/price/auctionEndAt for ARTWORK; retailPrice/productTypeName for APPAREL) + a new case asserting active designed & referenced apparel appear. Dashboard page renders rows generically with a kind chip and apparel edit links to /seller/apparel/[id]/edit."
+      "notes": "PRIORITY — implement before Epics 10-12. 17 tests passing. Listings summary, active listings grid, activity feed, revenue snapshot. Homepage redirects seller to /dashboard/seller. UPDATED 2026-06-15 (MFTF-6 follow-up): getSellerActiveListings now returns the unified SellerListingRow[] (ACTIVE subset of getSellerListings) so the dashboard 'Active Listings' grid shows apparel (designed + referenced) alongside artwork, not artwork only. Its US-13.2 integration tests were rewritten to the unified shape (row.kind/title/price/auctionEndAt for ARTWORK; retailPrice/productTypeName for APPAREL) + a new case asserting active designed & referenced apparel appear. Dashboard page renders rows generically with a kind chip and apparel edit links to /seller/apparel/[id]/edit."
     },
     {
       "id": "US-13.3",
@@ -979,7 +983,7 @@
       "testWrittenCommit": "b48f87c",
       "testPassedDate": "2026-05-09",
       "testPassedCommit": "0ef37b0",
-      "notes": "PRIORITY \u2014 implement before Epics 10-12. 14 tests passing. Active bids with winning/outbid status, top bids highlight, order history. Homepage redirects buyer to /dashboard/buyer"
+      "notes": "PRIORITY — implement before Epics 10-12. 14 tests passing. Active bids with winning/outbid status, top bids highlight, order history. Homepage redirects buyer to /dashboard/buyer"
     },
     {
       "id": "US-14.1",
@@ -990,7 +994,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-10",
       "testPassedCommit": "6062d0f",
-      "notes": "Authenticated buyer-locked page at /orders/[orderId]/fulfill. Multi-step: shipping \u2192 payment \u2192 confirmation."
+      "notes": "Authenticated buyer-locked page at /orders/[orderId]/fulfill. Multi-step: shipping → payment → confirmation."
     },
     {
       "id": "US-14.2",
@@ -1067,7 +1071,7 @@
       "testWrittenCommit": "0081968",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "d33ea7e",
-      "notes": "15 tests passing. PrintListing model dropped; availableForPrint/printSourceImageUrl/printProducts fields added to OriginalListing. updatePrintConfigAction validates seller ownership. All epic-7/8/10 tests updated for new schema."
+      "notes": "15 tests passing. PrintListing model dropped; availableForPrint/printSourceImageUrl/printProducts fields added to OriginalListing. updatePrintConfigAction validates seller ownership. All epic-7/8/10 tests updated for new schema. // EXTENDED by Epic MFTF-PF (2026-06-21): the print-config surface established here gains framing (per-aspect crop), canvas wrap, and per-size mockup steps (US-MFTF-PF.1–PF.6). Additive — the existing toggle/config round-trip must remain unchanged; re-run on PF implementation."
     },
     {
       "id": "US-15.3",
@@ -1078,7 +1082,7 @@
       "testWrittenCommit": "6140ab9",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "6140ab9",
-      "notes": "7 tests passing. /prints/page.tsx created with browseArtworks availability:print filter. SOLD originals with print enabled appear. Pagination works. Bugfix: browse page Prints tab was not passing availability filter \u2014 saleTypeParam \"print\" fell through auction/fixed mapping to undefined."
+      "notes": "7 tests passing. /prints/page.tsx created with browseArtworks availability:print filter. SOLD originals with print enabled appear. Pagination works. Bugfix: browse page Prints tab was not passing availability filter — saleTypeParam \"print\" fell through auction/fixed mapping to undefined."
     },
     {
       "id": "US-15.4",
@@ -1089,7 +1093,7 @@
       "testWrittenCommit": "482856a",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "482856a",
-      "notes": "8 tests passing. createPrintOrderAction server action, PrintOptionsSelector client component, print section on detail page. fulfillPayment does not mark SOLD for PRINT orders."
+      "notes": "8 tests passing. createPrintOrderAction server action, PrintOptionsSelector client component, print section on detail page. fulfillPayment does not mark SOLD for PRINT orders. // REVISED by Epic MFTF-PF (2026-06-21): buyer-facing print preview source changes from Prodigi-generated mockups to seller-uploaded per-size mockups (PrintSizeMockup.mockupUrl, US-MFTF-PF.6/PF.7). Order/checkout/Stripe-Tax path unchanged. Re-run buyer-display assertions against the new source on PF implementation."
     },
     {
       "id": "US-15.5",
@@ -1111,7 +1115,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "pending",
-      "notes": "filterByAspectRatio() in listing.ts filters catalog to \u00b110% ratio match, sorted by closeness."
+      "notes": "filterByAspectRatio() in listing.ts filters catalog to ±10% ratio match, sorted by closeness. // GUARDRAIL re Epic MFTF-PF (2026-06-21): Decision D keeps all aspect-matching sizes — this story's behavior is unchanged; re-run as a regression guard only."
     },
     {
       "id": "US-15.7",
@@ -1122,7 +1126,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "pending",
-      "notes": "costs.json populated by fetch-prodigi-costs.ts. ~$X shown in PrintConfigForm. No runtime API calls."
+      "notes": "costs.json populated by fetch-prodigi-costs.ts. ~$X shown in PrintConfigForm. No runtime API calls. // REVISED by Epic MFTF-PF (2026-06-21): the 'canvas SKUs use White wrap for cost calculation' criterion no longer holds as the seller-facing default — seller wrap is now seller-fixed defaulting to MirrorWrap (US-MFTF-PF.2). The static cost table may retain a fixed reference wrap internally, but must not present White as the user default. Re-run cost-estimate suite on PF implementation."
     },
     {
       "id": "US-16.3",
@@ -1133,7 +1137,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "pending",
-      "notes": "8 tests. updateUserRolesAction in actions/admin.ts; /admin/users page with UserRoleEditor client component. Toggle-on-click saves immediately. BUYER cannot be removed. Admin cannot remove own ADMIN role. Mobile layout fix: table-fixed with col widths (45/22/33%), email mid-truncated (first 15 chars + \u2026 + last 6) in monospace so Roles column never gets squeezed off-screen."
+      "notes": "8 tests. updateUserRolesAction in actions/admin.ts; /admin/users page with UserRoleEditor client component. Toggle-on-click saves immediately. BUYER cannot be removed. Admin cannot remove own ADMIN role. Mobile layout fix: table-fixed with col widths (45/22/33%), email mid-truncated (first 15 chars + … + last 6) in monospace so Roles column never gets squeezed off-screen."
     },
     {
       "id": "US-16.1",
@@ -1177,7 +1181,7 @@
       "testWrittenCommit": "649e6ce",
       "testPassedDate": "2026-06-10",
       "testPassedCommit": "f269950",
-      "notes": "12 tests. Error notification logic extracted into createFulfillmentOrder() wrapper in src/lib/fulfillment/createOrder.ts \u2014 any provider (Prodigi, Teemill, future) that throws automatically alerts the seller. 7 integration tests via confirmShippingAction; 5 provider-agnostic unit tests use a hand-rolled mock provider. sendFulfillmentErrorEmail walks order \u2192 originalListing \u2192 artwork \u2192 seller. Buyer always receives success response."
+      "notes": "12 tests. Error notification logic extracted into createFulfillmentOrder() wrapper in src/lib/fulfillment/createOrder.ts — any provider (Prodigi, Teemill, future) that throws automatically alerts the seller. 7 integration tests via confirmShippingAction; 5 provider-agnostic unit tests use a hand-rolled mock provider. sendFulfillmentErrorEmail walks order → originalListing → artwork → seller. Buyer always receives success response."
     },
     {
       "id": "CHORE-7",
@@ -1199,7 +1203,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "pending",
-      "notes": "Three bugs fixed: (1) MSW v2 does not support RegExp URL patterns \u2014 replaced with explicit PRODIGI_BASES.flatMap() for both live and sandbox URLs so tests are intercepted correctly. (2) Print order Prodigi flow was broken: confirmShippingAction rejected PAID orders; now allows PENDING|PAID; creates Prodigi order + transitions to PROCESSING after shipping collected for PAID PRINT orders. (3) fulfillPayment() webhook guarded against calling Prodigi with empty shipping fields (shippingName check). sendPurchaseConfirmation now called from confirmShippingAction for PAID PRINT orders after Prodigi creation."
+      "notes": "Three bugs fixed: (1) MSW v2 does not support RegExp URL patterns — replaced with explicit PRODIGI_BASES.flatMap() for both live and sandbox URLs so tests are intercepted correctly. (2) Print order Prodigi flow was broken: confirmShippingAction rejected PAID orders; now allows PENDING|PAID; creates Prodigi order + transitions to PROCESSING after shipping collected for PAID PRINT orders. (3) fulfillPayment() webhook guarded against calling Prodigi with empty shipping fields (shippingName check). sendPurchaseConfirmation now called from confirmShippingAction for PAID PRINT orders after Prodigi creation."
     },
     {
       "id": "CHORE-5",
@@ -1232,7 +1236,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "In Vercel production env vars: (1) PRODIGI_API_KEY \u2192 live key from dashboard.prodigi.com; PRODIGI_API_BASE_URL \u2192 leave unset (defaults to live API). (2) STRIPE_SECRET_KEY \u2192 live sk_live_... key; NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \u2192 live pk_live_... key; STRIPE_WEBHOOK_SECRET \u2192 re-register webhook at api.stripe.com/webhooks pointing to production domain and use the new signing secret. Verify Stripe Connect is enabled for live mode. Double-check no test_ or sandbox keys remain in Vercel settings."
+      "notes": "In Vercel production env vars: (1) PRODIGI_API_KEY → live key from dashboard.prodigi.com; PRODIGI_API_BASE_URL → leave unset (defaults to live API). (2) STRIPE_SECRET_KEY → live sk_live_... key; NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY → live pk_live_... key; STRIPE_WEBHOOK_SECRET → re-register webhook at api.stripe.com/webhooks pointing to production domain and use the new signing secret. Verify Stripe Connect is enabled for live mode. Double-check no test_ or sandbox keys remain in Vercel settings."
     },
     {
       "id": "CHORE-3",
@@ -1265,7 +1269,7 @@
       "testWrittenCommit": "4ab9a6c",
       "testPassedDate": "2026-05-12",
       "testPassedCommit": "4ab9a6c",
-      "notes": "Forgot-password form \u2192 sends time-limited reset email. No account enumeration. Invalidates previous token."
+      "notes": "Forgot-password form → sends time-limited reset email. No account enumeration. Invalidates previous token."
     },
     {
       "id": "US-17.2",
@@ -1298,7 +1302,7 @@
       "testWrittenCommit": "11534a7",
       "testPassedDate": "2026-05-12",
       "testPassedCommit": "521cf77",
-      "notes": "Three variants: display (watermarked, 2400px max, JPEG 85), grid (800px max, JPEG 75), thumbnail (400\u00d7400 crop, JPEG 70). Stored in CDN, URLs on ArtworkImage. Blocking UX; form submit disabled until all images processed. Watermark: 'Art & Sol' diagonal, SVG sized to match output. Tests updated for two-pass sharp flow and brand watermark text. Bugfix: new-listing page hydration mismatch \u2014 Date.now() moved to stable useState initialisers; suppressHydrationWarning added to submit button for React 19 PE-driven disabled mismatch. Bugfix: TIFF variant generation \u2014 added sRGB normalisation and alpha flattening pass so CMYK/multi-channel TIFFs encode to JPEG correctly."
+      "notes": "Three variants: display (watermarked, 2400px max, JPEG 85), grid (800px max, JPEG 75), thumbnail (400×400 crop, JPEG 70). Stored in CDN, URLs on ArtworkImage. Blocking UX; form submit disabled until all images processed. Watermark: 'Art & Sol' diagonal, SVG sized to match output. Tests updated for two-pass sharp flow and brand watermark text. Bugfix: new-listing page hydration mismatch — Date.now() moved to stable useState initialisers; suppressHydrationWarning added to submit button for React 19 PE-driven disabled mismatch. Bugfix: TIFF variant generation — added sRGB normalisation and alpha flattening pass so CMYK/multi-channel TIFFs encode to JPEG correctly."
     },
     {
       "id": "US-18.3",
@@ -1309,7 +1313,7 @@
       "testWrittenCommit": "b8e69f5",
       "testPassedDate": "2026-06-03",
       "testPassedCommit": "7727427",
-      "notes": "Regenerate button (\u21ba) on each image card in listing edit page. Calls regenerateVariantsAction server action which re-runs generateVariants for the given imageId. Auth-guarded (returns {error} not redirect), seller-ownership-checked; works for SOLD listings. EditListingForm images type updated to include displayUrl so ImageUploader does not re-queue already-processed images. BUG-2 fix included: deleteImageAction guards against deleting last image; \u2715 button hidden in UI when only one image remains."
+      "notes": "Regenerate button (↺) on each image card in listing edit page. Calls regenerateVariantsAction server action which re-runs generateVariants for the given imageId. Auth-guarded (returns {error} not redirect), seller-ownership-checked; works for SOLD listings. EditListingForm images type updated to include displayUrl so ImageUploader does not re-queue already-processed images. BUG-2 fix included: deleteImageAction guards against deleting last image; ✕ button hidden in UI when only one image remains."
     },
     {
       "id": "US-19.1",
@@ -1320,7 +1324,7 @@
       "testWrittenCommit": "7392ac7",
       "testPassedDate": "2026-05-16",
       "testPassedCommit": "04e8f43",
-      "notes": "Click image \u2192 full-screen lightbox with display variant. Darkened backdrop. Backdrop click closes. cursor-zoom-in on thumbnail."
+      "notes": "Click image → full-screen lightbox with display variant. Darkened backdrop. Backdrop click closes. cursor-zoom-in on thumbnail."
     },
     {
       "id": "US-19.2",
@@ -1342,7 +1346,7 @@
       "testWrittenCommit": "7392ac7",
       "testPassedDate": "2026-05-16",
       "testPassedCommit": "04e8f43",
-      "notes": "\u00d7 button top-right, Escape key, backdrop click. Body scroll locked while open; scroll position restored on close."
+      "notes": "× button top-right, Escape key, backdrop click. Body scroll locked while open; scroll position restored on close."
     },
     {
       "id": "US-19.4",
@@ -1353,7 +1357,7 @@
       "testWrittenCommit": "7392ac7",
       "testPassedDate": "2026-05-16",
       "testPassedCommit": "04e8f43",
-      "notes": "Circular lens follows cursor, 2\u20133\u00d7 zoom, uses display variant for sharpness. Hidden on touch devices. Disappears on mouse leave. Distinct border."
+      "notes": "Circular lens follows cursor, 2–3× zoom, uses display variant for sharpness. Hidden on touch devices. Disappears on mouse leave. Distinct border."
     },
     {
       "id": "US-20.1",
@@ -1364,7 +1368,7 @@
       "testWrittenCommit": "17b0077",
       "testPassedDate": "2026-05-17",
       "testPassedCommit": "17b0077",
-      "notes": "Animated hamburger mobile nav (SVG bars\u2192X, circular splash overlay, staggered items). Tab trap, Escape key, scroll lock. Active page underline+glow indicator (data-active). CSS focus ring on keyboard nav. 28 tests."
+      "notes": "Animated hamburger mobile nav (SVG bars→X, circular splash overlay, staggered items). Tab trap, Escape key, scroll lock. Active page underline+glow indicator (data-active). CSS focus ring on keyboard nav. 28 tests."
     },
     {
       "id": "US-21.1",
@@ -1386,7 +1390,7 @@
       "testWrittenCommit": "6f38052",
       "testPassedDate": "2026-06-02",
       "testPassedCommit": "ff05ccc",
-      "notes": "5 tests passing. fulfillPaymentBySession verifies Stripe session payment_status before marking PAID; resolveSessionFulfillment called on fulfill page load when ?session_id present \u2014 eliminates webhook race condition. Both are idempotent."
+      "notes": "5 tests passing. fulfillPaymentBySession verifies Stripe session payment_status before marking PAID; resolveSessionFulfillment called on fulfill page load when ?session_id present — eliminates webhook race condition. Both are idempotent."
     },
     {
       "id": "US-22.1",
@@ -1408,7 +1412,7 @@
       "testWrittenCommit": "053df6c",
       "testPassedDate": "2026-06-03",
       "testPassedCommit": "90e8d9d",
-      "notes": "11 tests. getOrderDetail() buyer-locked, full fields, shipping, tracking, seller email via artwork\u2192seller, null artwork for orphan prints. /buyer/orders/[orderId] page with CancelOrderButton and ContactSupportModal client islands."
+      "notes": "11 tests. getOrderDetail() buyer-locked, full fields, shipping, tracking, seller email via artwork→seller, null artwork for orphan prints. /buyer/orders/[orderId] page with CancelOrderButton and ContactSupportModal client islands."
     },
     {
       "id": "US-22.3",
@@ -1441,7 +1445,7 @@
       "testWrittenCommit": "522818c",
       "testPassedDate": "2026-06-05",
       "testPassedCommit": "32bbc27",
-      "notes": "44 tests. NavDropdown client component: toggle open/close, Escape+focus return, click-outside, role-dependent menu items (buyer/seller/admin), active page highlight, signed-out renders nothing. Nav.tsx wired up \u2014 flat inline role links removed from desktop nav, mobile menu unaffected. Admin dropdown includes /admin/tracker (labelled Tracker), /admin/users, /admin/fulfillment. Settings link routes by role (/buyer/settings, /seller/settings, /admin/settings). Seller settings page (Profile + bidReceivedEmails/saleCompletedEmails notifications). Admin settings page (Profile only). updateProfileAction revalidates role-specific path. updateSellerNotificationPrefsAction added. Obsolete 'Creating privileged accounts' callout removed from /admin/tracker page."
+      "notes": "44 tests. NavDropdown client component: toggle open/close, Escape+focus return, click-outside, role-dependent menu items (buyer/seller/admin), active page highlight, signed-out renders nothing. Nav.tsx wired up — flat inline role links removed from desktop nav, mobile menu unaffected. Admin dropdown includes /admin/tracker (labelled Tracker), /admin/users, /admin/fulfillment. Settings link routes by role (/buyer/settings, /seller/settings, /admin/settings). Seller settings page (Profile + bidReceivedEmails/saleCompletedEmails notifications). Admin settings page (Profile only). updateProfileAction revalidates role-specific path. updateSellerNotificationPrefsAction added. Obsolete 'Creating privileged accounts' callout removed from /admin/tracker page."
     },
     {
       "id": "US-23.2",
@@ -1485,7 +1489,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-06",
       "testPassedCommit": "pending",
-      "notes": "Replaced Art & Sol art-marketplace hero copy with MerchForTheFuture brand copy. Added mission statement section. Updated categories (Apparel/Prints/Originals) and how-it-works steps to match the apparel domain. Revised hero: big h1 is now \"We are living up to our name!\", subtitle is coming-soon copy, shop button removed. Removed How-it-works and Shop-by-type sections. Removed Nav from homepage via (main) route group. Excluded scripts/ from tsconfig. Hero section made full-viewport, text centered, all sizes doubled. H1 reduced from 8xl/9xl to 7xl/8xl. Moved api/ back out of (main) route group \u2014 tests import routes by @/app/api path which broke when nested. Staged (main) route group file renames (were committed as mv but not git-added)."
+      "notes": "Replaced Art & Sol art-marketplace hero copy with MerchForTheFuture brand copy. Added mission statement section. Updated categories (Apparel/Prints/Originals) and how-it-works steps to match the apparel domain. Revised hero: big h1 is now \"We are living up to our name!\", subtitle is coming-soon copy, shop button removed. Removed How-it-works and Shop-by-type sections. Removed Nav from homepage via (main) route group. Excluded scripts/ from tsconfig. Hero section made full-viewport, text centered, all sizes doubled. H1 reduced from 8xl/9xl to 7xl/8xl. Moved api/ back out of (main) route group — tests import routes by @/app/api path which broke when nested. Staged (main) route group file renames (were committed as mv but not git-added)."
     },
     {
       "id": "CHORE-14",
@@ -1496,7 +1500,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-07",
       "testPassedCommit": "pending",
-      "notes": "mailersend() helper was fire-and-forget \u2014 returned raw fetch Response so .catch() in callers never fired on 4xx/5xx. Fixed: mailersend() now awaits fetch, throws Error('MailerSend {status}: {body}') on non-ok responses. sendSupportRequestEmail() updated to remove now-redundant manual res.ok check. Root cause of delivery failure identified as MailerSend trial account unique-recipient limit (#MS42225) \u2014 not a code issue."
+      "notes": "mailersend() helper was fire-and-forget — returned raw fetch Response so .catch() in callers never fired on 4xx/5xx. Fixed: mailersend() now awaits fetch, throws Error('MailerSend {status}: {body}') on non-ok responses. sendSupportRequestEmail() updated to remove now-redundant manual res.ok check. Root cause of delivery failure identified as MailerSend trial account unique-recipient limit (#MS42225) — not a code issue."
     },
     {
       "id": "CHORE-15",
@@ -1507,7 +1511,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-07",
       "testPassedCommit": "pending",
-      "notes": "Created /coming-soon page (src/app/coming-soon/page.tsx) outside (main) route group \u2014 no nav, no footer. Homepage (/) is now a pure redirect dispatcher: authenticated users go to their role dashboard, unauthenticated users go to /coming-soon. Footer moved from root layout.tsx into (main)/layout.tsx so it only renders on main-site pages, not on /coming-soon."
+      "notes": "Created /coming-soon page (src/app/coming-soon/page.tsx) outside (main) route group — no nav, no footer. Homepage (/) is now a pure redirect dispatcher: authenticated users go to their role dashboard, unauthenticated users go to /coming-soon. Footer moved from root layout.tsx into (main)/layout.tsx so it only renders on main-site pages, not on /coming-soon."
     },
     {
       "id": "CHORE-16",
@@ -1529,7 +1533,7 @@
       "testWrittenCommit": null,
       "testPassedDate": "2026-06-10",
       "testPassedCommit": "pending",
-      "notes": "Spike complete. API key obtained 2026-06-10 after 2FA issue was resolved with Teemill support. Findings: (1) Two APIs exist \u2014 Custom Product API (omnis/v3, creates Teemill-hosted storefront listing, NOT what we want) and Orders API (api.teemill.com/v1, correct target for MFTF-7). (2) Orders API is two-step: POST /orders returns available shipping options, then POST /orders/{id}/confirm selects method. (3) No sandbox environment \u2014 use MSW for automated tests. (4) Public product catalog endpoint (omnis/v3/product/options) returns 18 product types with colors and image URLs; used by MFTF-4 admin picker. (5) Colors identified by plain name strings (\"White\", \"Navy Blue\", etc). (6) Webhook payload still undocumented \u2014 stub in tests until confirmed from live integration. Full findings in /docs/teemill-api-notes.md."
+      "notes": "Spike complete. API key obtained 2026-06-10 after 2FA issue was resolved with Teemill support. Findings: (1) Two APIs exist — Custom Product API (omnis/v3, creates Teemill-hosted storefront listing, NOT what we want) and Orders API (api.teemill.com/v1, correct target for MFTF-7). (2) Orders API is two-step: POST /orders returns available shipping options, then POST /orders/{id}/confirm selects method. (3) No sandbox environment — use MSW for automated tests. (4) Public product catalog endpoint (omnis/v3/product/options) returns 18 product types with colors and image URLs; used by MFTF-4 admin picker. (5) Colors identified by plain name strings (\"White\", \"Navy Blue\", etc). (6) Webhook payload still undocumented — stub in tests until confirmed from live integration. Full findings in /docs/teemill-api-notes.md."
     },
     {
       "id": "US-MFTF-3.1",
@@ -1551,7 +1555,7 @@
       "testWrittenCommit": "ec85b07",
       "testPassedDate": "2026-06-07",
       "testPassedCommit": "dcac6eb",
-      "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.2-prodigi-provider.test.ts. Validates: provider name, factory routing, correct Prodigi request shape (shippingMethod, recipient, items), FulfillmentOrderResult fields, canonical status mapping (InProgress\u2192PROCESSING, Complete+shipments\u2192SHIPPED, Cancelled\u2192CANCELLED, unknown\u2192ERROR), error on non-ok response. Includes regression test: createPrintOrder still POSTs to Prodigi and sets prodigiOrderId."
+      "notes": "Tests in __tests__/mftf-3-fulfillment/US-MFTF-3.2-prodigi-provider.test.ts. Validates: provider name, factory routing, correct Prodigi request shape (shippingMethod, recipient, items), FulfillmentOrderResult fields, canonical status mapping (InProgress→PROCESSING, Complete+shipments→SHIPPED, Cancelled→CANCELLED, unknown→ERROR), error on non-ok response. Includes regression test: createPrintOrder still POSTs to Prodigi and sets prodigiOrderId."
     },
     {
       "id": "US-MFTF-3.3",
@@ -1595,7 +1599,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-11",
       "testPassedCommit": "pending",
-      "notes": "28 tests. 6 server actions in src/app/actions/admin/product-catalog.ts: createProductTypeAction, updateProductTypeAction, addProductTypeColorAction, toggleProductTypeColorAction, addProductTypeSizeAction, toggleProductTypeSizeAction. All auth-guarded (ADMIN only). Validation: required name/SKU, unique name, activation requires >=1 active color + size. Pages at /admin/products/new and /admin/products/[id]. \u2014 Enhancement (2026-06-11): Added Teemill product grid picker to /admin/products/new. Client component TeemillProductPicker fetches /api/teemill/catalog (route handler with 1h revalidation), displays a 2-col grid of all 18 Teemill products with per-card color carousel. Selecting a product collapses grid to single-product summary showing all color thumbnails. createProductTypeAction extended to parse teemillColorsJson hidden field and bulk-create ProductTypeColor records (backward compatible). Prodigi path shows manual SKU instructions. \u2014 UI revision (2026-06-11): Product detail page (/admin/products/[id]) redesigned: hero image from Teemill catalog; colors shown as read-only thumbnail grid (images fetched from Teemill, matched by color name); sizes section removed entirely (all provider sizes always available); activation guard updated to require at least one color (not active color, since toggling was removed). \u2014 Provider design audit + schema hardening (2026-06-11): (1) ProductTypeColor.colorHex made nullable \u2014 Teemill has no hex values; was storing empty string. (2) ProductTypeColor.colorImageUrl added \u2014 persists provider color photo URLs so pages no longer re-fetch Teemill API on every render. (3) ProductType.blankImageUrl added \u2014 admin-uploaded product blank photo for Prodigi products. (4) Blob upload route now accepts ADMIN role. (5) BlankImageUploader client component added. (6) Detail page shows BlankImageUploader for Prodigi; Teemill shows read-only API image. (7) Catalog list prefers stored colorImageUrl, falls back to Teemill API only when needed. Audit flagged 6 open design issues: provider routing by listingType not fulfillmentProvider, Order model has Prodigi-specific field names, isActive on colors/sizes is dead, OriginalListing.printProducts should FK to ProductType. These are deferred. \u2014 Schema cleanup (2026-06-12): Removed ProductTypeColor.colorHex (vestigial; superceded by colorImageUrl), removed ProductTypeColor.isActive and ProductTypeSizeOption.isActive (all provider colors/sizes always available \u2014 design decision). Renamed Order.prodigiSku\u2192externalSku, Order.prodigiOrderId\u2192externalOrderId, Transaction.prodigiFulfillmentCost\u2192fulfillmentCost (provider-agnostic naming). Updated all 15+ source + test files referencing old field names. resetDatabase() updated to include new ApparelListing tables."
+      "notes": "28 tests. 6 server actions in src/app/actions/admin/product-catalog.ts: createProductTypeAction, updateProductTypeAction, addProductTypeColorAction, toggleProductTypeColorAction, addProductTypeSizeAction, toggleProductTypeSizeAction. All auth-guarded (ADMIN only). Validation: required name/SKU, unique name, activation requires >=1 active color + size. Pages at /admin/products/new and /admin/products/[id]. — Enhancement (2026-06-11): Added Teemill product grid picker to /admin/products/new. Client component TeemillProductPicker fetches /api/teemill/catalog (route handler with 1h revalidation), displays a 2-col grid of all 18 Teemill products with per-card color carousel. Selecting a product collapses grid to single-product summary showing all color thumbnails. createProductTypeAction extended to parse teemillColorsJson hidden field and bulk-create ProductTypeColor records (backward compatible). Prodigi path shows manual SKU instructions. — UI revision (2026-06-11): Product detail page (/admin/products/[id]) redesigned: hero image from Teemill catalog; colors shown as read-only thumbnail grid (images fetched from Teemill, matched by color name); sizes section removed entirely (all provider sizes always available); activation guard updated to require at least one color (not active color, since toggling was removed). — Provider design audit + schema hardening (2026-06-11): (1) ProductTypeColor.colorHex made nullable — Teemill has no hex values; was storing empty string. (2) ProductTypeColor.colorImageUrl added — persists provider color photo URLs so pages no longer re-fetch Teemill API on every render. (3) ProductType.blankImageUrl added — admin-uploaded product blank photo for Prodigi products. (4) Blob upload route now accepts ADMIN role. (5) BlankImageUploader client component added. (6) Detail page shows BlankImageUploader for Prodigi; Teemill shows read-only API image. (7) Catalog list prefers stored colorImageUrl, falls back to Teemill API only when needed. Audit flagged 6 open design issues: provider routing by listingType not fulfillmentProvider, Order model has Prodigi-specific field names, isActive on colors/sizes is dead, OriginalListing.printProducts should FK to ProductType. These are deferred. — Schema cleanup (2026-06-12): Removed ProductTypeColor.colorHex (vestigial; superceded by colorImageUrl), removed ProductTypeColor.isActive and ProductTypeSizeOption.isActive (all provider colors/sizes always available — design decision). Renamed Order.prodigiSku→externalSku, Order.prodigiOrderId→externalOrderId, Transaction.prodigiFulfillmentCost→fulfillmentCost (provider-agnostic naming). Updated all 15+ source + test files referencing old field names. resetDatabase() updated to include new ApparelListing tables."
     },
     {
       "id": "US-MFTF-5.1",
@@ -1606,7 +1610,7 @@
       "testWrittenCommit": "dfddbee",
       "testPassedDate": "2026-06-12",
       "testPassedCommit": "dfddbee",
-      "notes": "Schema implemented as part of MFTF schema cleanup commit (dfddbee). Models added: ApparelListing (sellerId, productTypeId, title, description, retailPrice, status, designImageUrl), ApparelListingColor (apparelListingId, productTypeColorId, isOffered), ApparelListingImage (apparelListingId, originalUrl, displayUrl, gridUrl, thumbnailUrl, isPrimary, sortOrder). Order.apparelListingId FK added. resetDatabase() in test helpers updated to include all three new tables in correct cascade order. Schema applied to both main and test DBs via prisma db push. Note: dedicated schema test file (parallel to US-MFTF-4.1) not yet written \u2014 schema is exercised transitively by MFTF-4 tests and confirmed working. | 2026-06-12: US-MFTF-13.1 will additively extend this schema (sourcingMode + REFERENCED fields + ReferencedVariant; productTypeId/designImageUrl become nullable). Designed-mode behavior preserved by defaults; re-run this story's domain when 13.1 lands."
+      "notes": "Schema implemented as part of MFTF schema cleanup commit (dfddbee). Models added: ApparelListing (sellerId, productTypeId, title, description, retailPrice, status, designImageUrl), ApparelListingColor (apparelListingId, productTypeColorId, isOffered), ApparelListingImage (apparelListingId, originalUrl, displayUrl, gridUrl, thumbnailUrl, isPrimary, sortOrder). Order.apparelListingId FK added. resetDatabase() in test helpers updated to include all three new tables in correct cascade order. Schema applied to both main and test DBs via prisma db push. Note: dedicated schema test file (parallel to US-MFTF-4.1) not yet written — schema is exercised transitively by MFTF-4 tests and confirmed working. | 2026-06-12: US-MFTF-13.1 will additively extend this schema (sourcingMode + REFERENCED fields + ReferencedVariant; productTypeId/designImageUrl become nullable). Designed-mode behavior preserved by defaults; re-run this story's domain when 13.1 lands."
     },
     {
       "id": "US-MFTF-5.2",
@@ -1617,7 +1621,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-12",
       "testPassedCommit": "pending",
-      "notes": "16 tests passing. generateVariants() gained an optional watermarkStyle ('diagonal' | 'corner', defaults to 'diagonal'). Shared buildVariantBuffers()/uploadVariants() helpers extracted; sharp call sequence preserved so all US-18.2 diagonal tests stay green. New generateApparelImageVariants(apparelImageId) processes ApparelListingImage lifestyle photos with the corner watermark (MFTF wordmark, ~8% width, 70% opacity, bottom-right; grid/thumbnail unwatermarked) and uploads under apparel/variants/. POST /api/apparel/images/process route added. Clean design files bypass the pipeline entirely \u2014 stored verbatim, never watermarked."
+      "notes": "16 tests passing. generateVariants() gained an optional watermarkStyle ('diagonal' | 'corner', defaults to 'diagonal'). Shared buildVariantBuffers()/uploadVariants() helpers extracted; sharp call sequence preserved so all US-18.2 diagonal tests stay green. New generateApparelImageVariants(apparelImageId) processes ApparelListingImage lifestyle photos with the corner watermark (MFTF wordmark, ~8% width, 70% opacity, bottom-right; grid/thumbnail unwatermarked) and uploads under apparel/variants/. POST /api/apparel/images/process route added. Clean design files bypass the pipeline entirely — stored verbatim, never watermarked."
     },
     {
       "id": "US-MFTF-5.3",
@@ -1628,7 +1632,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-12",
       "testPassedCommit": "pending",
-      "notes": "19 tests passing. createApparelListingAction (src/app/actions/apparel.ts) returns { error: 'Unauthorized' } for non-sellers; validates title, active product type, design file, retail price >= $1, >=1 offered color, color-belongs-to-type, <=10 lifestyle photos; creates ApparelListing (ACTIVE on publish, ARCHIVED on draft) + ApparelListingColor (isOffered) + ApparelListingImage (originalUrl, primary/sortOrder) rows; design file stored verbatim. getActiveProductTypesForListing (src/lib/apparel/listings.ts) exposes name/colors(name+image)/sizes only \u2014 never provider/SKU/providerColorCode. Form at /seller/apparel/new (server page + NewApparelListingForm client component): product picker (name only), clean design upload (PNG/SVG/TIFF, no watermark), colorImageUrl swatch curation (all offered by default), lifestyle photo upload, price. Seller listings page now links '+ Apparel listing'. Deviation from AC: publish redirects to the seller edit page (not /shop/[id]) so lifestyle variants are generated client-side and because the public storefront lands in MFTF-6. | 2026-06-15: 'Save as draft' now creates UNLISTED (was ARCHIVED) so drafts are viewable by direct link \u2014 see US-MFTF-6.3 UNLISTED note; draft test updated."
+      "notes": "19 tests passing. createApparelListingAction (src/app/actions/apparel.ts) returns { error: 'Unauthorized' } for non-sellers; validates title, active product type, design file, retail price >= $1, >=1 offered color, color-belongs-to-type, <=10 lifestyle photos; creates ApparelListing (ACTIVE on publish, ARCHIVED on draft) + ApparelListingColor (isOffered) + ApparelListingImage (originalUrl, primary/sortOrder) rows; design file stored verbatim. getActiveProductTypesForListing (src/lib/apparel/listings.ts) exposes name/colors(name+image)/sizes only — never provider/SKU/providerColorCode. Form at /seller/apparel/new (server page + NewApparelListingForm client component): product picker (name only), clean design upload (PNG/SVG/TIFF, no watermark), colorImageUrl swatch curation (all offered by default), lifestyle photo upload, price. Seller listings page now links '+ Apparel listing'. Deviation from AC: publish redirects to the seller edit page (not /shop/[id]) so lifestyle variants are generated client-side and because the public storefront lands in MFTF-6. | 2026-06-15: 'Save as draft' now creates UNLISTED (was ARCHIVED) so drafts are viewable by direct link — see US-MFTF-6.3 UNLISTED note; draft test updated."
     },
     {
       "id": "US-MFTF-5.4",
@@ -1650,7 +1654,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-14",
       "testPassedCommit": "pending",
-      "notes": "18 tests passing (US-MFTF-6.1-apparel-browse.test.ts: 11 node read; US-MFTF-6.1-apparel-card.test.tsx: 5 jsdom component; US-MFTF-6.1-shop-nav-link.test.tsx: 2 jsdom nav). getApparelListings(opts) in src/lib/apparel/browse.ts: ACTIVE-only, createdAt desc, \u226424/page (limit clamped to 24), returns normalized ApparelCard {id,title,primaryImageUrl,retailPrice,colorCount} for BOTH sourcing modes from one projection \u2014 colorCount = offered ApparelListingColor rows (designed) or distinct ReferencedVariant colours (referenced, via referencedListingColors); primaryImageUrl prefers the primary lifestyle photo's grid variant, else falls back to a cached Teemill mockup. Card carries no provider name/base price/currency/sourcingMode (buyer opacity unconditional). ApparelListingCard renders title, USD price, 'Available in N color(s)', links to /shop/[listingId]; plain <img> (Teemill mockups served from images.podos.io, not in next/image allowlist). /shop server-rendered grid page (src/app/(main)/shop/page.tsx) with Previous/Next pagination. 'Shop' nav link added to Nav + MobileMenu sharedLinks (visible to all users)."
+      "notes": "18 tests passing (US-MFTF-6.1-apparel-browse.test.ts: 11 node read; US-MFTF-6.1-apparel-card.test.tsx: 5 jsdom component; US-MFTF-6.1-shop-nav-link.test.tsx: 2 jsdom nav). getApparelListings(opts) in src/lib/apparel/browse.ts: ACTIVE-only, createdAt desc, ≤24/page (limit clamped to 24), returns normalized ApparelCard {id,title,primaryImageUrl,retailPrice,colorCount} for BOTH sourcing modes from one projection — colorCount = offered ApparelListingColor rows (designed) or distinct ReferencedVariant colours (referenced, via referencedListingColors); primaryImageUrl prefers the primary lifestyle photo's grid variant, else falls back to a cached Teemill mockup. Card carries no provider name/base price/currency/sourcingMode (buyer opacity unconditional). ApparelListingCard renders title, USD price, 'Available in N color(s)', links to /shop/[listingId]; plain <img> (Teemill mockups served from images.podos.io, not in next/image allowlist). /shop server-rendered grid page (src/app/(main)/shop/page.tsx) with Previous/Next pagination. 'Shop' nav link added to Nav + MobileMenu sharedLinks (visible to all users)."
     },
     {
       "id": "US-MFTF-6.2",
@@ -1661,7 +1665,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-15",
       "testPassedCommit": "pending",
-      "notes": "20 tests passing (US-MFTF-6.2-apparel-detail-page.test.ts: 12 node read; US-MFTF-6.2-apparel-product-view.test.tsx: 8 jsdom component). getApparelListingDetail(listingId) in src/lib/apparel/detail.ts returns null for missing/ARCHIVED/SOLD (page renders 404 via notFound). Normalized ApparelDetail {id,title,description,retailPrice,images[{url,colorName}],colors[{name,hex,swatchImageUrl}],sizes[]} renders identically for both modes: designed colours = offered ApparelListingColor\u2192ProductTypeColor (name + swatchImageUrl, hex null); referenced colours = distinct ReferencedVariant (name + colorHex, swatchImageUrl null) via referencedListingColors. Sizes: designed = ProductType.sizes by sortOrder; referenced = distinct ReferencedVariant in ingest order (referencedVariants ordered by id \u2014 cuid creation order \u2014 since there's no sortOrder column, so S/M/L/XL stay catalog-ordered, not alphabetical). Images: uploaded lifestyle photos (display variant, primary-first) else cached Teemill mockups (one per colour). No provider name/base price/currency/sourcingMode in the projection. ApparelProductView (client): plain-<img> carousel + thumbnails, colour swatches (hex circle or swatch image \u2014 never branches on mode) with aria-pressed highlight + 'exact shade may vary slightly by batch' note, size selector (role=group, no pre-selection), and STUBBED 'Add to cart' button disabled until both colour+size chosen (real wiring is MFTF-11; selecting a colour does NOT change photos). Page /shop/[listingId] server-rendered with generateMetadata + OG image. NOTE: spec's 'Add to cart deferred to MFTF-7' is stale \u2014 MFTF-7 replaced by MFTF-11; button ships stubbed here per handoff."
+      "notes": "20 tests passing (US-MFTF-6.2-apparel-detail-page.test.ts: 12 node read; US-MFTF-6.2-apparel-product-view.test.tsx: 8 jsdom component). getApparelListingDetail(listingId) in src/lib/apparel/detail.ts returns null for missing/ARCHIVED/SOLD (page renders 404 via notFound). Normalized ApparelDetail {id,title,description,retailPrice,images[{url,colorName}],colors[{name,hex,swatchImageUrl}],sizes[]} renders identically for both modes: designed colours = offered ApparelListingColor→ProductTypeColor (name + swatchImageUrl, hex null); referenced colours = distinct ReferencedVariant (name + colorHex, swatchImageUrl null) via referencedListingColors. Sizes: designed = ProductType.sizes by sortOrder; referenced = distinct ReferencedVariant in ingest order (referencedVariants ordered by id — cuid creation order — since there's no sortOrder column, so S/M/L/XL stay catalog-ordered, not alphabetical). Images: uploaded lifestyle photos (display variant, primary-first) else cached Teemill mockups (one per colour). No provider name/base price/currency/sourcingMode in the projection. ApparelProductView (client): plain-<img> carousel + thumbnails, colour swatches (hex circle or swatch image — never branches on mode) with aria-pressed highlight + 'exact shade may vary slightly by batch' note, size selector (role=group, no pre-selection), and STUBBED 'Add to cart' button disabled until both colour+size chosen (real wiring is MFTF-11; selecting a colour does NOT change photos). Page /shop/[listingId] server-rendered with generateMetadata + OG image. NOTE: spec's 'Add to cart deferred to MFTF-7' is stale — MFTF-7 replaced by MFTF-11; button ships stubbed here per handoff."
     },
     {
       "id": "US-MFTF-6.3",
@@ -1672,7 +1676,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-15",
       "testPassedCommit": "pending",
-      "notes": "REMAINING SCOPE COMPLETED 2026-06-15 (6 tests passing, US-MFTF-6.3-apparel-in-seller-dashboard.test.ts): (1) Count summary \u2014 getSellerListingSummary (src/lib/dashboard/seller.ts) now groupBy-counts BOTH originalListing and apparelListing into one active/sold/archived/total summary (apparel covers designed + referenced; shared ListingStatus enum, counted identically). The /dashboard/seller summary cards now reflect apparel in totals automatically. (2) Badge refinement \u2014 the /seller/listings type badge is now colour-distinct per kind (Art = neutral stone pill; Apparel = cerulean pill) so apparel reads apart from artwork at a glance, not just by label. FOLLOW-UP 2026-06-15 (founder feedback): (a) the /dashboard/seller 'Active Listings' grid now includes apparel \u2014 getSellerActiveListings repurposed to the unified row shape (see US-13.2 note); (b) the /seller/listings header three buttons ('+ Apparel/Referenced/Artwork listing') were replaced with a single '+ New listing' button \u2192 a chooser page at /seller/listings/new presenting Artwork / Apparel / Referenced listing options, each with a short description (artwork = single original + optional prints; apparel = API-designed dropshipper whitelist e.g. Prodigi; referenced = build-in-provider-editor-then-link e.g. Teemill). The artwork creation form moved from /seller/listings/new to /seller/listings/new/artwork. (c) the apparel edit page (/seller/apparel/[listingId]/edit, both designed and referenced branches) now has a 'View listing \u2192' button in the header linking to the public /shop/[listingId] page; shown only when the listing is ACTIVE since the public page 404s on non-active listings. The artwork edit page (/seller/listings/[id]/edit) gets the same 'View listing \u2192' button linking to /artwork/[artworkId] \u2014 no status guard there, since the artwork detail page renders for any existing artwork (shows Sold/etc.) rather than 404ing on non-active listings. NEW STATUS 'UNLISTED' 2026-06-15 (founder request; 18 tests US-MFTF-6-unlisted-status.test.ts): added UNLISTED to the ListingStatus enum (shared by originalListing + apparelListing; pushed to both DBs). Semantics \u2014 visible only by direct link to the detail page, hidden from every feed, excluded from 'active' counts; a seller's pre-launch preview state, distinct from ARCHIVED (retired/hidden, not viewable). Apparel detail (getApparelListingDetail) now renders ACTIVE+UNLISTED (still 404s ARCHIVED/SOLD); artwork detail already rendered all statuses. Feeds exclude UNLISTED: apparel browse is ACTIVE-only already; browseArtworks gained a NOT-UNLISTED guard (covers print-available too); getSellerActiveListings filters ACTIVE. New seller controls: setListingStatusAction (artwork) + setApparelListingStatusAction (apparel) set ACTIVE/UNLISTED/ARCHIVED with ownership + SOLD + auction-bids guards and invalid-target rejection; the /seller/listings index replaced the binary Archive/Activate toggle with status-driven Publish/Unlist/Archive buttons + a violet 'Unlisted' badge. Apparel 'Save as draft' (designed + referenced) now creates UNLISTED instead of ARCHIVED so drafts are previewable (see US-MFTF-5.3 / US-MFTF-13.3 notes). getSellerListingSummary gained an 'unlisted' bucket + a dashboard stat card. NOTE: artwork creation still publishes ACTIVE directly (no draft); artwork reaches UNLISTED via the Unlist control. UNLISTED EDIT-PAGE REFINEMENTS 2026-06-15 (founder follow-up; 10 tests US-MFTF-6-listing-status-helpers.test.ts): extracted shared pure helpers to src/lib/seller/listing-status.ts (listingStatusStyle, listingStatusTransitions, isPubliclyViewable(kind,status) [artwork always viewable, apparel only ACTIVE/UNLISTED], publicListingHref). (a) The 'View listing' button on the apparel edit page now shows for UNLISTED too (was ACTIVE-only) via isPubliclyViewable \u2014 UNLISTED is exactly the viewable-by-link case. (b) New ListingStatusControls server component (Publish/Unlist/Archive forms via the setStatus actions + a violet 'unlisted \u2014 viewable by link but hidden from the store' notice) added to all three edit views (artwork, designed apparel, referenced apparel), so status is editable from the edit page. (c) The /seller/listings index thumbnail now links to the public product page (artwork \u2192 /artwork/[artworkId], apparel \u2192 /shop/[id]) when publicly viewable, falling back to the edit page for apparel that 404s publicly (ARCHIVED/SOLD). The index was refactored to consume the shared listing-status helpers (removing its local STATUS_STYLES/STATUS_TRANSITIONS copies). OWNER UNLISTED NOTICE ON PUBLIC PAGE 2026-06-15 (founder follow-up; +4 tests, 14 total in US-MFTF-6-listing-status-helpers.test.ts): the owning seller now also sees an unlisted notice on the *public* detail page of their own UNLISTED item (so previewing via the direct link is clearly flagged). Pure gate shouldShowOwnerUnlistedNotice(viewerId, sellerId, status) (UNLISTED && viewer===owner; buyers/anon/non-owners see nothing). Self-contained server component OwnerUnlistedNotice (does its own auth(), renders its own page-width container so it leaves no empty wrapper when null, with a 'Manage status \u2192' link to the edit page) added atop both /shop/[listingId] (apparel) and /artwork/[id] (artwork). getApparelListingOwnership(listingId) added to src/lib/apparel/detail.ts to fetch sellerId+status server-side without putting sellerId on the buyer-facing ApparelDetail projection; the artwork page reuses the artwork.sellerId + originalListing.status it already loads. The unified index, archive/activate (toggleApparelListingStatusAction), delete (deleteApparelListingAction), and REFERENCED-row rendering were shipped early and remain unchanged (covered by US-MFTF-6.3-seller-listings-index.test.ts + US-MFTF-6.3-apparel-listing-lifecycle.test.ts). ORIGINAL EARLY-SHIP NOTE: Status was intentionally Not Started: MFTF-6 comes after MFTF-13 in epicOrder. However, one slice was shipped EARLY during MFTF-5 verification \u2014 apparel listings were not visible in the seller feed, which made it hard to verify MFTF-5 work, so the seller-index was extended to show apparel. Shipped early (do not rebuild): src/lib/seller/listings.ts getSellerListings (unified, kind-discriminated row list); the rewritten /seller/listings index (artwork + apparel); apparel archive/activate + delete; design preview. Still open for this story: dashboard count summary (overlaps US-MFTF-13.x referenced-listing counts) and badge refinements. Dependency: MFTF-13 will revisit this slice \u2014 getSellerListings must render REFERENCED listings, and US-MFTF-13.1 makes productTypeId/designImageUrl nullable + adds sourcingMode. Do not mark Passed until the remaining scope is built against the post-MFTF-13 schema."
+      "notes": "REMAINING SCOPE COMPLETED 2026-06-15 (6 tests passing, US-MFTF-6.3-apparel-in-seller-dashboard.test.ts): (1) Count summary — getSellerListingSummary (src/lib/dashboard/seller.ts) now groupBy-counts BOTH originalListing and apparelListing into one active/sold/archived/total summary (apparel covers designed + referenced; shared ListingStatus enum, counted identically). The /dashboard/seller summary cards now reflect apparel in totals automatically. (2) Badge refinement — the /seller/listings type badge is now colour-distinct per kind (Art = neutral stone pill; Apparel = cerulean pill) so apparel reads apart from artwork at a glance, not just by label. FOLLOW-UP 2026-06-15 (founder feedback): (a) the /dashboard/seller 'Active Listings' grid now includes apparel — getSellerActiveListings repurposed to the unified row shape (see US-13.2 note); (b) the /seller/listings header three buttons ('+ Apparel/Referenced/Artwork listing') were replaced with a single '+ New listing' button → a chooser page at /seller/listings/new presenting Artwork / Apparel / Referenced listing options, each with a short description (artwork = single original + optional prints; apparel = API-designed dropshipper whitelist e.g. Prodigi; referenced = build-in-provider-editor-then-link e.g. Teemill). The artwork creation form moved from /seller/listings/new to /seller/listings/new/artwork. (c) the apparel edit page (/seller/apparel/[listingId]/edit, both designed and referenced branches) now has a 'View listing →' button in the header linking to the public /shop/[listingId] page; shown only when the listing is ACTIVE since the public page 404s on non-active listings. The artwork edit page (/seller/listings/[id]/edit) gets the same 'View listing →' button linking to /artwork/[artworkId] — no status guard there, since the artwork detail page renders for any existing artwork (shows Sold/etc.) rather than 404ing on non-active listings. NEW STATUS 'UNLISTED' 2026-06-15 (founder request; 18 tests US-MFTF-6-unlisted-status.test.ts): added UNLISTED to the ListingStatus enum (shared by originalListing + apparelListing; pushed to both DBs). Semantics — visible only by direct link to the detail page, hidden from every feed, excluded from 'active' counts; a seller's pre-launch preview state, distinct from ARCHIVED (retired/hidden, not viewable). Apparel detail (getApparelListingDetail) now renders ACTIVE+UNLISTED (still 404s ARCHIVED/SOLD); artwork detail already rendered all statuses. Feeds exclude UNLISTED: apparel browse is ACTIVE-only already; browseArtworks gained a NOT-UNLISTED guard (covers print-available too); getSellerActiveListings filters ACTIVE. New seller controls: setListingStatusAction (artwork) + setApparelListingStatusAction (apparel) set ACTIVE/UNLISTED/ARCHIVED with ownership + SOLD + auction-bids guards and invalid-target rejection; the /seller/listings index replaced the binary Archive/Activate toggle with status-driven Publish/Unlist/Archive buttons + a violet 'Unlisted' badge. Apparel 'Save as draft' (designed + referenced) now creates UNLISTED instead of ARCHIVED so drafts are previewable (see US-MFTF-5.3 / US-MFTF-13.3 notes). getSellerListingSummary gained an 'unlisted' bucket + a dashboard stat card. NOTE: artwork creation still publishes ACTIVE directly (no draft); artwork reaches UNLISTED via the Unlist control. UNLISTED EDIT-PAGE REFINEMENTS 2026-06-15 (founder follow-up; 10 tests US-MFTF-6-listing-status-helpers.test.ts): extracted shared pure helpers to src/lib/seller/listing-status.ts (listingStatusStyle, listingStatusTransitions, isPubliclyViewable(kind,status) [artwork always viewable, apparel only ACTIVE/UNLISTED], publicListingHref). (a) The 'View listing' button on the apparel edit page now shows for UNLISTED too (was ACTIVE-only) via isPubliclyViewable — UNLISTED is exactly the viewable-by-link case. (b) New ListingStatusControls server component (Publish/Unlist/Archive forms via the setStatus actions + a violet 'unlisted — viewable by link but hidden from the store' notice) added to all three edit views (artwork, designed apparel, referenced apparel), so status is editable from the edit page. (c) The /seller/listings index thumbnail now links to the public product page (artwork → /artwork/[artworkId], apparel → /shop/[id]) when publicly viewable, falling back to the edit page for apparel that 404s publicly (ARCHIVED/SOLD). The index was refactored to consume the shared listing-status helpers (removing its local STATUS_STYLES/STATUS_TRANSITIONS copies). OWNER UNLISTED NOTICE ON PUBLIC PAGE 2026-06-15 (founder follow-up; +4 tests, 14 total in US-MFTF-6-listing-status-helpers.test.ts): the owning seller now also sees an unlisted notice on the *public* detail page of their own UNLISTED item (so previewing via the direct link is clearly flagged). Pure gate shouldShowOwnerUnlistedNotice(viewerId, sellerId, status) (UNLISTED && viewer===owner; buyers/anon/non-owners see nothing). Self-contained server component OwnerUnlistedNotice (does its own auth(), renders its own page-width container so it leaves no empty wrapper when null, with a 'Manage status →' link to the edit page) added atop both /shop/[listingId] (apparel) and /artwork/[id] (artwork). getApparelListingOwnership(listingId) added to src/lib/apparel/detail.ts to fetch sellerId+status server-side without putting sellerId on the buyer-facing ApparelDetail projection; the artwork page reuses the artwork.sellerId + originalListing.status it already loads. The unified index, archive/activate (toggleApparelListingStatusAction), delete (deleteApparelListingAction), and REFERENCED-row rendering were shipped early and remain unchanged (covered by US-MFTF-6.3-seller-listings-index.test.ts + US-MFTF-6.3-apparel-listing-lifecycle.test.ts). ORIGINAL EARLY-SHIP NOTE: Status was intentionally Not Started: MFTF-6 comes after MFTF-13 in epicOrder. However, one slice was shipped EARLY during MFTF-5 verification — apparel listings were not visible in the seller feed, which made it hard to verify MFTF-5 work, so the seller-index was extended to show apparel. Shipped early (do not rebuild): src/lib/seller/listings.ts getSellerListings (unified, kind-discriminated row list); the rewritten /seller/listings index (artwork + apparel); apparel archive/activate + delete; design preview. Still open for this story: dashboard count summary (overlaps US-MFTF-13.x referenced-listing counts) and badge refinements. Dependency: MFTF-13 will revisit this slice — getSellerListings must render REFERENCED listings, and US-MFTF-13.1 makes productTypeId/designImageUrl nullable + adds sourcingMode. Do not mark Passed until the remaining scope is built against the post-MFTF-13 schema."
     },
     {
       "id": "US-MFTF-13.1",
@@ -1694,7 +1698,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-13",
       "testPassedCommit": "pending",
-      "notes": "15 tests passing (US-MFTF-13.2-teemill-ingest.test.ts). src/lib/fulfillment/teemill/: client.ts (teemillGet + getTeemillProject \u2014 decodes JWT sub from TEEMILL_API_KEY, override via TEEMILL_PROJECT env) and ingest.ts. ingestTeemillProduct(productRef) calls GET /catalog/products with verified auth (Authorization = raw key, NO Bearer; ?project={JWT sub}=merchforthefuture-451391, NOT the public key \u2014 asserted in an auth test), matches the product by ref/id/slug, and returns a normalized snapshot {providerKey, providerProductRef, title, slug, providerBaseCurrency, providerBasePrice, variants[]}. Per variant: variantRef (absolute /catalog/variants/), colorName+colorHex (Colour attribute thumbnail), sizeLabel, stockLevel, isOrderable (enabled && stock>0), mockupUrl (matched from variant.images[] then product.images[] by variantIds). No 3-colour cap enforced. Errors (not-found/disabled/401/network) returned to caller, never thrown. No design file uploaded. applyTeemillSnapshot(listingId, snapshot, {preserveOrderableVariantRefs}) persists idempotently in a transaction (replace ReferencedVariant rows, preserve+mark-not-orderable vanished-but-ordered refs for 13.4, refresh providerBasePrice/currency/snapshotFetchedAt). MSW: shared __tests__/mocks/teemill-fixture.ts (verified Powered By Plants shape: 3 colours w/ hex, GBP prices, per-warehouse stock incl. a 0-stock variant, product-level mockups by variantIds, /catalog/variants/ refs) wired into global handlers. RESIDUAL LIVE-API FLAG (human, no sandbox exists): field paths verified against ONE product (Powered By Plants); confirm the parser against a 2nd live product (esp. images[].variantIds linkage + attributes ordering) \u2014 carried to the PR QA checklist."
+      "notes": "15 tests passing (US-MFTF-13.2-teemill-ingest.test.ts). src/lib/fulfillment/teemill/: client.ts (teemillGet + getTeemillProject — decodes JWT sub from TEEMILL_API_KEY, override via TEEMILL_PROJECT env) and ingest.ts. ingestTeemillProduct(productRef) calls GET /catalog/products with verified auth (Authorization = raw key, NO Bearer; ?project={JWT sub}=merchforthefuture-451391, NOT the public key — asserted in an auth test), matches the product by ref/id/slug, and returns a normalized snapshot {providerKey, providerProductRef, title, slug, providerBaseCurrency, providerBasePrice, variants[]}. Per variant: variantRef (absolute /catalog/variants/), colorName+colorHex (Colour attribute thumbnail), sizeLabel, stockLevel, isOrderable (enabled && stock>0), mockupUrl (matched from variant.images[] then product.images[] by variantIds). No 3-colour cap enforced. Errors (not-found/disabled/401/network) returned to caller, never thrown. No design file uploaded. applyTeemillSnapshot(listingId, snapshot, {preserveOrderableVariantRefs}) persists idempotently in a transaction (replace ReferencedVariant rows, preserve+mark-not-orderable vanished-but-ordered refs for 13.4, refresh providerBasePrice/currency/snapshotFetchedAt). MSW: shared __tests__/mocks/teemill-fixture.ts (verified Powered By Plants shape: 3 colours w/ hex, GBP prices, per-warehouse stock incl. a 0-stock variant, product-level mockups by variantIds, /catalog/variants/ refs) wired into global handlers. RESIDUAL LIVE-API FLAG (human, no sandbox exists): field paths verified against ONE product (Powered By Plants); confirm the parser against a 2nd live product (esp. images[].variantIds linkage + attributes ordering) — carried to the PR QA checklist."
     },
     {
       "id": "US-MFTF-13.3",
@@ -1705,7 +1709,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-13",
       "testPassedCommit": "pending",
-      "notes": "20 tests passing (US-MFTF-13.3-create-referenced-listing.test.ts: 15 node action/integration; US-MFTF-13.3-create-referenced-listing-form.test.tsx: 6 jsdom component, via // @vitest-environment jsdom docblock). src/app/actions/referenced-apparel.ts: resolveTeemillRefAction(ref) (auth-guarded; ingest \u2192 preview {title, providerBaseCurrency, providerBasePrice, colors[name+hex], sizes, mockups, orderableCount}; errors returned so the form re-surfaces guidance) and createReferencedListingAction (auth; validates title, retail\u2265$1, ref resolves, \u22651 orderable variant; creates ApparelListing sourcingMode=REFERENCED with productTypeId/designImageUrl null + providerKey/providerProductRef, no ApparelListingColor rows, no design upload; applyTeemillSnapshot caches variants+base price; redirects to edit). src/lib/apparel/referenced.ts: pure read-shape helpers referencedListingImages (lifestyle photos else distinct Teemill mockups), referencedListingColors, referencedListingSizes. Component NewReferencedListingForm: Step 1 'create on Teemill first' guidance + outbound designer link (new tab, rel=noopener) + how-to-find-the-ref blurb + Resolve\u2192preview (swatches w/ hex, sizes, mockups, 'your cost, GBP'); Teemill named openly; margin hint is display-only with an illustrative rate (NO network FX). Page /seller/apparel/new-referenced + '+ Referenced listing' link on the seller index. MFTF-13 schema-touch of the early-shipped 6.3 slice: getSellerListings now renders REFERENCED rows (productType nullable \u2014 provider label 'Teemill', mockup thumbnail fallback, sourcingMode on the row); designed-mode readers (getApparelListingForEdit, updateApparelListingAction) made null-safe for the now-nullable productType. Regression: mftf-5 (53) + mftf-6 (39) green; tsc clean on src/. RESIDUAL: uses the same verified MSW catalog stub as 13.2 (one-product live-confirm flag carries through). ENHANCEMENT (2026-06-14): the description textarea auto-populates from the referenced product's Teemill description \u2014 ingest snapshot now carries the raw HTML description (TeemillProductSnapshot.description), resolveTeemillRefAction returns it cleaned to plain text via teemillDescriptionToText (src/lib/apparel/referenced.ts: strips tags, block tags/<br>\u2192newlines, decodes common entities, collapses whitespace), and the form pre-fills the (still editable/clearable) description field on resolve. 80 mftf-13 tests green. HARDENING (2026-06-14): teemillDescriptionToText now drops <script>/<style> contents + HTML comments, decodes numeric/hex entities, removes control chars, and strips malformed tags (defensive \u2014 the value only ever lands in a textarea/value which React escapes, so there was never an HTML-injection path; no dangerouslySetInnerHTML anywhere). Added an SSR-stability regression test (US-MFTF-13.3-form-ssr-stability.test.tsx) that renderToStaticMarkup's the create form and asserts the action buttons render `disabled` and the description textarea renders empty at initial state \u2014 locking the server output against the client to prevent hydration mismatches. NOTE: a reported 'page no longer renders' hydration mismatch (server buttons missing `disabled`) reproduced only against a stale long-running dev server; a clean `rm -rf .next && npm run dev` SSRs identically to the client (verified via renderToStaticMarkup). 86 mftf-13 tests green; eslint + tsc clean. | 2026-06-15: referenced 'Save as draft' now creates UNLISTED (was ARCHIVED) so drafts are previewable \u2014 see US-MFTF-6.3 UNLISTED note; draft test updated."
+      "notes": "20 tests passing (US-MFTF-13.3-create-referenced-listing.test.ts: 15 node action/integration; US-MFTF-13.3-create-referenced-listing-form.test.tsx: 6 jsdom component, via // @vitest-environment jsdom docblock). src/app/actions/referenced-apparel.ts: resolveTeemillRefAction(ref) (auth-guarded; ingest → preview {title, providerBaseCurrency, providerBasePrice, colors[name+hex], sizes, mockups, orderableCount}; errors returned so the form re-surfaces guidance) and createReferencedListingAction (auth; validates title, retail≥$1, ref resolves, ≥1 orderable variant; creates ApparelListing sourcingMode=REFERENCED with productTypeId/designImageUrl null + providerKey/providerProductRef, no ApparelListingColor rows, no design upload; applyTeemillSnapshot caches variants+base price; redirects to edit). src/lib/apparel/referenced.ts: pure read-shape helpers referencedListingImages (lifestyle photos else distinct Teemill mockups), referencedListingColors, referencedListingSizes. Component NewReferencedListingForm: Step 1 'create on Teemill first' guidance + outbound designer link (new tab, rel=noopener) + how-to-find-the-ref blurb + Resolve→preview (swatches w/ hex, sizes, mockups, 'your cost, GBP'); Teemill named openly; margin hint is display-only with an illustrative rate (NO network FX). Page /seller/apparel/new-referenced + '+ Referenced listing' link on the seller index. MFTF-13 schema-touch of the early-shipped 6.3 slice: getSellerListings now renders REFERENCED rows (productType nullable — provider label 'Teemill', mockup thumbnail fallback, sourcingMode on the row); designed-mode readers (getApparelListingForEdit, updateApparelListingAction) made null-safe for the now-nullable productType. Regression: mftf-5 (53) + mftf-6 (39) green; tsc clean on src/. RESIDUAL: uses the same verified MSW catalog stub as 13.2 (one-product live-confirm flag carries through). ENHANCEMENT (2026-06-14): the description textarea auto-populates from the referenced product's Teemill description — ingest snapshot now carries the raw HTML description (TeemillProductSnapshot.description), resolveTeemillRefAction returns it cleaned to plain text via teemillDescriptionToText (src/lib/apparel/referenced.ts: strips tags, block tags/<br>→newlines, decodes common entities, collapses whitespace), and the form pre-fills the (still editable/clearable) description field on resolve. 80 mftf-13 tests green. HARDENING (2026-06-14): teemillDescriptionToText now drops <script>/<style> contents + HTML comments, decodes numeric/hex entities, removes control chars, and strips malformed tags (defensive — the value only ever lands in a textarea/value which React escapes, so there was never an HTML-injection path; no dangerouslySetInnerHTML anywhere). Added an SSR-stability regression test (US-MFTF-13.3-form-ssr-stability.test.tsx) that renderToStaticMarkup's the create form and asserts the action buttons render `disabled` and the description textarea renders empty at initial state — locking the server output against the client to prevent hydration mismatches. NOTE: a reported 'page no longer renders' hydration mismatch (server buttons missing `disabled`) reproduced only against a stale long-running dev server; a clean `rm -rf .next && npm run dev` SSRs identically to the client (verified via renderToStaticMarkup). 86 mftf-13 tests green; eslint + tsc clean. | 2026-06-15: referenced 'Save as draft' now creates UNLISTED (was ARCHIVED) so drafts are previewable — see US-MFTF-6.3 UNLISTED note; draft test updated."
     },
     {
       "id": "US-MFTF-13.4",
@@ -1716,7 +1720,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-13",
       "testPassedCommit": "pending",
-      "notes": "19 tests passing (US-MFTF-13.4-edit-resync-referenced-listing.test.ts: 14 node; US-MFTF-13.4-edit-referenced-form.test.tsx: 5 jsdom). updateReferencedListingAction(listingId, _prev, formData): auth+ownership guard, SOLD read-only, edits title/description/retailPrice (min $1), refuses to change providerProductRef (immutable after creation). resyncReferencedListingAction(listingId): re-ingests providerProductRef, diffs cached vs new snapshot into a human-readable change summary (base-cost change \u00a3X\u2192\u00a3Y, variant out of/back in stock, added, no-longer-available), applies snapshot via applyTeemillSnapshot with preserveOrderableVariantRefs = Order.externalSku for this listing so a vanished-but-ordered variant is kept and marked isOrderable:false (NOT deleted); unordered vanished variants are removed; returns {changes:[]} (empty = no changes). getReferencedListingForEdit(listingId) returns editable merchandising + read-only Teemill-owned data (colours+hex, sizes, per-variant stock) + editOnTeemillUrl; null for designed listings. EditReferencedListingForm: editable title/desc/price form + read-only colour swatches/sizes + 'Re-sync from Teemill' button (shows change summary) + 'Edit on Teemill' outbound link (new tab, rel=noopener). Edit page /seller/apparel/[listingId]/edit now branches on sourcingMode (referenced \u2192 new form; designed \u2192 unchanged). LIVE-CONFIRM RESOLVED 2026-06-13 (founder-confirmed): per-product editor URL is https://teemill.com/create-a-product/{slug}/?project={projectId} and the generic designer is https://teemill.com/create-a-product/?project={projectId}, where projectId = getTeemillProject() (JWT sub) and slug is cached at ingest on new column ApparelListing.providerProductSlug. teemillEditUrl()/teemillDesignerUrl() build these (3 URL unit tests); generic designer is the fallback when no slug is stored yet. Schema gained providerProductSlug (additive nullable, pushed to both DBs). The create form's 'Open the Teemill designer' button and the edit page's 'Edit on Teemill' link both use these. mftf-13 73 tests green; mftf-5/6 (70) regression green; tsc clean. ENHANCEMENT (2026-06-14): the referenced edit page now shows a central image carousel (ReferencedImageCarousel client component, plain <img> since Teemill mockups are served from images.podos.io which is not in the next/image allowlist) populated by referencedListingCarousel() \u2014 uploaded lifestyle photos first (display variant preferred, else original, in sortOrder), then distinct per-colour Teemill mockups, deduped; getReferencedListingForEdit returns carouselImages and EditReferencedListingForm renders it centered above the merchandising form. 91 mftf-13 tests green; eslint + tsc clean. ENHANCEMENT (2026-06-14, US-MFTF-13.4 AC 'edit lifestyle photos'): the referenced edit page now manages lifestyle photos by reusing ApparelImageManager (add via Blob + corner-watermark pipeline, delete, set-primary). ApparelImageManager gained showDesignFile (default true; referenced passes false so the design-file uploader \u2014 designed-mode only \u2014 is hidden) and refreshOnChange (referenced passes true \u2192 router.refresh() after add/delete/set-primary/process so the central carousel re-reads server data). The carousel now leads with the primary lifestyle photo (then sortOrder, then mockups), making set-primary the cover/reorder control. The underlying image actions (addApparelImageAction/deleteApparelImageAction/setApparelPrimaryImageAction) were already listing-agnostic. 95 mftf-13 tests green; mftf-5/6 (70) regression green; eslint + tsc clean."
+      "notes": "19 tests passing (US-MFTF-13.4-edit-resync-referenced-listing.test.ts: 14 node; US-MFTF-13.4-edit-referenced-form.test.tsx: 5 jsdom). updateReferencedListingAction(listingId, _prev, formData): auth+ownership guard, SOLD read-only, edits title/description/retailPrice (min $1), refuses to change providerProductRef (immutable after creation). resyncReferencedListingAction(listingId): re-ingests providerProductRef, diffs cached vs new snapshot into a human-readable change summary (base-cost change £X→£Y, variant out of/back in stock, added, no-longer-available), applies snapshot via applyTeemillSnapshot with preserveOrderableVariantRefs = Order.externalSku for this listing so a vanished-but-ordered variant is kept and marked isOrderable:false (NOT deleted); unordered vanished variants are removed; returns {changes:[]} (empty = no changes). getReferencedListingForEdit(listingId) returns editable merchandising + read-only Teemill-owned data (colours+hex, sizes, per-variant stock) + editOnTeemillUrl; null for designed listings. EditReferencedListingForm: editable title/desc/price form + read-only colour swatches/sizes + 'Re-sync from Teemill' button (shows change summary) + 'Edit on Teemill' outbound link (new tab, rel=noopener). Edit page /seller/apparel/[listingId]/edit now branches on sourcingMode (referenced → new form; designed → unchanged). LIVE-CONFIRM RESOLVED 2026-06-13 (founder-confirmed): per-product editor URL is https://teemill.com/create-a-product/{slug}/?project={projectId} and the generic designer is https://teemill.com/create-a-product/?project={projectId}, where projectId = getTeemillProject() (JWT sub) and slug is cached at ingest on new column ApparelListing.providerProductSlug. teemillEditUrl()/teemillDesignerUrl() build these (3 URL unit tests); generic designer is the fallback when no slug is stored yet. Schema gained providerProductSlug (additive nullable, pushed to both DBs). The create form's 'Open the Teemill designer' button and the edit page's 'Edit on Teemill' link both use these. mftf-13 73 tests green; mftf-5/6 (70) regression green; tsc clean. ENHANCEMENT (2026-06-14): the referenced edit page now shows a central image carousel (ReferencedImageCarousel client component, plain <img> since Teemill mockups are served from images.podos.io which is not in the next/image allowlist) populated by referencedListingCarousel() — uploaded lifestyle photos first (display variant preferred, else original, in sortOrder), then distinct per-colour Teemill mockups, deduped; getReferencedListingForEdit returns carouselImages and EditReferencedListingForm renders it centered above the merchandising form. 91 mftf-13 tests green; eslint + tsc clean. ENHANCEMENT (2026-06-14, US-MFTF-13.4 AC 'edit lifestyle photos'): the referenced edit page now manages lifestyle photos by reusing ApparelImageManager (add via Blob + corner-watermark pipeline, delete, set-primary). ApparelImageManager gained showDesignFile (default true; referenced passes false so the design-file uploader — designed-mode only — is hidden) and refreshOnChange (referenced passes true → router.refresh() after add/delete/set-primary/process so the central carousel re-reads server data). The carousel now leads with the primary lifestyle photo (then sortOrder, then mockups), making set-primary the cover/reorder control. The underlying image actions (addApparelImageAction/deleteApparelImageAction/setApparelPrimaryImageAction) were already listing-agnostic. 95 mftf-13 tests green; mftf-5/6 (70) regression green; eslint + tsc clean."
     },
     {
       "id": "US-MFTF-7.1",
@@ -1760,7 +1764,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-16",
       "testPassedCommit": "pending",
-      "notes": "23 tests (12 node action + 11 jsdom UI). addToCartAction (src/app/actions/cart.ts) validates listing is ACTIVE (UNLISTED/ARCHIVED/SOLD rejected via getApparelListingOwnership status check, since getApparelListingDetail intentionally also returns UNLISTED for preview), colour offered + size valid against the normalized read-shape (detail.colors[].name / detail.sizes) \u2014 never branches on sourcingMode/provider; referenced (Teemill) colours validate identically. Cart core src/lib/cart/cart.ts (pure DB, no next/headers \u2014 node-testable): findOrCreate{User,Guest}Cart, addItem with dedupe on (itemKind, listingRef, canonical selection) -> increment quantity + touch updatedAt, cartItemCount. Cookie I/O isolated in src/lib/cart/cookies.ts (httpOnly+secure+lax, 30d) and request resolution in src/lib/cart/request.ts (resolveCartForWrite mints+sets a guest token when absent; getCartCountForRequest is read-only for the nav). Nav cart icon + badge: CartBadge client component seeded by getCartCountForRequest in Nav (one element, visible desktop+mobile); ApparelProductView 'Add to cart' wired (disabled until colour+size) -> calls action -> router.refresh() updates the badge with no full reload, shows 'Added to cart'. Touched US-MFTF-6.2 component test to mock @/app/actions/cart + next/navigation (ApparelProductView now imports the server action); still green. UX TWEAK (post-review): selecting a colour now jumps the carousel to that colour's per-colour mockup when one exists (referenced listings carry one image per colour, tagged by colorName); lifestyle-photo listings have no colour-tagged images so the carousel stays put, and manual carousel navigation never changes the selected colour/size. Updated ApparelProductView + added 6.2 component tests."
+      "notes": "23 tests (12 node action + 11 jsdom UI). addToCartAction (src/app/actions/cart.ts) validates listing is ACTIVE (UNLISTED/ARCHIVED/SOLD rejected via getApparelListingOwnership status check, since getApparelListingDetail intentionally also returns UNLISTED for preview), colour offered + size valid against the normalized read-shape (detail.colors[].name / detail.sizes) — never branches on sourcingMode/provider; referenced (Teemill) colours validate identically. Cart core src/lib/cart/cart.ts (pure DB, no next/headers — node-testable): findOrCreate{User,Guest}Cart, addItem with dedupe on (itemKind, listingRef, canonical selection) -> increment quantity + touch updatedAt, cartItemCount. Cookie I/O isolated in src/lib/cart/cookies.ts (httpOnly+secure+lax, 30d) and request resolution in src/lib/cart/request.ts (resolveCartForWrite mints+sets a guest token when absent; getCartCountForRequest is read-only for the nav). Nav cart icon + badge: CartBadge client component seeded by getCartCountForRequest in Nav (one element, visible desktop+mobile); ApparelProductView 'Add to cart' wired (disabled until colour+size) -> calls action -> router.refresh() updates the badge with no full reload, shows 'Added to cart'. Touched US-MFTF-6.2 component test to mock @/app/actions/cart + next/navigation (ApparelProductView now imports the server action); still green. UX TWEAK (post-review): selecting a colour now jumps the carousel to that colour's per-colour mockup when one exists (referenced listings carry one image per colour, tagged by colorName); lifestyle-photo listings have no colour-tagged images so the carousel stays put, and manual carousel navigation never changes the selected colour/size. Updated ApparelProductView + added 6.2 component tests."
     },
     {
       "id": "US-MFTF-11.3",
@@ -1771,7 +1775,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-16",
       "testPassedCommit": "pending",
-      "notes": "11 new tests + a US-15.4 add-to-cart assertion. addToCartAction gains a PRINT branch (src/app/actions/cart.ts): validates prints enabled + SKU in the seller-curated printProducts set (already aspect-ratio filtered per US-15.6, so membership IS the aspect-ratio check) + listing not ARCHIVED/CANCELLED. REVISED post-review (price-source fix): selection.quotedUnitPrice now snapshots the SELLER's printProducts[].price \u2014 the exact price the buyer saw on the artwork page \u2014 so the cart price matches the product page. The earlier live-Prodigi-quote approach was wrong: the Prodigi /quotes figure is a fulfilment COST, not the buyer's retail price; surfacing it made the cart show a different number than the page. src/lib/print/quote.ts + its MSW /quotes handler were removed (the authoritative cost re-quote/margin check belongs to checkout, MFTF-12, not buyer display). addItem now takes an optional dedupeSelection so identical prints dedupe on {prodigiSku,attributes} ignoring the volatile quotedUnitPrice. PrintOptionsSelector reworked: 'Order Print' -> 'Add to cart' (router.refresh updates the nav badge, no full reload); the sign-in gate was removed so guests can add prints (parity with US-MFTF-11.2). DELETED the direct single-item path src/app/actions/print.ts (createPrintOrderAction + /checkout/{orderId} redirect); nothing else imported it. NOTE: the src/lib/print/order.ts createPrintOrder lib is RETAINED (it is the underlying order creator used by checkout/fulfillment and by US-MFTF-3.2/US-8.3 tests) \u2014 those tests stay green. US-15.4 INTERPRETATION: 'artwork listing is active' is treated as 'prints enabled and listing not retired' rather than requiring the original to be unsold, preserving the print-independent-of-original principle. US-15.4 TEST TOUCHED: added a describe asserting the page flow now produces a PRINT CartItem with the quoted snapshot and creates no Order; all prior US-15.4 createPrintOrder/fulfillPayment tests unchanged and green."
+      "notes": "11 new tests + a US-15.4 add-to-cart assertion. addToCartAction gains a PRINT branch (src/app/actions/cart.ts): validates prints enabled + SKU in the seller-curated printProducts set (already aspect-ratio filtered per US-15.6, so membership IS the aspect-ratio check) + listing not ARCHIVED/CANCELLED. REVISED post-review (price-source fix): selection.quotedUnitPrice now snapshots the SELLER's printProducts[].price — the exact price the buyer saw on the artwork page — so the cart price matches the product page. The earlier live-Prodigi-quote approach was wrong: the Prodigi /quotes figure is a fulfilment COST, not the buyer's retail price; surfacing it made the cart show a different number than the page. src/lib/print/quote.ts + its MSW /quotes handler were removed (the authoritative cost re-quote/margin check belongs to checkout, MFTF-12, not buyer display). addItem now takes an optional dedupeSelection so identical prints dedupe on {prodigiSku,attributes} ignoring the volatile quotedUnitPrice. PrintOptionsSelector reworked: 'Order Print' -> 'Add to cart' (router.refresh updates the nav badge, no full reload); the sign-in gate was removed so guests can add prints (parity with US-MFTF-11.2). DELETED the direct single-item path src/app/actions/print.ts (createPrintOrderAction + /checkout/{orderId} redirect); nothing else imported it. NOTE: the src/lib/print/order.ts createPrintOrder lib is RETAINED (it is the underlying order creator used by checkout/fulfillment and by US-MFTF-3.2/US-8.3 tests) — those tests stay green. US-15.4 INTERPRETATION: 'artwork listing is active' is treated as 'prints enabled and listing not retired' rather than requiring the original to be unsold, preserving the print-independent-of-original principle. US-15.4 TEST TOUCHED: added a describe asserting the page flow now produces a PRINT CartItem with the quoted snapshot and creates no Order; all prior US-15.4 createPrintOrder/fulfillPayment tests unchanged and green."
     },
     {
       "id": "US-MFTF-11.4",
@@ -1782,7 +1786,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-16",
       "testPassedCommit": "pending",
-      "notes": "14 tests (7 node + 7 jsdom). /cart server page at src/app/(main)/cart/page.tsx (force-dynamic; reads the visitor's cart via resolveCartForRead). getCartView (src/lib/cart/cart.ts) projects normalized line items: APPAREL title/retailPrice/thumbnail (grid variant, primary-first, referenced-mockup fallback) + 'colorId \u00b7 sizeLabel' summary (no mode branching); PRINT artwork title/grid thumbnail + quotedUnitPrice snapshot + 'Material \u00b7 Size' summary derived from the Prodigi SKU; subtotal + total itemCount. CartContents (client) renders rows with a quantity stepper (decrease disabled at qty 1), remove control, line totals, subtotal, 'shipping/tax at checkout' note, and 'Proceed to checkout' -> /checkout; mutations call updateCartItemAction/removeCartItemAction then router.refresh() (badge + totals stay in sync, no full reload). Empty state extracted to CartEmpty (links /shop + /browse). updateCartItemAction/removeCartItemAction enforce ownership via findOwnedItem against the visitor's resolved cart (foreign-cart manipulation rejected; quantity < 1 rejected; no-cart rejected). Added a /checkout placeholder page (404-safe 'coming soon'); the per-order /checkout/[orderId] route for originals/auctions is unrelated and untouched."
+      "notes": "14 tests (7 node + 7 jsdom). /cart server page at src/app/(main)/cart/page.tsx (force-dynamic; reads the visitor's cart via resolveCartForRead). getCartView (src/lib/cart/cart.ts) projects normalized line items: APPAREL title/retailPrice/thumbnail (grid variant, primary-first, referenced-mockup fallback) + 'colorId · sizeLabel' summary (no mode branching); PRINT artwork title/grid thumbnail + quotedUnitPrice snapshot + 'Material · Size' summary derived from the Prodigi SKU; subtotal + total itemCount. CartContents (client) renders rows with a quantity stepper (decrease disabled at qty 1), remove control, line totals, subtotal, 'shipping/tax at checkout' note, and 'Proceed to checkout' -> /checkout; mutations call updateCartItemAction/removeCartItemAction then router.refresh() (badge + totals stay in sync, no full reload). Empty state extracted to CartEmpty (links /shop + /browse). updateCartItemAction/removeCartItemAction enforce ownership via findOwnedItem against the visitor's resolved cart (foreign-cart manipulation rejected; quantity < 1 rejected; no-cart rejected). Added a /checkout placeholder page (404-safe 'coming soon'); the per-order /checkout/[orderId] route for originals/auctions is unrelated and untouched."
     },
     {
       "id": "US-MFTF-11.5",
@@ -1793,7 +1797,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-16",
       "testPassedCommit": "pending",
-      "notes": "6 tests (core merge + wiring). mergeGuestCartIntoUser(guestToken, userId) in src/lib/cart/cart.ts: union of items, summing quantities on identical (itemKind, listing ref, dedupe identity) by reusing addItem (so prints merge on SKU+attributes, ignoring the volatile quotedUnitPrice, exactly like add-to-cart); then deletes the guest cart row. Idempotent \u2014 replay finds no guest cart and is a no-op. WIRING DECISION (deviates from the plan's 'merge inside signIn/signUpAction before redirect'): merge runs in the NextAuth events.signIn callback (src/auth.ts) instead, because the AC says merge on a SUCCESSFUL login \u2014 events.signIn fires only after authorize() succeeds, so a wrong-password attempt never pollutes a victim's cart, and it covers BOTH credential login and signup (signUpAction calls signIn) with one hook, leaving the BUG-6-tuned redirect:true flow untouched. mergeGuestCartOnAuth(userId) lives in src/lib/cart/merge.ts (imports cookies+cart, NOT @/auth, to avoid an import cycle with auth.ts); reads the guest cookie, merges, clears the cookie. The event is best-effort (try/catch) so a cart failure never breaks auth. No change needed to signInAction/signUpAction."
+      "notes": "6 tests (core merge + wiring). mergeGuestCartIntoUser(guestToken, userId) in src/lib/cart/cart.ts: union of items, summing quantities on identical (itemKind, listing ref, dedupe identity) by reusing addItem (so prints merge on SKU+attributes, ignoring the volatile quotedUnitPrice, exactly like add-to-cart); then deletes the guest cart row. Idempotent — replay finds no guest cart and is a no-op. WIRING DECISION (deviates from the plan's 'merge inside signIn/signUpAction before redirect'): merge runs in the NextAuth events.signIn callback (src/auth.ts) instead, because the AC says merge on a SUCCESSFUL login — events.signIn fires only after authorize() succeeds, so a wrong-password attempt never pollutes a victim's cart, and it covers BOTH credential login and signup (signUpAction calls signIn) with one hook, leaving the BUG-6-tuned redirect:true flow untouched. mergeGuestCartOnAuth(userId) lives in src/lib/cart/merge.ts (imports cookies+cart, NOT @/auth, to avoid an import cycle with auth.ts); reads the guest cookie, merges, clears the cookie. The event is best-effort (try/catch) so a cart failure never breaks auth. No change needed to signInAction/signUpAction."
     },
     {
       "id": "US-MFTF-11.6",
@@ -1804,7 +1808,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-16",
       "testPassedCommit": "pending",
-      "notes": "5 tests. cleanupStaleGuestCarts (src/lib/cart/cleanup.ts) bulk-deletes carts with guestToken set AND updatedAt < now-30d in a single deleteMany (no per-row loop; cascades CartItem) and never matches user carts (guestToken null). Route GET /api/cron/cleanup-carts mirrors the close-auctions Bearer CRON_SECRET guard (401 on missing/wrong token, 200 + {deleted} on success). vercel.json schedules it daily at '0 3 * * *' \u2014 Hobby-compatible (daily-or-slower); deliberately NOT sub-daily (that is CHORE-1 / Pro). Tests backdate Cart.updatedAt via raw SQL (it is @updatedAt-managed) and assert only the 31-day guest cart is removed while a 29-day guest cart and a 400-day USER cart survive."
+      "notes": "5 tests. cleanupStaleGuestCarts (src/lib/cart/cleanup.ts) bulk-deletes carts with guestToken set AND updatedAt < now-30d in a single deleteMany (no per-row loop; cascades CartItem) and never matches user carts (guestToken null). Route GET /api/cron/cleanup-carts mirrors the close-auctions Bearer CRON_SECRET guard (401 on missing/wrong token, 200 + {deleted} on success). vercel.json schedules it daily at '0 3 * * *' — Hobby-compatible (daily-or-slower); deliberately NOT sub-daily (that is CHORE-1 / Pro). Tests backdate Cart.updatedAt via raw SQL (it is @updatedAt-managed) and assert only the 31-day guest cart is removed while a 29-day guest cart and a 400-day USER cart survive."
     },
     {
       "id": "US-MFTF-12.1",
@@ -1815,7 +1819,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-17",
       "testPassedCommit": "pending",
-      "notes": "FulfillmentProvider is now an abstract class (was an interface) with a concrete fulfill() template method (validateJob \u2192 createProviderOrder \u2192 confirmProviderOrder) and new abstract quoteShipping()/checkFulfillmentStatus(); two-step confirm is a default-no-op hook Teemill overrides. Prodigi/Teemill extend it; the new MFTF-12 methods are stubbed (filled in 12.3/12.5/12.6). Factory returns base-class-typed instances; per-providerKey routing deferred to 12.3 (still routes by listingType). A subclass omitting any abstract method fails tsc \u2014 verified by a @ts-expect-error type-level fixture. Touches Passed US-MFTF-3.1\u20133.3: their test files were re-run green unchanged (51 tests across mftf-3 + 12.1). createFulfillmentOrder narrowed to Pick<FulfillmentProvider,'name'|'createOrder'> so Epic 14 US-14.8 structural mocks stay valid."
+      "notes": "FulfillmentProvider is now an abstract class (was an interface) with a concrete fulfill() template method (validateJob → createProviderOrder → confirmProviderOrder) and new abstract quoteShipping()/checkFulfillmentStatus(); two-step confirm is a default-no-op hook Teemill overrides. Prodigi/Teemill extend it; the new MFTF-12 methods are stubbed (filled in 12.3/12.5/12.6). Factory returns base-class-typed instances; per-providerKey routing deferred to 12.3 (still routes by listingType). A subclass omitting any abstract method fails tsc — verified by a @ts-expect-error type-level fixture. Touches Passed US-MFTF-3.1–3.3: their test files were re-run green unchanged (51 tests across mftf-3 + 12.1). createFulfillmentOrder narrowed to Pick<FulfillmentProvider,'name'|'createOrder'> so Epic 14 US-14.8 structural mocks stay valid."
     },
     {
       "id": "US-MFTF-12.2",
@@ -1837,7 +1841,7 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-17",
       "testPassedCommit": "pending",
-      "notes": "Implemented + green against MSW (14 tests). createCheckoutAction re-validates each cart item server-side (designed: ACTIVE + offered colour/size + current retailPrice; referenced: ACTIVE + cached variant present & isOrderable + LIVE stock re-read via Teemill GET /catalog/products > 0 + current USD retailPrice; print: listing ACTIVE + availableForPrint + SKU present + current seller price), removes stale items with human-readable reasons, deletes them from the cart, flags print price drift, and pauses (summary.status='changed') for re-confirm. Groups kept items by resolved provider key (ProductType.fulfillmentProvider designed / ApparelListing.providerKey referenced / prodigi prints) and quotes shipping per group in parallel (10s budget) via provider.quoteShipping() \u2014 Teemill step-1 POST /orders (no confirm), Prodigi POST /quotes. Teemill GBP shipping is converted to USD via getExchangeRate (the single FX point, shipping only; item base never converted) per founder decision 2026-06-17. /checkout page requires auth (redirect w/ callbackUrl); collects address before payment (founder decision). HELD at non-Passed (Option B, founder decision 2026-06-17) pending a live Teemill proofing order to confirm: Open Q#7 (stable 'standard' shippingMethodId), Open Q#3 (rate limits \u2014 currently live stock re-read per referenced item, cached-snapshot fallback on failure), and whether an unconfirmed POST /orders ever expires/bills. All marked // UNVERIFIED in code. No live API calls in tests (MSW only). Stripe session + the 'Proceed to payment' wiring land in 12.4. The Option-B status string is registered in the US-9.6 VALID_STATUSES set and the /admin/tracker badge config (shared by 12.6). PASSED 2026-06-17: calculate-shipping is live-confirmed end-to-end against the real Teemill + Prodigi APIs (Teemill POST /orders step-1 quote with selectable methods; Prodigi /quotes with size/colour attributes + 'front' print area). Repeated live quotes create unconfirmed Teemill orders without any charge (the charge is at confirm, which is 12.5), so the unconfirmed-POST-/orders concern is resolved and Open Q#7 shipping-method shape is confirmed. Promoted from Option B to Passed. LIVE FIX (2026-06-17): first real Teemill call returned 400 on 'calculate shipping' \u2014 the quote request sent an empty contactInformation.email, which Teemill rejects. Fixed: the quote now sends teemillDefaultContact() (valid email, overridable via TEEMILL_CONTACT_EMAIL/PHONE; the buyer's real email is used at fulfillment). Also: teemillError() now captures Teemill's {message} body into the thrown error + server log (was discarded), and createCheckoutAction/createCartCheckoutSessionAction return a friendly {error} instead of throwing so the buyer sees a message. Confirms one of the // UNVERIFIED items (email required); the rest still need a proofing order. FOLLOW-UP (2026-06-17): live retry returned 400 'The contact information.email field is invalid' \u2014 the placeholder email was itself rejected (Teemill validates the address). Fixed properly by threading the authenticated buyer's real email into the quote (quoteShipping gained an optional QuoteContact; planCheckout/buildCheckoutSummary pass it; the actions pass session user.email; teemillDefaultContact remains only as a last-resort fallback). Fulfillment already used the buyer email. FOLLOW-UP 2 (2026-06-17): live mixed-cart (tee + print) surfaced two more 400s. (a) Teemill still 400'd 'email invalid' because the session lacked user.email so it fell back to the bogus placeholder domain; the contact fallback now reads DROPSHIPPING_CONTACT_EMAIL (the founder's single dropshipper-contact env var; TEEMILL_CONTACT_* kept as back-compat). (b) Prodigi /quotes 400'd because items omitted assets \u2014 fixed by sending attributes:{} + assets:[{printArea:'default'}] per item, and Prodigi's error body is now captured too. Regression tests assert the Prodigi quote sends assets and a Teemill 400 surfaces as {error}. FOLLOW-UP 3 (2026-06-17): Teemill quote parsed to $0 (suspected field-path mismatch vs the // UNVERIFIED shipping-methods shape, not a real free option). Hardened the parser: extractShippingAmount() tries totalPrice/price/cost/amount paths and returns null when none found (vs a genuine 0), and the raw response is logged whenever the amount is unresolved or DROPSHIPPING_DEBUG is set \u2014 to confirm the live shape before fixing the path. Awaiting a pasted raw response to finalize. RESOLVED (Open Q#7, live 2026-06-17): the raw response confirmed our parse path (totalPrice.amount) is correct \u2014 the \u00a30 is GENUINE: on the wholesale Orders API shipping is bundled into the item cost (item totalPrice 15.63 GBP; order-level shippingPrice 0.00), so availableShippingMethods all return 0.00. Also confirmed: method ids are PER-ORDER UUIDs (no stable 'standard'), names are carrier services ('Spring Tracked'/'Store Collect'/'Spring USA'), and the whole response is GBP-only (no way to request USD \u2014 buyer total stays USD via our retail; the GBP wholesale incl. shipping is the deferred margin-watch concern). Code updated: chooseTeemillShippingMethod() excludes in-store 'Store Collect' and picks the cheapest shippable method; the method NAME is stored at quote time and re-resolved to the per-order id at confirm. Remaining for 12.3 'Passed': confirm an unconfirmed POST /orders doesn't expire/bill (still needs a real proofing order). ENHANCEMENT (founder-directed 2026-06-17): buyer-selectable shipping methods per shipment (extends 12.3/12.4 beyond their original 'default/standard method' + 'one shipping line per group' ACs \u2014 flag for a spec-session update of the Cart & Checkout Model). quoteShipping now returns options[] (deliverable only \u2014 in-store collect excluded); Prodigi omits shippingMethod so /quotes returns every service tier in one call (Budget/Standard/Express/Overnight); plan/summary carry per-group options (USD), cheapest pre-selected; CheckoutClient renders radios per shipment with a live total; the choice (keyed by shipment index, matched by stable method NAME) flows through createCartCheckoutSessionAction \u2192 planCheckout \u2192 the FulfillmentOrder.shippingMethod/cost and the Stripe shipping line. Tests: provider options (Teemill excl. collect; Prodigi multi-tier), summary exposes tiers, and the chosen tier persists to the FulfillmentOrder + order total."
+      "notes": "Implemented + green against MSW (14 tests). createCheckoutAction re-validates each cart item server-side (designed: ACTIVE + offered colour/size + current retailPrice; referenced: ACTIVE + cached variant present & isOrderable + LIVE stock re-read via Teemill GET /catalog/products > 0 + current USD retailPrice; print: listing ACTIVE + availableForPrint + SKU present + current seller price), removes stale items with human-readable reasons, deletes them from the cart, flags print price drift, and pauses (summary.status='changed') for re-confirm. Groups kept items by resolved provider key (ProductType.fulfillmentProvider designed / ApparelListing.providerKey referenced / prodigi prints) and quotes shipping per group in parallel (10s budget) via provider.quoteShipping() — Teemill step-1 POST /orders (no confirm), Prodigi POST /quotes. Teemill GBP shipping is converted to USD via getExchangeRate (the single FX point, shipping only; item base never converted) per founder decision 2026-06-17. /checkout page requires auth (redirect w/ callbackUrl); collects address before payment (founder decision). HELD at non-Passed (Option B, founder decision 2026-06-17) pending a live Teemill proofing order to confirm: Open Q#7 (stable 'standard' shippingMethodId), Open Q#3 (rate limits — currently live stock re-read per referenced item, cached-snapshot fallback on failure), and whether an unconfirmed POST /orders ever expires/bills. All marked // UNVERIFIED in code. No live API calls in tests (MSW only). Stripe session + the 'Proceed to payment' wiring land in 12.4. The Option-B status string is registered in the US-9.6 VALID_STATUSES set and the /admin/tracker badge config (shared by 12.6). PASSED 2026-06-17: calculate-shipping is live-confirmed end-to-end against the real Teemill + Prodigi APIs (Teemill POST /orders step-1 quote with selectable methods; Prodigi /quotes with size/colour attributes + 'front' print area). Repeated live quotes create unconfirmed Teemill orders without any charge (the charge is at confirm, which is 12.5), so the unconfirmed-POST-/orders concern is resolved and Open Q#7 shipping-method shape is confirmed. Promoted from Option B to Passed. LIVE FIX (2026-06-17): first real Teemill call returned 400 on 'calculate shipping' — the quote request sent an empty contactInformation.email, which Teemill rejects. Fixed: the quote now sends teemillDefaultContact() (valid email, overridable via TEEMILL_CONTACT_EMAIL/PHONE; the buyer's real email is used at fulfillment). Also: teemillError() now captures Teemill's {message} body into the thrown error + server log (was discarded), and createCheckoutAction/createCartCheckoutSessionAction return a friendly {error} instead of throwing so the buyer sees a message. Confirms one of the // UNVERIFIED items (email required); the rest still need a proofing order. FOLLOW-UP (2026-06-17): live retry returned 400 'The contact information.email field is invalid' — the placeholder email was itself rejected (Teemill validates the address). Fixed properly by threading the authenticated buyer's real email into the quote (quoteShipping gained an optional QuoteContact; planCheckout/buildCheckoutSummary pass it; the actions pass session user.email; teemillDefaultContact remains only as a last-resort fallback). Fulfillment already used the buyer email. FOLLOW-UP 2 (2026-06-17): live mixed-cart (tee + print) surfaced two more 400s. (a) Teemill still 400'd 'email invalid' because the session lacked user.email so it fell back to the bogus placeholder domain; the contact fallback now reads DROPSHIPPING_CONTACT_EMAIL (the founder's single dropshipper-contact env var; TEEMILL_CONTACT_* kept as back-compat). (b) Prodigi /quotes 400'd because items omitted assets — fixed by sending attributes:{} + assets:[{printArea:'default'}] per item, and Prodigi's error body is now captured too. Regression tests assert the Prodigi quote sends assets and a Teemill 400 surfaces as {error}. FOLLOW-UP 3 (2026-06-17): Teemill quote parsed to $0 (suspected field-path mismatch vs the // UNVERIFIED shipping-methods shape, not a real free option). Hardened the parser: extractShippingAmount() tries totalPrice/price/cost/amount paths and returns null when none found (vs a genuine 0), and the raw response is logged whenever the amount is unresolved or DROPSHIPPING_DEBUG is set — to confirm the live shape before fixing the path. Awaiting a pasted raw response to finalize. RESOLVED (Open Q#7, live 2026-06-17): the raw response confirmed our parse path (totalPrice.amount) is correct — the £0 is GENUINE: on the wholesale Orders API shipping is bundled into the item cost (item totalPrice 15.63 GBP; order-level shippingPrice 0.00), so availableShippingMethods all return 0.00. Also confirmed: method ids are PER-ORDER UUIDs (no stable 'standard'), names are carrier services ('Spring Tracked'/'Store Collect'/'Spring USA'), and the whole response is GBP-only (no way to request USD — buyer total stays USD via our retail; the GBP wholesale incl. shipping is the deferred margin-watch concern). Code updated: chooseTeemillShippingMethod() excludes in-store 'Store Collect' and picks the cheapest shippable method; the method NAME is stored at quote time and re-resolved to the per-order id at confirm. Remaining for 12.3 'Passed': confirm an unconfirmed POST /orders doesn't expire/bill (still needs a real proofing order). ENHANCEMENT (founder-directed 2026-06-17): buyer-selectable shipping methods per shipment (extends 12.3/12.4 beyond their original 'default/standard method' + 'one shipping line per group' ACs — flag for a spec-session update of the Cart & Checkout Model). quoteShipping now returns options[] (deliverable only — in-store collect excluded); Prodigi omits shippingMethod so /quotes returns every service tier in one call (Budget/Standard/Express/Overnight); plan/summary carry per-group options (USD), cheapest pre-selected; CheckoutClient renders radios per shipment with a live total; the choice (keyed by shipment index, matched by stable method NAME) flows through createCartCheckoutSessionAction → planCheckout → the FulfillmentOrder.shippingMethod/cost and the Stripe shipping line. Tests: provider options (Teemill excl. collect; Prodigi multi-tier), summary exposes tiers, and the chosen tier persists to the FulfillmentOrder + order total."
     },
     {
       "id": "US-MFTF-12.4",
@@ -1848,29 +1852,29 @@
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-17",
       "testPassedCommit": "pending",
-      "notes": "createCartCheckout builds one embedded Stripe session (Stripe Tax on via automatic_tax) with one line per cart item + one 'Shipment N \u2014 shipping' line per provider group (no provider names), after creating Order(listingType=CART, PENDING) + OrderItem rows (unitPrice captured) + per-provider FulfillmentOrder rows (PENDING, quoted shippingMethod/cost) in a transaction. Added CART to OrderListingType (cart orders leave single-FKs null; legacy if-chains have fallbacks; db push both DBs). Refactored checkout into plan.ts (planCheckout \u2014 internal grouping w/ provider keys + quote items) + summary.ts (summarizePlan/buildCheckoutSummary \u2014 buyer-facing, strips provider identity). createCartCheckoutSessionAction returns requiresConfirmation when the cart changed and !confirmed (no order created), else clientSecret. Webhook checkout.session.completed: runFulfillment CART branch marks PAID + Transaction + clears the buyer's cart (clearUserCart) + confirmation email; idempotent; fan-out is 12.5. CheckoutClient wires embedded payment (CartPaymentForm); minimal /orders/[orderId]/confirmation page (enriched in 12.6). Epic 21/14 regression green. DEVIATION (founder decision 2026-06-17, reaffirmed): the 'legacy single-item flows unchanged' criterion was intentionally relaxed \u2014 address-before-payment was retrofitted to the original/auction buy-now flow IN THIS BRANCH. Single-item checkout is now unified on /orders/[orderId]/fulfill which collects the shipping address BEFORE showing the Stripe payment step (needsShipping=!shippingConfirmed precedes needsPayment=shippingConfirmed&&!isPaid); /checkout/[orderId] forwards there (buy-now still redirects to /checkout/ so Epic 15 stays green); confirmShippingAction already supported PENDING orders so its tests are unchanged. Epic 14/15/21/22 regression green. NOTE: originals are founder-shipped (no dropshipper), so they have no POD shipping cost to capture; the destination-shipping-capture goal is met by the cart flow, so this retrofit is UX-consistency only for originals (shipping stays $0/manual). LIVE FIX (2026-06-17): 'Proceed to checkout' failed because every shipment emitted a Stripe line item including \u00a30/$0 ones (real Teemill shipping is free/bundled) and Stripe rejects a $0 unit_amount line \u2014 a path the MSW-stubbed Stripe tests never exercised (they used non-zero shipping). Extracted buildCartLineItems(plan) (exported, unit-tested) which omits shipping lines with cost \u2264 0; item lines unchanged. Also shippingErrorMessage now surfaces the real error in non-production so checkout failures aren't masked by the friendly message. TAX DEFERRED (2026-06-17): the live session then 400'd on Stripe automatic_tax ('prices do not have a tax behavior set') \u2014 that's full Stripe Tax setup (per-price tax_behavior + product tax categories + tax registration), i.e. Epic 5 work. Per founder, deferred: automatic_tax is now gated off (STRIPE_TAX_ENABLED, default false) so checkout completes with no tax line (Order.taxAmount stays 0); the original 12.4 AC 'Stripe Tax on' is superseded pending Epic 5. Founder requested bumping Epic 5 up epicOrder.sequence \u2014 done 2026-06-17 at founder's explicit instruction. EMBEDDED UI MODE: this stack's Stripe (apiVersion \u2026dahlia) names the embedded checkout UiMode 'embedded_page' (not 'embedded'; 'hosted_page' replaces 'hosted') \u2014 it's a valid literal here, so the `as any` cast was dropped. RESOLVED (2026-06-17): the full buyer path works in Stripe TEST mode \u2014 cart \u2192 calculate shipping \u2192 select per-shipment methods \u2192 embedded Stripe payment \u2192 /orders/[id]/confirmation. Diagnostic confirmed ui_mode 'embedded_page', status 'open', hasClientSecret true, 3 line items, $72.60. The earlier generic 'Something went wrong' (no client error) was a Stripe publishable/secret key mode-or-account mismatch in the local env, NOT a code defect; resolved once both keys were the same account + test mode. The session diagnostic log is retained, gated on DROPSHIPPING_DEBUG. BADGE FIX (2026-06-17): after checkout the cart emptied but the nav cart badge kept the old count until the next navigation \u2014 the layout's Nav (getCartCountForRequest) renders BEFORE the confirmation page's resolveSessionFulfillment clears the cart. Added <RefreshOnMount/> (a one-time router.refresh) to the confirmation page when the order is PAID, so the server Nav re-reads the now-empty cart and the badge updates immediately. jsdom test covers it. EMAIL FIX (2026-06-17): cart orders were sent the LEGACY single-item confirmation (sendPurchaseConfirmation) \u2192 showed 'Artwork', no item list, and totals that didn't add up (shipping line missing). Added sendCartPurchaseConfirmation: enumerated items with thumbnails + per-line totals, a Shipping line (sum of FulfillmentOrder.shippingCost, or 'Free'), correct subtotal+shipping+tax=total, and a label-formatted multi-line shipping address; no provider names; links to /buyer/orders/[id]. Webhook CART branch now calls it; tests assert items/thumbnails, the shipping line + math, and the multi-line address."
+      "notes": "createCartCheckout builds one embedded Stripe session (Stripe Tax on via automatic_tax) with one line per cart item + one 'Shipment N — shipping' line per provider group (no provider names), after creating Order(listingType=CART, PENDING) + OrderItem rows (unitPrice captured) + per-provider FulfillmentOrder rows (PENDING, quoted shippingMethod/cost) in a transaction. Added CART to OrderListingType (cart orders leave single-FKs null; legacy if-chains have fallbacks; db push both DBs). Refactored checkout into plan.ts (planCheckout — internal grouping w/ provider keys + quote items) + summary.ts (summarizePlan/buildCheckoutSummary — buyer-facing, strips provider identity). createCartCheckoutSessionAction returns requiresConfirmation when the cart changed and !confirmed (no order created), else clientSecret. Webhook checkout.session.completed: runFulfillment CART branch marks PAID + Transaction + clears the buyer's cart (clearUserCart) + confirmation email; idempotent; fan-out is 12.5. CheckoutClient wires embedded payment (CartPaymentForm); minimal /orders/[orderId]/confirmation page (enriched in 12.6). Epic 21/14 regression green. DEVIATION (founder decision 2026-06-17, reaffirmed): the 'legacy single-item flows unchanged' criterion was intentionally relaxed — address-before-payment was retrofitted to the original/auction buy-now flow IN THIS BRANCH. Single-item checkout is now unified on /orders/[orderId]/fulfill which collects the shipping address BEFORE showing the Stripe payment step (needsShipping=!shippingConfirmed precedes needsPayment=shippingConfirmed&&!isPaid); /checkout/[orderId] forwards there (buy-now still redirects to /checkout/ so Epic 15 stays green); confirmShippingAction already supported PENDING orders so its tests are unchanged. Epic 14/15/21/22 regression green. NOTE: originals are founder-shipped (no dropshipper), so they have no POD shipping cost to capture; the destination-shipping-capture goal is met by the cart flow, so this retrofit is UX-consistency only for originals (shipping stays $0/manual). LIVE FIX (2026-06-17): 'Proceed to checkout' failed because every shipment emitted a Stripe line item including £0/$0 ones (real Teemill shipping is free/bundled) and Stripe rejects a $0 unit_amount line — a path the MSW-stubbed Stripe tests never exercised (they used non-zero shipping). Extracted buildCartLineItems(plan) (exported, unit-tested) which omits shipping lines with cost ≤ 0; item lines unchanged. Also shippingErrorMessage now surfaces the real error in non-production so checkout failures aren't masked by the friendly message. TAX DEFERRED (2026-06-17): the live session then 400'd on Stripe automatic_tax ('prices do not have a tax behavior set') — that's full Stripe Tax setup (per-price tax_behavior + product tax categories + tax registration), i.e. Epic 5 work. Per founder, deferred: automatic_tax is now gated off (STRIPE_TAX_ENABLED, default false) so checkout completes with no tax line (Order.taxAmount stays 0); the original 12.4 AC 'Stripe Tax on' is superseded pending Epic 5. Founder requested bumping Epic 5 up epicOrder.sequence — done 2026-06-17 at founder's explicit instruction. EMBEDDED UI MODE: this stack's Stripe (apiVersion …dahlia) names the embedded checkout UiMode 'embedded_page' (not 'embedded'; 'hosted_page' replaces 'hosted') — it's a valid literal here, so the `as any` cast was dropped. RESOLVED (2026-06-17): the full buyer path works in Stripe TEST mode — cart → calculate shipping → select per-shipment methods → embedded Stripe payment → /orders/[id]/confirmation. Diagnostic confirmed ui_mode 'embedded_page', status 'open', hasClientSecret true, 3 line items, $72.60. The earlier generic 'Something went wrong' (no client error) was a Stripe publishable/secret key mode-or-account mismatch in the local env, NOT a code defect; resolved once both keys were the same account + test mode. The session diagnostic log is retained, gated on DROPSHIPPING_DEBUG. BADGE FIX (2026-06-17): after checkout the cart emptied but the nav cart badge kept the old count until the next navigation — the layout's Nav (getCartCountForRequest) renders BEFORE the confirmation page's resolveSessionFulfillment clears the cart. Added <RefreshOnMount/> (a one-time router.refresh) to the confirmation page when the order is PAID, so the server Nav re-reads the now-empty cart and the badge updates immediately. jsdom test covers it. EMAIL FIX (2026-06-17): cart orders were sent the LEGACY single-item confirmation (sendPurchaseConfirmation) → showed 'Artwork', no item list, and totals that didn't add up (shipping line missing). Added sendCartPurchaseConfirmation: enumerated items with thumbnails + per-line totals, a Shipping line (sum of FulfillmentOrder.shippingCost, or 'Free'), correct subtotal+shipping+tax=total, and a label-formatted multi-line shipping address; no provider names; links to /buyer/orders/[id]. Webhook CART branch now calls it; tests assert items/thumbnails, the shipping line + math, and the multi-line address."
     },
     {
       "id": "US-MFTF-12.5",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "Post-Payment Fulfillment Fan-Out",
-      "status": "Tests Passing \u2014 pending live confirmation",
+      "status": "Tests Passing — pending live confirmation",
       "testWrittenDate": "2026-06-17",
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-17",
       "testPassedCommit": "pending",
-      "notes": "On PAID, the webhook CART branch calls dispatchOrderFulfillment(orderId) which dispatches each FulfillmentOrder through provider.fulfill() (the 12.1 template). Implemented the fulfill() steps: Prodigi createProviderOrder (multi-item POST /orders; single-step, default no-op confirm); Teemill two-step createProviderOrder (POST /orders) + confirmProviderOrder (POST /orders/{id}/confirm with the quoted shippingMethodId \u2014 // UNVERIFIED 'standard', Open Q#7). Per-shipment FAILURE ISOLATION: any error sets that FulfillmentOrder FAILED + notes and does not throw, so siblings proceed. IDEMPOTENT per FulfillmentOrder: skipped once providerOrderId is set (no duplicate provider orders on webhook replay). Admin retry: retryFulfillmentAction (admin-only) + a 'Failed shipments' section with a Retry button on /admin/fulfillment (US-14.5 page). Job items resolve referenced variantRef from the cached ReferencedVariant by colour+size, designed apparel to providerSkuBase, prints to prodigiSku + printSourceImageUrl. Legacy single-item PRINT webhook path left as-is (cart prints now route through the abstraction). MSW: Teemill POST /orders/:id/confirm + GET /orders/:ref added globally. MFTF-3 provider tests re-run green. DOWNGRADED to 'Tests Passing \u2014 pending live confirmation' (2026-06-17, founder): actually SUBMITTING an order \u2014 Teemill POST /orders \u2192 /confirm \u2014 charges real money, so the founder is intentionally not running it live yet; live order placement (incl. the designed\u2192Prodigi order with the design asset, fanout buildJobItems) is therefore unverified against the real APIs. Logic is fully green vs MSW; flip to Passed after a real proofing order confirms the two-step confirm + the Prodigi designed order succeed. PLAN (founder, 2026-06-17): live confirmation is intentionally deferred \u2014 a live Teemill order costs real money, so the founders will combine it with their FIRST design-proof order (the proof print doubles as the live integration test). Until that order is placed and observed, 12.5 stays at this status. Everything is green vs MSW and the cart\u2192checkout\u2192payment path is live-verified in Stripe test mode."
+      "notes": "On PAID, the webhook CART branch calls dispatchOrderFulfillment(orderId) which dispatches each FulfillmentOrder through provider.fulfill() (the 12.1 template). Implemented the fulfill() steps: Prodigi createProviderOrder (multi-item POST /orders; single-step, default no-op confirm); Teemill two-step createProviderOrder (POST /orders) + confirmProviderOrder (POST /orders/{id}/confirm with the quoted shippingMethodId — // UNVERIFIED 'standard', Open Q#7). Per-shipment FAILURE ISOLATION: any error sets that FulfillmentOrder FAILED + notes and does not throw, so siblings proceed. IDEMPOTENT per FulfillmentOrder: skipped once providerOrderId is set (no duplicate provider orders on webhook replay). Admin retry: retryFulfillmentAction (admin-only) + a 'Failed shipments' section with a Retry button on /admin/fulfillment (US-14.5 page). Job items resolve referenced variantRef from the cached ReferencedVariant by colour+size, designed apparel to providerSkuBase, prints to prodigiSku + printSourceImageUrl. Legacy single-item PRINT webhook path left as-is (cart prints now route through the abstraction). MSW: Teemill POST /orders/:id/confirm + GET /orders/:ref added globally. MFTF-3 provider tests re-run green. DOWNGRADED to 'Tests Passing — pending live confirmation' (2026-06-17, founder): actually SUBMITTING an order — Teemill POST /orders → /confirm — charges real money, so the founder is intentionally not running it live yet; live order placement (incl. the designed→Prodigi order with the design asset, fanout buildJobItems) is therefore unverified against the real APIs. Logic is fully green vs MSW; flip to Passed after a real proofing order confirms the two-step confirm + the Prodigi designed order succeed. PLAN (founder, 2026-06-17): live confirmation is intentionally deferred — a live Teemill order costs real money, so the founders will combine it with their FIRST design-proof order (the proof print doubles as the live integration test). Until that order is placed and observed, 12.5 stays at this status. Everything is green vs MSW and the cart→checkout→payment path is live-verified in Stripe test mode."
     },
     {
       "id": "US-MFTF-12.6",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "Buyer Order View with Per-Shipment Status",
-      "status": "Tests Passing \u2014 pending live confirmation",
+      "status": "Tests Passing — pending live confirmation",
       "testWrittenDate": "2026-06-17",
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-17",
       "testPassedCommit": "pending",
-      "notes": "Implemented + green against MSW (8 tests incl. a jsdom component test). getOrderShipmentsView groups a cart order's items into 'Shipment N of M' with per-shipment status + tracking and NEVER exposes provider names; OrderShipments component renders it on the confirmation page and the Epic 22 order detail page (CART branch). aggregateOrderStatus \u2192 order history shows 'Processing' until all shipments SHIPPED then 'Shipped' (getBuyerOrders CART branch). checkFulfillmentStatus() on the provider abstraction: Prodigi reads shipments[].tracking over its order GET (same data its webhook carries); Teemill polls GET /orders/{orderRef}. checkAndSyncShipments (daily cron /api/cron/teemill-shipments, schedule 0 6 * * *, Hobby-compatible, CRON_SECRET) marks dispatched shipments SHIPPED + tracking/carrier and sends a per-shipment MailerSend email (sendShipmentShippedEmail \u2014 only that shipment's items; identical path for poll vs webhook); idempotent (only CONFIRMED+providerOrderId are polled). HELD at non-Passed (Option B, founder decision): Open Q#2 \u2014 Teemill webhook support unconfirmed, so shipment status is polling with a '// TODO: replace Teemill polling with webhook once payload shape is confirmed live' marker and the tracking field paths / dispatched-status value marked // UNVERIFIED; needs a live proofing order before Passed. No live API calls in tests (MSW only). PLAN (founder, 2026-06-17): same as 12.5 \u2014 shipment-status/polling + the per-shipment SHIPPED email can only be observed after a real order exists, so this is deferred to the founders' first Teemill design-proof order (a live order costs money, so it doubles as a proof print). Buyer order views + aggregate status are verifiable in test mode today; the SHIPPED transition + tracking + email await that first live order."
+      "notes": "Implemented + green against MSW (8 tests incl. a jsdom component test). getOrderShipmentsView groups a cart order's items into 'Shipment N of M' with per-shipment status + tracking and NEVER exposes provider names; OrderShipments component renders it on the confirmation page and the Epic 22 order detail page (CART branch). aggregateOrderStatus → order history shows 'Processing' until all shipments SHIPPED then 'Shipped' (getBuyerOrders CART branch). checkFulfillmentStatus() on the provider abstraction: Prodigi reads shipments[].tracking over its order GET (same data its webhook carries); Teemill polls GET /orders/{orderRef}. checkAndSyncShipments (daily cron /api/cron/teemill-shipments, schedule 0 6 * * *, Hobby-compatible, CRON_SECRET) marks dispatched shipments SHIPPED + tracking/carrier and sends a per-shipment MailerSend email (sendShipmentShippedEmail — only that shipment's items; identical path for poll vs webhook); idempotent (only CONFIRMED+providerOrderId are polled). HELD at non-Passed (Option B, founder decision): Open Q#2 — Teemill webhook support unconfirmed, so shipment status is polling with a '// TODO: replace Teemill polling with webhook once payload shape is confirmed live' marker and the tracking field paths / dispatched-status value marked // UNVERIFIED; needs a live proofing order before Passed. No live API calls in tests (MSW only). PLAN (founder, 2026-06-17): same as 12.5 — shipment-status/polling + the per-shipment SHIPPED email can only be observed after a real order exists, so this is deferred to the founders' first Teemill design-proof order (a live order costs money, so it doubles as a proof print). Buyer order views + aggregate status are verifiable in test mode today; the SHIPPED transition + tracking + email await that first live order."
     },
     {
       "id": "US-MFTF-8.1",
@@ -1881,7 +1885,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Deferred \u2014 NOT blocked (CHORE-17 spike resolved). Moot for Teemill: live verification (2026-06-12) confirmed Teemill serves per-colour mockups via /catalog/products (images[].variantIds), cached at ingest by US-MFTF-13.2. Nothing to generate. Retained for history."
+      "notes": "Deferred — NOT blocked (CHORE-17 spike resolved). Moot for Teemill: live verification (2026-06-12) confirmed Teemill serves per-colour mockups via /catalog/products (images[].variantIds), cached at ingest by US-MFTF-13.2. Nothing to generate. Retained for history."
     },
     {
       "id": "US-MFTF-8.2",
@@ -1892,7 +1896,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Deferred \u2014 NOT blocked (spike resolved). Residual 'accept/discard mockups' concern survives only for designed-mode (Prodigi) and is captured as a deferred Open Question in project_description.md, not scoped here. Retained for history."
+      "notes": "Deferred — NOT blocked (spike resolved). Residual 'accept/discard mockups' concern survives only for designed-mode (Prodigi) and is captured as a deferred Open Question in project_description.md, not scoped here. Retained for history."
     },
     {
       "id": "US-MFTF-9.1",
@@ -2002,7 +2006,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Human task (with a small code component). Remove or disable the under-construction route guard added in CHORE-15. Confirm the homepage and /shop are publicly accessible. This is the final step \u2014 all other US-MFTF-10.x items should be complete before this one."
+      "notes": "Human task (with a small code component). Remove or disable the under-construction route guard added in CHORE-15. Confirm the homepage and /shop are publicly accessible. This is the final step — all other US-MFTF-10.x items should be complete before this one."
     },
     {
       "id": "US-MFTF-14.1",
@@ -2018,13 +2022,13 @@
     {
       "id": "US-MFTF-14.2",
       "epic": "Epic MFTF-14: Provider Webhooks, Status Mapping & Lifecycle Emails",
-      "title": "Provider Status \u2192 Canonical FulfillmentOrder Mapping",
+      "title": "Provider Status → Canonical FulfillmentOrder Mapping",
       "status": "Passed",
       "testWrittenDate": "2026-06-19",
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-19",
       "testPassedCommit": "pending",
-      "notes": "Canonical mapping + the single FulfillmentOrder transition seam (src/lib/fulfillment/status.ts). SCHEMA: extended the FulfillmentOrderStatus enum to align with the canonical FulfillmentStatus set (US-MFTF-3.1) \u2014 added PRINTING, DELIVERED, CANCELLED (CONFIRMED reused as the PROCESSING base, FAILED == canonical ERROR); no new enum, no new table. prisma generate + db push to main + test DBs. Each provider owns its raw\u2192canonical mapping inside the subclass so vocabulary never leaks: ProdigiFulfillmentProvider.checkFulfillmentStatus maps order.status.stage (mapProdigiStageToStatus: InProgress\u2192PROCESSING, Complete/Dispatched\u2192SHIPPED, Cancelled\u2192CANCELLED, unknown\u2192null+warn); TeemillFulfillmentProvider via mapTeemillStatusToCanonical (// UNVERIFIED raw values). FulfillmentStatusResult gained an optional canonical `status` field (additive; 12.1 fake unaffected). applyFulfillmentTransition(foId, canonical, {tracking}) is the ONE seam both paths use: canonicalToDbStatus reconciles; MONOTONIC forward guard (PENDING<SUBMITTED<CONFIRMED<PRINTING<SHIPPED<DELIVERED) \u2014 a stale earlier-status callback is logged + ignored (no regress); CANCELLED/FAILED are always-allowed terminal transitions from any non-terminal state and absorbing once terminal; unknown provider status = null = logged parse warning, NO transition. SHIPPED persists tracking+carrier. IDEMPOTENT via a guarded updateMany keyed on current status (count===1 = this call transitioned), reusing the 12.5 'row status is the guard' guarantee. checkAndSyncShipments (12.6 polling cron) refactored to feed this seam (now flows PRINTING/DELIVERED too, not just SHIPPED) \u2014 see founder flag below. aggregateOrderStatus treats DELIVERED as shipped-or-beyond; OrderShipments badge config gained PRINTING/DELIVERED/CANCELLED. 10 tests (canonical reconciliation, per-provider mapping incl. unknown\u2192null+warn, monotonic no-regress, idempotency, terminal rules, Prodigi-poll + Teemill-poll drive identical transitions). FOUNDER FLAG: this rewired the US-MFTF-12.6 reconciliation code path \u2014 12.6 status intentionally NOT changed (stays 'Tests Passing \u2014 pending live confirmation'; its flip is the founder's call after the live proofing order)."
+      "notes": "Canonical mapping + the single FulfillmentOrder transition seam (src/lib/fulfillment/status.ts). SCHEMA: extended the FulfillmentOrderStatus enum to align with the canonical FulfillmentStatus set (US-MFTF-3.1) — added PRINTING, DELIVERED, CANCELLED (CONFIRMED reused as the PROCESSING base, FAILED == canonical ERROR); no new enum, no new table. prisma generate + db push to main + test DBs. Each provider owns its raw→canonical mapping inside the subclass so vocabulary never leaks: ProdigiFulfillmentProvider.checkFulfillmentStatus maps order.status.stage (mapProdigiStageToStatus: InProgress→PROCESSING, Complete/Dispatched→SHIPPED, Cancelled→CANCELLED, unknown→null+warn); TeemillFulfillmentProvider via mapTeemillStatusToCanonical (// UNVERIFIED raw values). FulfillmentStatusResult gained an optional canonical `status` field (additive; 12.1 fake unaffected). applyFulfillmentTransition(foId, canonical, {tracking}) is the ONE seam both paths use: canonicalToDbStatus reconciles; MONOTONIC forward guard (PENDING<SUBMITTED<CONFIRMED<PRINTING<SHIPPED<DELIVERED) — a stale earlier-status callback is logged + ignored (no regress); CANCELLED/FAILED are always-allowed terminal transitions from any non-terminal state and absorbing once terminal; unknown provider status = null = logged parse warning, NO transition. SHIPPED persists tracking+carrier. IDEMPOTENT via a guarded updateMany keyed on current status (count===1 = this call transitioned), reusing the 12.5 'row status is the guard' guarantee. checkAndSyncShipments (12.6 polling cron) refactored to feed this seam (now flows PRINTING/DELIVERED too, not just SHIPPED) — see founder flag below. aggregateOrderStatus treats DELIVERED as shipped-or-beyond; OrderShipments badge config gained PRINTING/DELIVERED/CANCELLED. 10 tests (canonical reconciliation, per-provider mapping incl. unknown→null+warn, monotonic no-regress, idempotency, terminal rules, Prodigi-poll + Teemill-poll drive identical transitions). FOUNDER FLAG: this rewired the US-MFTF-12.6 reconciliation code path — 12.6 status intentionally NOT changed (stays 'Tests Passing — pending live confirmation'; its flip is the founder's call after the live proofing order)."
     },
     {
       "id": "US-MFTF-14.3",
@@ -2122,6 +2126,83 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null
+    },
+    {
+      "id": "US-MFTF-PF.1",
+      "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
+      "title": "Print Framing & Mockup Schema + Backfill",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Per-aspect PrintFraming (artworkId, aspectRatio, wrap CanvasWrap? nullable — non-null canvas only, croppedUrl, normalized cropX/Y/W/H floats, needsReframe bool default false, @@unique([artworkId, aspectRatio])) + per-size PrintSizeMockup (artworkId, sizeSku, mockupUrl, @@unique([artworkId, sizeSku])) + CanvasWrap enum (BLACK|IMAGE_WRAP|MIRROR_WRAP|WHITE — all four modeled, picker constrains later). Helpers: getFramingForArtwork, upsertFraming, getMockupsForArtwork, upsertSizeMockup, getPrintReadiness (derived per-listing missing-aspect/missing-size sets — gate predicate for PF.4). STRICT one-time backfill: any ACTIVE prints-enabled listing missing a crop for any offered aspect OR a mockup for any offered size flips to ARCHIVED + needsReframe set. prisma db push both DBs; resetDatabase() updated for both models in cascade order. TOUCHES Passed US-15.2 (additive — re-run, toggle/config round-trip unchanged)."
+    },
+    {
+      "id": "US-MFTF-PF.2",
+      "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
+      "title": "Seller Wrap Selection (Canvas Aspects)",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Wrap picker per offered CANVAS aspect on listing edit; paper aspects show no wrap control. Picker offers exactly {MirrorWrap, Black, White}; ImageWrap NOT offered (founder: makes sizing weird). Default MirrorWrap. Server action persists to PrintFraming.wrap; validates against allowed set server-side (enum still contains IMAGE_WRAP so guard is app-layer); rejects ImageWrap/unknown. Wrap and crop persist independently (gate in PF.4 requires both). jsdom-testable, no interactive canvas. REVISES Passed US-15.7 — its 'canvas SKUs use White wrap for cost calc' criterion: seller-facing default is now MirrorWrap; static cost table may keep a fixed reference wrap internally but must not assert White as the user default. Update US-15.7 tracker note."
+    },
+    {
+      "id": "US-MFTF-PF.3",
+      "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
+      "title": "Interactive Framing Tool (Canvas + Paper)",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Draggable/resizable crop box locked to each offered print aspect (canvas AND paper) over source art; bounded to image, min-size, no-invert. 'Confirm framing' posts normalized rect {x,y,w,h} in [0..1] → server crops via existing Sharp pipeline (src/lib/artworks/variants.ts) to exact aspect → Blob → PrintFraming.croppedUrl + rect + clears needsReframe. Re-open pre-loads stored rect. Produced crop aspect matches SKU aspect within tolerance (fill/fit a non-issue on the face). SPLIT rendering from drag math — geometry (aspect-lock, clamp, rect↔pixel) unit-tested without DOM; drag/resize interaction gets a Playwright spec. Hardest UI in the epic."
+    },
+    {
+      "id": "US-MFTF-PF.4",
+      "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
+      "title": "Publish/Activation Gate + Reframe Alerts",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "HARD GATE: prints-enabled listing cannot go/stay ACTIVE unless every offered aspect has croppedUrl with needsReframe=false AND every offered size has a PrintSizeMockup.mockupUrl (predicate from getPrintReadiness, PF.1). Incomplete activate → itemized error (which aspects need framing, which sizes need a mockup), not generic. Edit page banner/badge enumerates unframed/needsReframe aspects + missing-mockup sizes with fix links. Art-replace (Decision E): clears all PrintFraming crops for the artwork + sets needsReframe=true + banner reflects immediately. Disabling print toggle removes gate; re-enabling re-applies. Server-side enforcement is source of truth; banner advisory. TOUCHES listing status transition used by US-15.2 / seller dashboard (toggleApparelListingStatusAction or artwork equivalent) — re-run; gate is an added precondition, non-print transitions unchanged."
+    },
+    {
+      "id": "US-MFTF-PF.5",
+      "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
+      "title": "Fan-Out Sends Wrap + Cropped Asset to Prodigi",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "src/lib/fulfillment/providers/prodigi.ts: createProviderOrder for CANVAS line item sends framed croppedUrl + attributes:{wrap} from PrintFraming.wrap; PAPER line item sends croppedUrl + NO wrap. Remove hardcoded sizing:'fillPrintArea' for framed items (exact-aspect asset makes face sizing moot); document sizing value sent in docs/prodigi-api-notes.md. quoteShipping includes wrap for canvas (parity with order body). DEFENSIVE fallback: no PrintFraming row (unreachable for ACTIVE post-gate) → original source image + MirrorWrap (canvas), logged as anomaly. No change to apparel fan-out. MSW asserts EXACT order + quote bodies. Re-run US-MFTF-3.2 + US-8.3 order suites (apparel/other paths unchanged)."
+    },
+    {
+      "id": "US-MFTF-PF.6",
+      "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
+      "title": "Seller Per-Size Mockup Upload",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Listing edit page: per-offered-size mockup upload control. Stored in Blob → PrintSizeMockup.mockupUrl keyed [artworkId, sizeSku]. Buyer-facing DISPLAY assets, NOT sent to Prodigi (distinct from production croppedUrl); not run through the diagonal original-protection watermark (promotional previews, not at-home-printable originals — confirm watermark mode vs variants.ts corner/diagonal options, likely none or corner). Replace overwrites; remove clears row and (per PF.4 gate) blocks activation until re-supplied. Validates file type/size per existing upload pipeline. REVISES Passed US-15.4 — buyer-preview source changes Prodigi-generated → seller-uploaded; order/checkout path unchanged."
+    },
+    {
+      "id": "US-MFTF-PF.7",
+      "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
+      "title": "Buyer Sees Per-Size Mockup on Print Purchase",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Listing detail print section: selecting a print size displays that size's PrintSizeMockup.mockupUrl; updates on size change. Missing mockup (unreachable for ACTIVE post-gate) → fall back to listing primary image, not a broken image; treated as defensive not expected. NO Prodigi mockup-API call for buyer display (seller-uploaded asset is source of truth). REVISES Passed US-15.4 buyer-facing surface — re-run its buyer-display assertions against new source."
     }
   ],
   "commits": [
@@ -2130,7 +2211,7 @@
       "date": "2026-05-09",
       "author": "Claude Sonnet 4.6",
       "storiesAffected": [],
-      "message": "chore: project scaffolding \u2014 Next.js, Prisma schema, test infrastructure",
+      "message": "chore: project scaffolding — Next.js, Prisma schema, test infrastructure",
       "trackerUpdated": true
     },
     {
@@ -2142,7 +2223,7 @@
         "US-6.2",
         "US-6.3"
       ],
-      "message": "feat(epic-6): implement US-6.1 through US-6.3 \u2014 user accounts and authentication",
+      "message": "feat(epic-6): implement US-6.1 through US-6.3 — user accounts and authentication",
       "trackerUpdated": true
     },
     {
@@ -2157,7 +2238,7 @@
         "US-1.5",
         "US-1.6"
       ],
-      "message": "feat(epic-1): implement US-1.1 through US-1.6 \u2014 artwork listing and product page",
+      "message": "feat(epic-1): implement US-1.1 through US-1.6 — artwork listing and product page",
       "trackerUpdated": true
     },
     {
@@ -2173,7 +2254,7 @@
       "date": "2026-05-09",
       "author": "Claude Sonnet 4.6",
       "storiesAffected": [],
-      "message": "feat: navigable site shell \u2014 homepage, nav, footer, stub pages for browse/sign-in/sign-up/sell",
+      "message": "feat: navigable site shell — homepage, nav, footer, stub pages for browse/sign-in/sign-up/sell",
       "trackerUpdated": true
     },
     {
@@ -2186,7 +2267,7 @@
         "US-7.3",
         "US-7.4"
       ],
-      "message": "feat(epic-7): implement US-7.1 through US-7.4 \u2014 browsing, filtering, search, unified display",
+      "message": "feat(epic-7): implement US-7.1 through US-7.4 — browsing, filtering, search, unified display",
       "trackerUpdated": true
     },
     {
@@ -2199,7 +2280,7 @@
         "US-2.3",
         "US-2.4"
       ],
-      "message": "feat(epic-2): implement US-2.1 through US-2.4 \u2014 fixed-price sales",
+      "message": "feat(epic-2): implement US-2.1 through US-2.4 — fixed-price sales",
       "trackerUpdated": true
     },
     {
@@ -2224,7 +2305,7 @@
         "US-4.4",
         "US-4.5"
       ],
-      "message": "feat(epic-4): implement US-4.1\u20134.5 \u2014 payments via Stripe",
+      "message": "feat(epic-4): implement US-4.1–4.5 — payments via Stripe",
       "trackerUpdated": true
     },
     {
@@ -2242,7 +2323,7 @@
       "storiesAffected": [
         "US-13.1"
       ],
-      "message": "feat(epic-13): implement US-13.1 \u2014 admin dashboard homepage",
+      "message": "feat(epic-13): implement US-13.1 — admin dashboard homepage",
       "trackerUpdated": true
     },
     {
@@ -2252,7 +2333,7 @@
       "storiesAffected": [
         "US-13.2"
       ],
-      "message": "feat(epic-13): implement US-13.2 \u2014 seller dashboard homepage",
+      "message": "feat(epic-13): implement US-13.2 — seller dashboard homepage",
       "trackerUpdated": true
     },
     {
@@ -2262,7 +2343,7 @@
       "storiesAffected": [
         "US-13.3"
       ],
-      "message": "feat(epic-13): implement US-13.3 \u2014 buyer dashboard homepage",
+      "message": "feat(epic-13): implement US-13.3 — buyer dashboard homepage",
       "trackerUpdated": true
     },
     {
@@ -2299,7 +2380,7 @@
       "storiesAffected": [
         "US-10.1"
       ],
-      "message": "feat(epic-10): implement US-10.1 \u2014 browse gallery layout",
+      "message": "feat(epic-10): implement US-10.1 — browse gallery layout",
       "trackerUpdated": true
     },
     {
@@ -2309,7 +2390,7 @@
       "storiesAffected": [
         "US-10.2"
       ],
-      "message": "feat(epic-10): implement US-10.2 \u2014 listing detail page",
+      "message": "feat(epic-10): implement US-10.2 — listing detail page",
       "trackerUpdated": true
     },
     {
@@ -2324,7 +2405,7 @@
       "storiesAffected": [
         "US-15.1"
       ],
-      "message": "feat(epic-15): implement US-15.1 \u2014 buy from listing page (fixed-price)",
+      "message": "feat(epic-15): implement US-15.1 — buy from listing page (fixed-price)",
       "trackerUpdated": true
     },
     {
@@ -2334,7 +2415,7 @@
       "storiesAffected": [
         "US-15.2"
       ],
-      "message": "feat(epic-15): implement US-15.2 \u2014 print availability toggle on OriginalListing",
+      "message": "feat(epic-15): implement US-15.2 — print availability toggle on OriginalListing",
       "trackerUpdated": true
     },
     {
@@ -2344,7 +2425,7 @@
       "storiesAffected": [
         "US-15.3"
       ],
-      "message": "feat(epic-15): implement US-15.3 \u2014 prints page with filtered browse",
+      "message": "feat(epic-15): implement US-15.3 — prints page with filtered browse",
       "trackerUpdated": true
     },
     {
@@ -2354,7 +2435,7 @@
       "storiesAffected": [
         "US-15.4"
       ],
-      "message": "feat(epic-15): implement US-15.4 \u2014 order a print from listing page",
+      "message": "feat(epic-15): implement US-15.4 — order a print from listing page",
       "trackerUpdated": true
     },
     {
@@ -2367,7 +2448,7 @@
         "US-19.3",
         "US-19.4"
       ],
-      "message": "feat(epic-19): implement US-19.1-19.4 \u2014 artwork image lightbox & magnifier",
+      "message": "feat(epic-19): implement US-19.1-19.4 — artwork image lightbox & magnifier",
       "trackerUpdated": true
     },
     {
@@ -2428,7 +2509,7 @@
       "storiesAffected": [
         "US-20.1"
       ],
-      "message": "chore: add Epic 20 Mobile Usability \u2014 US-20.1 Mobile Navigation",
+      "message": "chore: add Epic 20 Mobile Usability — US-20.1 Mobile Navigation",
       "trackerUpdated": true
     },
     {
@@ -2453,7 +2534,7 @@
       "storiesAffected": [
         "US-20.1"
       ],
-      "message": "feat(mobile-menu): active page indicator (underline+glow) and CSS focus ring \u2014 28 tests pass",
+      "message": "feat(mobile-menu): active page indicator (underline+glow) and CSS focus ring — 28 tests pass",
       "trackerUpdated": true
     },
     {
@@ -2485,7 +2566,7 @@
         "US-21.1",
         "US-21.2"
       ],
-      "message": "feat(epic-21): implement US-21.1 and US-21.2 \u2014 Stripe Checkout Sessions & payment confirmation",
+      "message": "feat(epic-21): implement US-21.1 and US-21.2 — Stripe Checkout Sessions & payment confirmation",
       "trackerUpdated": true
     },
     {
@@ -2517,7 +2598,7 @@
       "storiesAffected": [
         "US-21.2"
       ],
-      "message": "feat(epic-21): reverse fulfillment flow \u2014 payment first, shipping after",
+      "message": "feat(epic-21): reverse fulfillment flow — payment first, shipping after",
       "trackerUpdated": true
     },
     {
@@ -2573,7 +2654,7 @@
         "US-22.3",
         "US-22.4"
       ],
-      "message": "feat(epic-22): implement US-22.1 through US-22.4 \u2014 buyer order history & order detail",
+      "message": "feat(epic-22): implement US-22.1 through US-22.4 — buyer order history & order detail",
       "trackerUpdated": true
     },
     {
@@ -2591,7 +2672,7 @@
       "date": "2026-06-03",
       "author": "Claude Sonnet 4.6",
       "storiesAffected": [],
-      "message": "chore(tracker): log BUG-1 \u2014 portrait images rotated/cropped in variant generation",
+      "message": "chore(tracker): log BUG-1 — portrait images rotated/cropped in variant generation",
       "trackerUpdated": true
     },
     {
@@ -2623,12 +2704,12 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-06-18T00:00:00.000Z",
+  "lastUpdated": "2026-06-21T00:00:00.000Z",
   "statusLegend": {
     "Not Started": "No test written yet.",
     "Test Written": "Failing test committed; implementation not yet passing.",
     "Passed": "Test passing; testPassedCommit + testPassedDate recorded.",
-    "Tests Passing \u2014 pending live confirmation": "Implementation complete and full local/MSW test suite passes, but a story-level acceptance criterion depends on a live external-API fact not yet verified (e.g. Teemill webhook payload). Not promotable to Passed until the live-confirmation flag in the story resolves.",
+    "Tests Passing — pending live confirmation": "Implementation complete and full local/MSW test suite passes, but a story-level acceptance criterion depends on a live external-API fact not yet verified (e.g. Teemill webhook payload). Not promotable to Passed until the live-confirmation flag in the story resolves.",
     "Deferred": "Intentionally not scheduled; not rejected.",
     "Dropped": "Superseded or cancelled; will not be implemented as written."
   }
