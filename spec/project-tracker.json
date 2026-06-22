@@ -1071,7 +1071,7 @@
       "testWrittenCommit": "0081968",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "d33ea7e",
-      "notes": "15 tests passing. PrintListing model dropped; availableForPrint/printSourceImageUrl/printProducts fields added to OriginalListing. updatePrintConfigAction validates seller ownership. All epic-7/8/10 tests updated for new schema. // EXTENDED by Epic MFTF-PF (2026-06-21): the print-config surface established here gains framing (per-aspect crop), canvas wrap, and per-size mockup steps (US-MFTF-PF.1–PF.6). Additive — the existing toggle/config round-trip must remain unchanged; re-run on PF implementation."
+      "notes": "15 tests passing. PrintListing model dropped; availableForPrint/printSourceImageUrl/printProducts fields added to OriginalListing. updatePrintConfigAction validates seller ownership. All epic-7/8/10 tests updated for new schema. // EXTENDED by Epic MFTF-PF (2026-06-21): the print-config surface established here gains framing (per-aspect crop), canvas wrap, and per-size mockup steps (US-MFTF-PF.1–PF.6). Additive — the existing toggle/config round-trip must remain unchanged; re-run on PF implementation. RE-RAN under US-MFTF-PF.1 (2026-06-21): green, 15 tests, round-trip unchanged (PrintFraming/PrintSizeMockup are additive sibling models)."
     },
     {
       "id": "US-15.3",
@@ -2131,12 +2131,12 @@
       "id": "US-MFTF-PF.1",
       "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
       "title": "Print Framing & Mockup Schema + Backfill",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Per-aspect PrintFraming (artworkId, aspectRatio, wrap CanvasWrap? nullable — non-null canvas only, croppedUrl, normalized cropX/Y/W/H floats, needsReframe bool default false, @@unique([artworkId, aspectRatio])) + per-size PrintSizeMockup (artworkId, sizeSku, mockupUrl, @@unique([artworkId, sizeSku])) + CanvasWrap enum (BLACK|IMAGE_WRAP|MIRROR_WRAP|WHITE — all four modeled, picker constrains later). Helpers: getFramingForArtwork, upsertFraming, getMockupsForArtwork, upsertSizeMockup, getPrintReadiness (derived per-listing missing-aspect/missing-size sets — gate predicate for PF.4). STRICT one-time backfill: any ACTIVE prints-enabled listing missing a crop for any offered aspect OR a mockup for any offered size flips to ARCHIVED + needsReframe set. prisma db push both DBs; resetDatabase() updated for both models in cascade order. TOUCHES Passed US-15.2 (additive — re-run, toggle/config round-trip unchanged)."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "Per-aspect PrintFraming (artworkId, aspectRatio, wrap CanvasWrap? nullable — non-null canvas only, croppedUrl, normalized cropX/Y/W/H floats, needsReframe bool default false, @@unique([artworkId, aspectRatio])) + per-size PrintSizeMockup (artworkId, sizeSku, mockupUrl, @@unique([artworkId, sizeSku])) + CanvasWrap enum (BLACK|IMAGE_WRAP|MIRROR_WRAP|WHITE — all four modeled, picker constrains later). Both models added to Artwork relations + resetDatabase() TRUNCATE list (before Artwork). DONE 2026-06-21: schema applied via prisma db push to BOTH DBs (test DB pushed via DATABASE_URL=$DATABASE_URL_TEST override since prisma 7.8 config reads datasource.url from env, not --url). New lib src/lib/print/framing.ts: pure helpers aspectRatioKey (gcd-reduce, e.g. 8x10→'4:5', shared by 16x20), isCanvasSku (-CAN- vs -FAP-), aspectForProduct (parse size label, fallback static catalog by sku), offeredAspects (distinct aspect, isCanvas=true if ANY canvas sku offers it — PrintFraming keyed by aspect only, so one 4:5 crop serves canvas+paper; wrap applies canvas-only at fanout), offeredSizes (distinct skus). CRUD: getFramingForArtwork/upsertFraming (upsert on artworkId_aspectRatio, partial fields), getMockupsForArtwork/upsertSizeMockup/removeSizeMockup (upsert on artworkId_sizeSku). getPrintReadiness(artworkId): reads OriginalListing by artworkId (prints attach 1:1 via OriginalListing→Artwork, so keying new models by artworkId is consistent — reconciled the spec's artworkId keying), returns enabled + offered/framed/missing aspects + offered/mocked/missing sizes + ready (true when disabled OR all aspects complete [croppedUrl & !needsReframe] AND all sizes mocked) — gate predicate for PF.4. STRICT one-time backfill backfillPrintFramingArchive(): ACTIVE prints-enabled listings whose readiness !ready flip to ARCHIVED + upsert needsReframe=true framing rows for each missing aspect; compliant/disabled untouched; idempotent. Test __tests__/print-framing/US-MFTF-PF.1-framing-mockup-schema.test.ts (21 tests: pure helpers, canvas/paper round-trip, both @@unique constraints, readiness mixed canvas+paper incl needsReframe-as-missing + disabled-N/A, backfill archive/needsReframe/missing-mockup/compliant-untouched/disabled-untouched). TOUCHED Passed US-15.2 — re-ran US-15.2 suite green (15 tests, additive schema only, toggle/config round-trip unchanged). tsc baseline still 16."
     },
     {
       "id": "US-MFTF-PF.2",
