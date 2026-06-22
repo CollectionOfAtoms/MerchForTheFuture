@@ -15,7 +15,7 @@ import {
   itemizePrintReadiness,
   invalidateFramingForArtwork,
 } from "@/lib/print/framing";
-import { generatePrintCrop } from "@/lib/artworks/variants";
+import { generatePrintCrop, generateWatermarkedMockup } from "@/lib/artworks/variants";
 
 type ActionResult = { error: string } | { success: true } | undefined;
 
@@ -385,9 +385,11 @@ export async function setCanvasWrapAction(
  * Persist a buyer-facing mockup for one offered print size (US-MFTF-PF.6). The image
  * is uploaded client-side to Blob (same pipeline as other listing images, which
  * validates type/size); this action validates ownership + that the size is offered and
- * writes `PrintSizeMockup.mockupUrl` keyed by `[artworkId, sizeSku]`. Mockups are
- * buyer DISPLAY assets only — never sent to Prodigi, and NOT watermarked (promotional
- * previews, not the at-home-printable original; confirmed mode: none).
+ * applies the small **corner** brand mark via the Sharp pipeline, and writes the
+ * watermarked result to `PrintSizeMockup.mockupUrl` keyed by `[artworkId, sizeSku]`.
+ * Mockups are buyer DISPLAY assets only — never sent to Prodigi; the corner mark gives
+ * brand identification without degrading the promotional image (never the diagonal
+ * original-protection overlay).
  */
 export async function setSizeMockupAction(
   listingId: string,
@@ -409,7 +411,18 @@ export async function setSizeMockupAction(
     : [];
   if (!products.some((p) => p.sku === sizeSku)) return { error: "That size is not offered by this listing." };
 
-  await upsertSizeMockup(listing.artworkId, sizeSku, mockupUrl);
+  let watermarkedUrl: string;
+  try {
+    watermarkedUrl = await generateWatermarkedMockup(
+      mockupUrl,
+      `print-mockups/${listing.artworkId}/${sizeSku.replace(/[^a-zA-Z0-9-]/g, "_")}`,
+    );
+  } catch (err) {
+    console.error("[setSizeMockupAction] mockup watermarking failed:", err);
+    return { error: "Could not process the mockup image. Please try again." };
+  }
+
+  await upsertSizeMockup(listing.artworkId, sizeSku, watermarkedUrl);
 
   revalidatePath(`/seller/listings/${listingId}/edit`);
   revalidatePath(`/artwork/${listing.artworkId}`);

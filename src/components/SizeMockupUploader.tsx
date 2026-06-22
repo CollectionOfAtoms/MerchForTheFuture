@@ -19,9 +19,9 @@ interface SizeMockupUploaderProps {
 /**
  * Per-size buyer-mockup upload on the listing edit page (US-MFTF-PF.6). One control
  * per offered print size: upload / replace / remove. The image is stored in Blob and
- * persisted to `PrintSizeMockup` keyed by `[artworkId, sizeSku]`. These are buyer
- * DISPLAY assets — never sent to Prodigi, and uploaded as-is (no watermark; they are
- * promotional previews, not the protected original).
+ * persisted to `PrintSizeMockup` keyed by `[artworkId, sizeSku]`. The server applies
+ * the small corner brand mark before storing. These are buyer DISPLAY assets — never
+ * sent to Prodigi (never the diagonal original-protection overlay).
  */
 export default function SizeMockupUploader({ listingId, sizes, initialMockups }: SizeMockupUploaderProps) {
   const [mockups, setMockups] = useState<Record<string, string>>(initialMockups);

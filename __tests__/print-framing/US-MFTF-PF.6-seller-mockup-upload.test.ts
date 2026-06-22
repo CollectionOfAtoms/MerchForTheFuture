@@ -8,6 +8,24 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
+// Mockups are watermarked (corner mark) server-side before persisting — mock the
+// Sharp pipeline + Blob so the stored URL is the watermarked output.
+const mockSharpInst = {
+  rotate: vi.fn().mockReturnThis(),
+  toColorspace: vi.fn().mockReturnThis(),
+  flatten: vi.fn().mockReturnThis(),
+  resize: vi.fn().mockReturnThis(),
+  composite: vi.fn().mockReturnThis(),
+  jpeg: vi.fn().mockReturnThis(),
+  toBuffer: vi.fn().mockResolvedValue(Buffer.from("watermarked")),
+  metadata: vi.fn().mockResolvedValue({ width: 1200, height: 1500 }),
+};
+vi.mock("sharp", () => ({ default: vi.fn(() => mockSharpInst) }));
+vi.mock("@vercel/blob", () => ({
+  put: vi.fn().mockImplementation(async (path: string) => ({ url: `https://blob.vercel.com/${path}` })),
+  del: vi.fn().mockResolvedValue(undefined),
+}));
+
 const { setSizeMockupAction, removeSizeMockupAction } = await import("@/app/actions/listings");
 const { getMockupsForArtwork, getPrintReadiness } = await import("@/lib/print/framing");
 const { auth } = await import("@/auth");
@@ -24,6 +42,16 @@ describe("US-MFTF-PF.6 — Seller Per-Size Mockup Upload (action)", () => {
 
   beforeEach(async () => {
     await resetDatabase();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mockSharpInst.rotate.mockClear().mockReturnThis();
+    mockSharpInst.toColorspace.mockClear().mockReturnThis();
+    mockSharpInst.flatten.mockClear().mockReturnThis();
+    mockSharpInst.resize.mockClear().mockReturnThis();
+    mockSharpInst.composite.mockClear().mockReturnThis();
+    mockSharpInst.jpeg.mockClear().mockReturnThis();
+    mockSharpInst.toBuffer.mockClear().mockResolvedValue(Buffer.from("watermarked"));
+    mockSharpInst.metadata.mockClear().mockResolvedValue({ width: 1200, height: 1500 });
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(100)) }) as never;
     const seller = await prisma.user.create({
       data: { email: "seller@test.com", name: "S", passwordHash: "x", roles: ["SELLER"] },
     });
@@ -59,13 +87,23 @@ describe("US-MFTF-PF.6 — Seller Per-Size Mockup Upload (action)", () => {
     vi.restoreAllMocks();
   });
 
-  it("persists a mockup URL verbatim (no watermark/variant processing) keyed by [artworkId, sizeSku]", async () => {
-    const url = "https://blob.vercel.com/print-mockups/x/GLOBAL-CAN-8X10.jpg";
-    const result = await setSizeMockupAction(listingId, "GLOBAL-CAN-8X10", url);
+  it("applies the corner brand mark and stores the watermarked output keyed by [artworkId, sizeSku]", async () => {
+    const result = await setSizeMockupAction(listingId, "GLOBAL-CAN-8X10", "https://blob.vercel.com/raw-upload.jpg");
     expect(result).toEqual({ success: true });
+
+    // Corner mark — composited SVG carries "MFTF" (not the diagonal "Merch for the Future").
+    expect(mockSharpInst.composite).toHaveBeenCalledOnce();
+    const svg = (mockSharpInst.composite.mock.calls[0][0] as Array<{ input: Buffer }>)[0].input.toString();
+    expect(svg).toContain("MFTF");
+    expect(svg).not.toContain("Merch for the Future");
+
     const mockups = await getMockupsForArtwork(artworkId);
     expect(mockups).toHaveLength(1);
-    expect(mockups[0].mockupUrl).toBe(url); // stored exactly as uploaded
+    // Stored URL is the watermarked Blob output (not the raw upload), scoped to artwork+size.
+    expect(mockups[0].mockupUrl).toContain("blob.vercel.com");
+    expect(mockups[0].mockupUrl).toContain("print-mockups");
+    expect(mockups[0].mockupUrl).toContain(artworkId);
+    expect(mockups[0].mockupUrl).not.toContain("raw-upload");
   });
 
   it("overwrites the prior mockup for the same size on replace", async () => {
@@ -73,7 +111,7 @@ describe("US-MFTF-PF.6 — Seller Per-Size Mockup Upload (action)", () => {
     await setSizeMockupAction(listingId, "GLOBAL-CAN-8X10", "https://blob/new.jpg");
     const mockups = await getMockupsForArtwork(artworkId);
     expect(mockups).toHaveLength(1);
-    expect(mockups[0].mockupUrl).toBe("https://blob/new.jpg");
+    expect(mockups[0].mockupUrl).toContain("blob.vercel.com"); // single watermarked row
   });
 
   it("removing a mockup clears the row and the PF.4 gate then reports it missing", async () => {
@@ -82,6 +120,13 @@ describe("US-MFTF-PF.6 — Seller Per-Size Mockup Upload (action)", () => {
     expect(await getMockupsForArtwork(artworkId)).toHaveLength(0);
     const readiness = await getPrintReadiness(artworkId);
     expect(readiness.missingSizes).toContain("GLOBAL-CAN-8X10");
+  });
+
+  it("returns an error (no crash) and stores nothing if watermarking fails", async () => {
+    mockSharpInst.toBuffer.mockRejectedValueOnce(new Error("sharp boom"));
+    const result = await setSizeMockupAction(listingId, "GLOBAL-CAN-8X10", "https://blob/a.jpg");
+    expect(result).toHaveProperty("error");
+    expect(await getMockupsForArtwork(artworkId)).toHaveLength(0);
   });
 
   it("rejects an empty / non-URL mockup value", async () => {

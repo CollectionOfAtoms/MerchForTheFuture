@@ -199,6 +199,42 @@ export async function generatePrintCrop(
   return blob.url;
 }
 
+/**
+ * Watermark a seller-uploaded buyer mockup with the small **corner** brand mark
+ * (US-MFTF-PF.6) and upload the result to Blob, returning the public URL. Uses the
+ * corner mark — never the diagonal original-protection overlay — because a mockup is a
+ * promotional preview, not the at-home-printable original; the corner mark gives brand
+ * identification without degrading the marketing image. Single output (not the 3-variant
+ * set). Mockups are buyer DISPLAY assets and are never sent to Prodigi.
+ */
+export async function generateWatermarkedMockup(
+  sourceUrl: string,
+  pathPrefix: string,
+): Promise<string> {
+  const sourceBuffer = await fetchImageBuffer(sourceUrl);
+  const normalizedBuffer = await sharp(sourceBuffer)
+    .rotate()
+    .toColorspace("srgb")
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
+    .toBuffer();
+  const resizedBuffer = await sharp(normalizedBuffer)
+    .resize({ width: 2400, height: 2400, fit: "inside", withoutEnlargement: true })
+    .toBuffer();
+  const { width: W = 2400, height: H = 2400 } = await sharp(resizedBuffer).metadata();
+  const watermarkSvg = buildCornerWatermarkSvg(W, H);
+  const outputBuffer = await sharp(resizedBuffer)
+    .composite([{ input: watermarkSvg, gravity: "center" }])
+    .jpeg({ quality: 85 })
+    .toBuffer();
+
+  const blob = await put(`${pathPrefix}-${Date.now()}.jpg`, outputBuffer, {
+    access: "public",
+    contentType: "image/jpeg",
+    token: BLOB_TOKEN,
+  });
+  return blob.url;
+}
+
 function buildWatermarkSvg(width: number, height: number): Buffer {
   const cx = Math.round(width / 2);
   const cy = Math.round(height / 2);
