@@ -5,9 +5,10 @@ import EditListingForm from "./EditListingForm";
 import PrintConfigForm from "@/components/PrintConfigForm";
 import PrintFramingPanel, { type FramingAspect } from "@/components/PrintFramingPanel";
 import PrintReadinessBanner from "@/components/PrintReadinessBanner";
+import SizeMockupUploader, { type MockupSize } from "@/components/SizeMockupUploader";
 import ListingStatusControls from "@/components/seller/ListingStatusControls";
 import { getPrintCatalog, parseArtworkDimensions, type CatalogProduct } from "@/lib/print/listing";
-import { getFramingForArtwork, getPrintReadiness, offeredAspects } from "@/lib/print/framing";
+import { getFramingForArtwork, getMockupsForArtwork, getPrintReadiness, offeredAspects, offeredSizes } from "@/lib/print/framing";
 import printCostsJson from "@/lib/print/costs.json";
 
 export default async function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
@@ -58,6 +59,11 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
   const sizeLabels: Record<string, string> = Object.fromEntries(
     printProductRows.map((p) => [p.sku, p.size ?? p.sku]),
   );
+  const mockupRows = listing.availableForPrint ? await getMockupsForArtwork(listing.artworkId) : [];
+  const initialMockups: Record<string, string> = Object.fromEntries(mockupRows.map((m) => [m.sizeSku, m.mockupUrl]));
+  const mockupSizes: MockupSize[] = listing.availableForPrint
+    ? offeredSizes(printProductRows).map((sku) => ({ sku, label: sizeLabels[sku] ?? sku }))
+    : [];
 
   const serialized = {
     ...listing,
@@ -118,6 +124,11 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
       {framingAspects.length > 0 && (
         <div className="mt-6" id="print-framing">
           <PrintFramingPanel listingId={listing.id} sourceUrl={printSourceUrl} aspects={framingAspects} />
+        </div>
+      )}
+      {mockupSizes.length > 0 && (
+        <div className="mt-6" id="print-mockups">
+          <SizeMockupUploader listingId={listing.id} sizes={mockupSizes} initialMockups={initialMockups} />
         </div>
       )}
     </div>

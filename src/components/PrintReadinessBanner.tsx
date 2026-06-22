@@ -47,7 +47,7 @@ export default function PrintReadinessBanner({ readiness, sizeLabels }: PrintRea
         {readiness.missingSizes.map((sku) => (
           <li key={`mockup-${sku}`}>
             Size <strong>{sizeLabels?.[sku] ?? sku}</strong> needs a buyer mockup —{" "}
-            <a href="#print-config" className="underline hover:no-underline">
+            <a href="#print-mockups" className="underline hover:no-underline">
               add one
             </a>
           </li>

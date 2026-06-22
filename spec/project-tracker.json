@@ -1093,7 +1093,7 @@
       "testWrittenCommit": "482856a",
       "testPassedDate": "2026-05-11",
       "testPassedCommit": "482856a",
-      "notes": "8 tests passing. createPrintOrderAction server action, PrintOptionsSelector client component, print section on detail page. fulfillPayment does not mark SOLD for PRINT orders. // REVISED by Epic MFTF-PF (2026-06-21): buyer-facing print preview source changes from Prodigi-generated mockups to seller-uploaded per-size mockups (PrintSizeMockup.mockupUrl, US-MFTF-PF.6/PF.7). Order/checkout/Stripe-Tax path unchanged. Re-run buyer-display assertions against the new source on PF implementation."
+      "notes": "8 tests passing. createPrintOrderAction server action, PrintOptionsSelector client component, print section on detail page. fulfillPayment does not mark SOLD for PRINT orders. // REVISED by Epic MFTF-PF (2026-06-21): buyer-facing print preview source changes from Prodigi-generated mockups to seller-uploaded per-size mockups (PrintSizeMockup.mockupUrl, US-MFTF-PF.6/PF.7). Order/checkout/Stripe-Tax path unchanged. Re-run buyer-display assertions against the new source on PF implementation. UNDER US-MFTF-PF.6 (2026-06-21): the seller upload side moved to PrintSizeMockup (model) + SizeMockupUploader; inline PrintConfigForm mockup removed. Order suite re-ran green (order/checkout path untouched). Buyer-display switch to the model is US-MFTF-PF.7."
     },
     {
       "id": "US-15.5",
@@ -2186,12 +2186,12 @@
       "id": "US-MFTF-PF.6",
       "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
       "title": "Seller Per-Size Mockup Upload",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Listing edit page: per-offered-size mockup upload control. Stored in Blob → PrintSizeMockup.mockupUrl keyed [artworkId, sizeSku]. Buyer-facing DISPLAY assets, NOT sent to Prodigi (distinct from production croppedUrl); not run through the diagonal original-protection watermark (promotional previews, not at-home-printable originals — confirm watermark mode vs variants.ts corner/diagonal options, likely none or corner). Replace overwrites; remove clears row and (per PF.4 gate) blocks activation until re-supplied. Validates file type/size per existing upload pipeline. REVISES Passed US-15.4 — buyer-preview source changes Prodigi-generated → seller-uploaded; order/checkout path unchanged."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "DONE 2026-06-21. Server actions setSizeMockupAction(listingId, sizeSku, mockupUrl) + removeSizeMockupAction(listingId, sizeSku) in actions/listings.ts: requireSeller+ownership, set validates mockupUrl is http(s) + sizeSku is an offered size (in printProducts) then upsertSizeMockup; remove → removeSizeMockup. Component src/components/SizeMockupUploader.tsx: one control per offered size (label + thumb/Replace/Remove or '+ Add mockup image'); uploads client-side via @vercel/blob/client upload() → /api/blob/upload (same pipeline that validates type/size; accept=image/jpeg,png,webp) then persists the returned URL via setSizeMockupAction; optimistic state. Wired into edit page as a 'Buyer mockups' section (id=print-mockups; PF.4 banner missing-mockup links now point here) fed by getMockupsForArtwork + offeredSizes. WATERMARK DECISION (was open in spec US-PF.6): mode = NONE — the mockup is stored exactly as uploaded (asserted in test), NOT run through variants.ts (neither diagonal nor corner). Rationale: these are seller-provided promotional previews (often already a styled product render), not the at-home-printable protected original; watermarking degrades marketing value; matches prior US-15.4 behavior. // FLAG TO FOUNDER: confirm NONE vs a subtle corner brand mark — trivial to switch to generateApparelImageVariants-style 'corner' if desired. MIGRATION: removed the now-duplicate inline per-SKU mockup upload from PrintConfigForm (SkuState/SavedProduct dropped mockupUrl; form no longer writes printProducts[].mockupUrl) — PrintSizeMockup is the single source of truth. Pre-existing inline mockups are NOT migrated (the PF.1 strict backfill archives non-compliant ACTIVE listings on deploy, so sellers re-supply via the new control — consistent with the gate). Tests: US-MFTF-PF.6-seller-mockup-upload.test.ts (node, 6: persists URL verbatim, replace overwrites, remove clears + gate reports missing, rejects empty/non-URL, rejects un-offered size, rejects non-owner set+remove) + US-MFTF-PF.6-mockup-uploader.test.tsx (jsdom, 3: one control/size, existing shows preview+Replace/Remove, Remove calls action + reverts to add state). REVISED Passed US-15.4 — see its note; re-ran US-15.4 order suite green (order/checkout path unchanged). tsc baseline 16."
     },
     {
       "id": "US-MFTF-PF.7",

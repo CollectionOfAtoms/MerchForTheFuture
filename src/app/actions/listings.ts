@@ -9,6 +9,8 @@ import {
   isSelectableWrap,
   offeredAspects,
   upsertFraming,
+  upsertSizeMockup,
+  removeSizeMockup,
   getPrintReadiness,
   itemizePrintReadiness,
   invalidateFramingForArtwork,
@@ -376,6 +378,58 @@ export async function setCanvasWrapAction(
   await upsertFraming(listing.artworkId, aspectRatio, { wrap });
 
   revalidatePath(`/seller/listings/${listingId}/edit`);
+  return { success: true };
+}
+
+/**
+ * Persist a buyer-facing mockup for one offered print size (US-MFTF-PF.6). The image
+ * is uploaded client-side to Blob (same pipeline as other listing images, which
+ * validates type/size); this action validates ownership + that the size is offered and
+ * writes `PrintSizeMockup.mockupUrl` keyed by `[artworkId, sizeSku]`. Mockups are
+ * buyer DISPLAY assets only — never sent to Prodigi, and NOT watermarked (promotional
+ * previews, not the at-home-printable original; confirmed mode: none).
+ */
+export async function setSizeMockupAction(
+  listingId: string,
+  sizeSku: string,
+  mockupUrl: string,
+): Promise<ActionResult> {
+  const sellerId = await requireSeller();
+
+  const listing = await prisma.originalListing.findUnique({
+    where: { id: listingId },
+    include: { artwork: true },
+  });
+  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+
+  if (!mockupUrl || !/^https?:\/\//.test(mockupUrl)) return { error: "A valid mockup image URL is required." };
+
+  const products = Array.isArray(listing.printProducts)
+    ? (listing.printProducts as { sku: string }[])
+    : [];
+  if (!products.some((p) => p.sku === sizeSku)) return { error: "That size is not offered by this listing." };
+
+  await upsertSizeMockup(listing.artworkId, sizeSku, mockupUrl);
+
+  revalidatePath(`/seller/listings/${listingId}/edit`);
+  revalidatePath(`/artwork/${listing.artworkId}`);
+  return { success: true };
+}
+
+/** Remove a size's buyer mockup (US-MFTF-PF.6); the PF.4 gate then blocks ACTIVE until re-supplied. */
+export async function removeSizeMockupAction(listingId: string, sizeSku: string): Promise<ActionResult> {
+  const sellerId = await requireSeller();
+
+  const listing = await prisma.originalListing.findUnique({
+    where: { id: listingId },
+    include: { artwork: true },
+  });
+  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+
+  await removeSizeMockup(listing.artworkId, sizeSku);
+
+  revalidatePath(`/seller/listings/${listingId}/edit`);
+  revalidatePath(`/artwork/${listing.artworkId}`);
   return { success: true };
 }
 
