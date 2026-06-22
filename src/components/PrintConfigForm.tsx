@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition } from "react";
 import { updatePrintConfigAction } from "@/app/actions/listings";
-import { filterByAspectRatio } from "@/lib/print/listing";
+import { filterByAspectRatioStrict } from "@/lib/print/listing";
 
 interface CatalogProduct {
   sku: string;
@@ -62,7 +62,7 @@ export default function PrintConfigForm({
   const [showAllSizes, setShowAllSizes] = useState(false);
 
   const matchingCatalog = useMemo(
-    () => filterByAspectRatio(catalog, artworkDimensions, savedSkus),
+    () => filterByAspectRatioStrict(catalog, artworkDimensions, savedSkus),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [catalog, artworkDimensions],
   );
@@ -188,6 +188,18 @@ export default function PrintConfigForm({
             </div>
             {catalog.length === 0 ? (
               <p className="text-sm text-stone-400">Could not load print catalog. Try refreshing the page.</p>
+            ) : displayCatalog.length === 0 ? (
+              <p className="text-sm text-stone-400">
+                No standard sizes match this piece&apos;s proportions. Use{" "}
+                <button
+                  type="button"
+                  onClick={() => setShowAllSizes(true)}
+                  className="font-medium text-stone-600 underline hover:text-stone-900 transition-colors"
+                >
+                  Show all sizes
+                </button>{" "}
+                to choose from the full catalog (you&apos;ll crop each one when framing).
+              </p>
             ) : (
               <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
                 {displayCatalog.map((item) => {
