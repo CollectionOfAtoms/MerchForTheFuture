@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { del } from "@vercel/blob";
 import { isSelectableWrap, offeredAspects, upsertFraming } from "@/lib/print/framing";
+import { generatePrintCrop } from "@/lib/artworks/variants";
 
 type ActionResult = { error: string } | { success: true } | undefined;
 
@@ -329,5 +330,66 @@ export async function setCanvasWrapAction(
   await upsertFraming(listing.artworkId, aspectRatio, { wrap });
 
   revalidatePath(`/seller/listings/${listingId}/edit`);
+  return { success: true };
+}
+
+/**
+ * Crop the print source to one offered aspect and persist it (US-MFTF-PF.3). Takes
+ * the normalized `[0..1]` rect from the framing tool, crops via the Sharp pipeline to
+ * the exact aspect, stores the result in Blob, and writes `PrintFraming.croppedUrl` +
+ * the rect, clearing `needsReframe` for that aspect. The cropped asset is the
+ * production file sent to Prodigi (US-MFTF-PF.5).
+ */
+export async function confirmFramingAction(
+  listingId: string,
+  aspectRatio: string,
+  rect: { x: number; y: number; w: number; h: number },
+): Promise<ActionResult> {
+  const sellerId = await requireSeller();
+
+  const listing = await prisma.originalListing.findUnique({
+    where: { id: listingId },
+    include: { artwork: true },
+  });
+  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+
+  const source = listing.printSourceImageUrl;
+  if (!source) return { error: "Set a print source image before framing." };
+
+  const products = Array.isArray(listing.printProducts)
+    ? (listing.printProducts as { sku: string; size?: string }[])
+    : [];
+  if (!offeredAspects(products).some((a) => a.aspectRatio === aspectRatio)) {
+    return { error: "That aspect is not offered by this listing." };
+  }
+
+  const within01 = (v: number) => Number.isFinite(v) && v >= 0 && v <= 1;
+  if (![rect.x, rect.y, rect.w, rect.h].every(within01) || rect.w <= 0 || rect.h <= 0) {
+    return { error: "Invalid crop region." };
+  }
+
+  let croppedUrl: string;
+  try {
+    croppedUrl = await generatePrintCrop(
+      source,
+      rect,
+      `print-crops/${listing.artworkId}/${aspectRatio.replace(":", "x")}`,
+    );
+  } catch (err) {
+    console.error("[confirmFramingAction] crop failed:", err);
+    return { error: "Could not generate the cropped image. Please try again." };
+  }
+
+  await upsertFraming(listing.artworkId, aspectRatio, {
+    croppedUrl,
+    cropX: rect.x,
+    cropY: rect.y,
+    cropW: rect.w,
+    cropH: rect.h,
+    needsReframe: false,
+  });
+
+  revalidatePath(`/seller/listings/${listingId}/edit`);
+  revalidatePath(`/artwork/${listing.artworkId}`);
   return { success: true };
 }

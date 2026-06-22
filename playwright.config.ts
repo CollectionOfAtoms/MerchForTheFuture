@@ -38,6 +38,14 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: "__tests__/e2e/.auth/buyer.json" },
+      testIgnore: /framing\.spec\.ts/, // seller-session spec runs in its own project
+      dependencies: ["setup"],
+    },
+    {
+      // Seller session for the listing-edit framing tool (US-MFTF-PF.3).
+      name: "chromium-seller",
+      use: { ...devices["Desktop Chrome"], storageState: "__tests__/e2e/.auth/seller.json" },
+      testMatch: /framing\.spec\.ts/,
       dependencies: ["setup"],
     },
   ],

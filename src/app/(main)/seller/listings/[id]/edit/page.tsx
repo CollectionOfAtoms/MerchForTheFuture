@@ -35,13 +35,24 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
     ? (listing.printProducts as { sku: string; size?: string }[])
     : [];
   const framingRows = listing.availableForPrint ? await getFramingForArtwork(listing.artworkId) : [];
-  const wrapByAspect = new Map(framingRows.map((f) => [f.aspectRatio, f.wrap]));
+  const framingByAspect = new Map(framingRows.map((f) => [f.aspectRatio, f]));
   const framingAspects: FramingAspect[] = listing.availableForPrint
-    ? offeredAspects(printProductRows).map((a) => ({
-        ...a,
-        wrap: wrapByAspect.get(a.aspectRatio) ?? null,
-      }))
+    ? offeredAspects(printProductRows).map((a) => {
+        const row = framingByAspect.get(a.aspectRatio);
+        const rect =
+          row?.cropX != null && row.cropY != null && row.cropW != null && row.cropH != null
+            ? { x: row.cropX, y: row.cropY, w: row.cropW, h: row.cropH }
+            : null;
+        return {
+          ...a,
+          wrap: row?.wrap ?? null,
+          croppedUrl: row?.croppedUrl ?? null,
+          needsReframe: row?.needsReframe ?? false,
+          rect,
+        };
+      })
     : [];
+  const printSourceUrl = listing.printSourceImageUrl ?? null;
 
   const serialized = {
     ...listing,
@@ -95,7 +106,7 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
       </div>
       {framingAspects.length > 0 && (
         <div className="mt-6">
-          <PrintFramingPanel listingId={listing.id} aspects={framingAspects} />
+          <PrintFramingPanel listingId={listing.id} sourceUrl={printSourceUrl} aspects={framingAspects} />
         </div>
       )}
     </div>
