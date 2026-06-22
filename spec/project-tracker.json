@@ -2197,12 +2197,12 @@
       "id": "US-MFTF-PF.7",
       "epic": "Epic MFTF-PF: Print Framing, Canvas Wrap & Seller Mockups",
       "title": "Buyer Sees Per-Size Mockup on Print Purchase",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Listing detail print section: selecting a print size displays that size's PrintSizeMockup.mockupUrl; updates on size change. Missing mockup (unreachable for ACTIVE post-gate) → fall back to listing primary image, not a broken image; treated as defensive not expected. NO Prodigi mockup-API call for buyer display (seller-uploaded asset is source of truth). REVISES Passed US-15.4 buyer-facing surface — re-run its buyer-display assertions against new source."
+      "status": "Passed",
+      "testWrittenDate": "2026-06-21",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-21",
+      "testPassedCommit": "pending",
+      "notes": "DONE 2026-06-21. PrintOptionsSelector now takes mockupsBySku (Record<sizeSku,url>) + fallbackImageUrl and shows previewUrl = mockupsBySku[selectedSku] ?? fallbackImageUrl (data-testid print-mockup-preview), swapping when the buyer changes size. Dropped the old printProducts[].mockupUrl prop path (now sourced from the PrintSizeMockup model). Artwork detail page (src/app/(main)/artwork/[id]/page.tsx) loads getMockupsForArtwork(artwork.id) when availableForPrint → mockupsBySku, and computes the listing primary image (isPrimary displayUrl/url, else first image) as the defensive fallback so the section never renders a broken image (fallback is defensive, not expected). NO network/Prodigi mockup-API call on the buyer page — the seller-uploaded asset is the source of truth (asserted: fetch not called on render/size-change). Test __tests__/print-framing/US-MFTF-PF.7-buyer-mockup-display.test.tsx (jsdom, 4: shows selected size's mockup, swaps on size change, falls back to primary image when a size lacks one, no fetch). REVISED Passed US-15.4 buyer surface — the buyer-display assertion now lives here (US-15.4 is a node order test, unaffected; re-ran green under PF.6). tsc baseline 16."
     }
   ],
   "commits": [

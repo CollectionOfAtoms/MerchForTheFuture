@@ -7,6 +7,7 @@ import OwnerUnlistedNotice from "@/components/seller/OwnerUnlistedNotice";
 import AuctionCountdown from "./AuctionCountdown";
 import PlaceBidForm from "@/components/PlaceBidForm";
 import PrintOptionsSelector from "@/components/PrintOptionsSelector";
+import { getMockupsForArtwork } from "@/lib/print/framing";
 import { auth } from "@/auth";
 import { initiateBuyNowAction } from "@/app/actions/checkout";
 
@@ -40,6 +41,17 @@ export default async function ArtworkDetailPage({ params }: PageProps) {
   const isAuction = orig?.saleType === "AUCTION";
   const isFixedPrice = orig?.saleType === "FIXED_PRICE";
   const isSeller = !!sessionUser?.id && sessionUser.id === artwork.sellerId;
+
+  // Seller-uploaded per-size buyer mockups (US-MFTF-PF.7); the listing's primary image
+  // is the defensive fallback when a size somehow lacks one.
+  const printMockups = orig?.availableForPrint ? await getMockupsForArtwork(artwork.id) : [];
+  const mockupsBySku = Object.fromEntries(printMockups.map((m) => [m.sizeSku, m.mockupUrl]));
+  const primaryImageUrl =
+    artwork.images.find((i) => i.isPrimary)?.displayUrl ??
+    artwork.images.find((i) => i.isPrimary)?.url ??
+    artwork.images[0]?.displayUrl ??
+    artwork.images[0]?.url ??
+    null;
 
   return (
     <>
@@ -221,7 +233,9 @@ export default async function ArtworkDetailPage({ params }: PageProps) {
               <h2 className="text-sm font-semibold text-stone-700">Prints Available</h2>
               <PrintOptionsSelector
                 listingId={orig.listingId}
-                printProducts={orig.printProducts as { sku: string; size: string; price: number; mockupUrl?: string | null }[]}
+                printProducts={orig.printProducts as { sku: string; size: string; price: number }[]}
+                mockupsBySku={mockupsBySku}
+                fallbackImageUrl={primaryImageUrl}
               />
             </section>
           )}

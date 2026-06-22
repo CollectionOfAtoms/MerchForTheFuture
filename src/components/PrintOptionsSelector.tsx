@@ -8,12 +8,15 @@ interface PrintProduct {
   sku: string;
   size: string;
   price: number;
-  mockupUrl?: string | null;
 }
 
 interface PrintOptionsSelectorProps {
   listingId: string;
   printProducts: PrintProduct[];
+  /** Seller-uploaded buyer mockups by size SKU (US-MFTF-PF.7). */
+  mockupsBySku?: Record<string, string>;
+  /** Listing primary image — the defensive fallback when a size has no mockup. */
+  fallbackImageUrl?: string | null;
 }
 
 const MATERIAL_LABELS: Record<string, string> = {
@@ -36,7 +39,12 @@ function getMaterials(products: PrintProduct[]): string[] {
   return order;
 }
 
-export default function PrintOptionsSelector({ listingId, printProducts }: PrintOptionsSelectorProps) {
+export default function PrintOptionsSelector({
+  listingId,
+  printProducts,
+  mockupsBySku = {},
+  fallbackImageUrl = null,
+}: PrintOptionsSelectorProps) {
   const materials = getMaterials(printProducts);
   const [selectedMaterial, setSelectedMaterial] = useState(materials[0] ?? "FAP");
 
@@ -55,6 +63,9 @@ export default function PrintOptionsSelector({ listingId, printProducts }: Print
   }
 
   const selectedProduct = printProducts.find((p) => p.sku === selectedSku) ?? materialProducts[0];
+  // Buyer mockup for the chosen size; falls back to the listing image so the section
+  // never renders a broken image (US-MFTF-PF.7 — fallback is defensive, not expected).
+  const previewUrl = (selectedProduct ? mockupsBySku[selectedProduct.sku] : undefined) ?? fallbackImageUrl;
 
   function handleAddToCart() {
     if (!selectedProduct) return;
@@ -123,13 +134,14 @@ export default function PrintOptionsSelector({ listingId, printProducts }: Print
         </div>
       </div>
 
-      {/* Mockup preview */}
-      {selectedProduct?.mockupUrl && (
+      {/* Mockup preview — seller-uploaded per-size mockup, else the listing image */}
+      {previewUrl && (
         <div className="overflow-hidden rounded-xl border border-stone-200">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={selectedProduct.mockupUrl}
-            alt="Print mockup"
+            src={previewUrl}
+            alt={selectedProduct ? `${selectedProduct.size} print mockup` : "Print mockup"}
+            data-testid="print-mockup-preview"
             className="w-full object-cover"
           />
         </div>
