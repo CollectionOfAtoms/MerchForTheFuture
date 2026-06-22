@@ -6,7 +6,7 @@ import {
   SELECTABLE_CANVAS_WRAPS,
   DEFAULT_CANVAS_WRAP,
   WRAP_LABELS,
-} from "@/lib/print/framing";
+} from "@/lib/print/canvas-wrap";
 import type { CanvasWrap } from "@/generated/prisma/client";
 
 interface CanvasWrapPickerProps {
