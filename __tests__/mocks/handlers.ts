@@ -137,22 +137,6 @@ const taxHandlers = [
       has_more: false,
     })
   ),
-  // Legacy TaxJar handler — removed alongside src/lib/tax/calculate.ts in US-5.2.
-  http.post("https://api.taxjar.com/v2/taxes", () =>
-    HttpResponse.json({
-      tax: {
-        amount_to_collect: 8.5,
-        rate: 0.085,
-        has_nexus: true,
-        breakdown: {
-          state_tax_rate: 0.06,
-          county_tax_rate: 0.0025,
-          city_tax_rate: 0,
-          special_district_tax_rate: 0.0225,
-        },
-      },
-    })
-  ),
 ];
 
 // ─── Exchange rate handlers ───────────────────────────────────────────────────

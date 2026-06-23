@@ -8,6 +8,8 @@ import {
   updateNotificationPrefsAction,
 } from "@/app/actions/account";
 import ProfileForm from "@/app/(main)/settings/ProfileForm";
+import TaxCertificateUploader from "@/components/TaxCertificateUploader";
+import { getLatestCertificate } from "@/lib/tax/exemption";
 
 export default async function BuyerSettingsPage() {
   const session = await auth();
@@ -15,9 +17,10 @@ export default async function BuyerSettingsPage() {
   if (!user?.id) redirect("/sign-in");
   if (!user.roles?.includes("BUYER")) redirect("/");
 
-  const [dbUser, addresses] = await Promise.all([
+  const [dbUser, addresses, latestCert] = await Promise.all([
     prisma.user.findUnique({ where: { id: user.id } }),
     prisma.userAddress.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } }),
+    getLatestCertificate(user.id),
   ]);
 
   const notifPrefs = (dbUser?.loginMetadata as { notifications?: { outbidEmails?: boolean } } | null)?.notifications;
@@ -50,6 +53,19 @@ export default async function BuyerSettingsPage() {
             Manage Payment Methods →
           </button>
         </form>
+      </section>
+
+      {/* Tax Exemption */}
+      <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm space-y-4">
+        <h2 className="text-sm font-semibold text-stone-700">Tax Exemption</h2>
+        <p className="text-sm text-stone-600">
+          If you&apos;re a registered nonprofit, government buyer, or reseller, upload your
+          exemption certificate. An admin reviews it; once approved, qualifying purchases
+          won&apos;t be charged tax.
+        </p>
+        <TaxCertificateUploader
+          currentStatus={(latestCert?.status as "PENDING" | "APPROVED" | "REJECTED" | undefined) ?? null}
+        />
       </section>
 
       {/* Shipping Addresses */}

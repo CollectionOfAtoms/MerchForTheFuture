@@ -11,6 +11,7 @@ import { stripe } from "@/lib/payments/stripe";
 import type { FulfillmentShippingAddress } from "@/lib/fulfillment/types";
 import { planCheckout, type CheckoutPlan } from "./plan";
 import { DEFAULT_PRODUCT_TAX_CODE, SHIPPING_TAX_CODE, DEFAULT_TAX_BEHAVIOR, isStripeTaxEnabled } from "@/lib/tax/codes";
+import { getActiveCertificate } from "@/lib/tax/exemption";
 
 export interface CartCheckoutResult {
   orderId: string;
@@ -73,6 +74,16 @@ export async function createCartCheckout(
     throw new Error("Your cart has no purchasable items.");
   }
 
+  // Tax exemption (US-5.2): if this buyer has an approved certificate, attach
+  // their Stripe Customer so Stripe Tax applies the exemption, and stamp the
+  // applied certificate onto the order for the transaction record.
+  const buyer = await prisma.user.findUnique({
+    where: { id: buyerId },
+    select: { stripeCustomerId: true },
+  });
+  const activeCert = await getActiveCertificate(buyerId);
+  const taxExemptCertId = activeCert ? activeCert.id : null;
+
   // Persist the order + rows BEFORE creating the Stripe session, so the webhook
   // always has rows to act on (US-MFTF-12.4 AC). Cart orders leave the legacy
   // single-listing FKs null (app-layer invariant, src/lib/orders/invariants.ts).
@@ -84,6 +95,7 @@ export async function createCartCheckout(
         status: "PENDING",
         subtotal: plan.itemsSubtotal,
         taxAmount: 0,
+        taxExemptCertId,
         totalAmount: plan.total,
         currency: "USD",
         shippingName: address.name,
@@ -141,6 +153,11 @@ export async function createCartCheckout(
     // (incl. tax) is read back from total_details on fulfillment.
     automatic_tax: { enabled: isStripeTaxEnabled() },
     billing_address_collection: "required",
+    // Attach the buyer's Stripe Customer (US-5.2) so any approved tax exemption is
+    // applied; let Stripe save the collected address back onto the Customer.
+    ...(buyer?.stripeCustomerId
+      ? { customer: buyer.stripeCustomerId, customer_update: { address: "auto" as const, shipping: "auto" as const } }
+      : {}),
     return_url: `${baseUrl}/orders/${order.id}/confirmation?session_id={CHECKOUT_SESSION_ID}`,
     metadata: { orderId: order.id },
   });

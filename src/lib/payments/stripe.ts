@@ -44,7 +44,10 @@ export async function createCheckoutSession(orderId: string): Promise<{
   clientSecret: string;
   sessionId: string;
 }> {
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { buyer: { select: { stripeCustomerId: true } } },
+  });
 
   if (!order) throw new Error("Order not found.");
   if (order.status === "PAID") throw new Error("Order is already paid.");
@@ -69,6 +72,10 @@ export async function createCheckoutSession(orderId: string): Promise<{
     // Stripe Tax (US-5.1), env-gated like the cart flow. See docs/tax-configuration.md.
     automatic_tax: { enabled: isStripeTaxEnabled() },
     billing_address_collection: "required",
+    // Attach the buyer's Stripe Customer (US-5.2) so an approved exemption applies.
+    ...(order.buyer?.stripeCustomerId
+      ? { customer: order.buyer.stripeCustomerId, customer_update: { address: "auto" as const } }
+      : {}),
     return_url: `${baseUrl}/orders/${orderId}/fulfill?session_id={CHECKOUT_SESSION_ID}`,
     metadata: { orderId },
   });

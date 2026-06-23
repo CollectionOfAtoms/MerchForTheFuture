@@ -558,12 +558,12 @@
       "id": "US-5.2",
       "epic": "Epic 5: Tax Calculation",
       "title": "Tax-Exempt Handling",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-22",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-22",
+      "testPassedCommit": "pending",
+      "notes": "Stripe-Tax model: exemption enforced by Stripe (Customer tax_exempt), not by zeroing a calc. Schema: new TaxExemptionCertificate (PENDING/APPROVED/REJECTED, exemptionType exempt|reverse), User.stripeCustomerId (buyer Customer, distinct from seller stripeAccountId), Order.taxExemptCertId. Buyer uploads cert (PDF/image) via /api/blob/certificate + TaxCertificateUploader on /buyer/settings → uploadTaxCertificateAction (PENDING). Admin approveTaxCertificateAction (src/app/actions/tax.ts) ensures a Stripe Customer (ensureBuyerStripeCustomer, src/lib/tax/customer.ts) and calls customers.update({tax_exempt}); rejectTaxCertificateAction → REJECTED. Checkout (createCartCheckout + legacy createCheckoutSession) attaches customer + customer_update when the buyer has one, and stamps taxExemptCertId on the order. isTaxExempt/getActiveCertificate read APPROVED (src/lib/tax/exemption.ts rewritten — old TaxJar-zeroing dropped). Admin approval queue helpers in src/lib/tax/approvals.ts (surfaced on /admin/tax in US-5.3). Removed TaxJar src/lib/tax/calculate.ts + MSW handler. // LIVE-CONFIRM: customers.update tax_exempt + exemption applied at a real automatic_tax checkout."
     },
     {
       "id": "US-5.3",
