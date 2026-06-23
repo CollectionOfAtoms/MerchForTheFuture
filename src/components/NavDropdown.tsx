@@ -198,6 +198,12 @@ export default function NavDropdown({ user, roles, fulfillmentCount = 0, excepti
             </MenuItem>
           )}
 
+          {isAdmin && (
+            <MenuItem href="/admin/tax" active={isActive("/admin/tax")}>
+              Tax
+            </MenuItem>
+          )}
+
           <MenuItem href={settingsHref} active={isActive(settingsHref)}>
             Settings
           </MenuItem>

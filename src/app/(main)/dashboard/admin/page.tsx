@@ -45,6 +45,12 @@ export default async function AdminDashboardPage() {
             >
               Full tracker →
             </Link>
+            <Link
+              href="/admin/tax"
+              className="flex-1 sm:flex-none text-center rounded-full border border-tuscan-sun/40 px-4 py-2 text-sm font-medium text-blue-slate hover:bg-tuscan-sun/10 transition-colors"
+            >
+              Tax &amp; reports →
+            </Link>
           </div>
         </div>
 

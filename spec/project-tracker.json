@@ -569,12 +569,12 @@
       "id": "US-5.3",
       "epic": "Epic 5: Tax Calculation",
       "title": "Seller Tax Reporting",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-22",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-22",
+      "testPassedCommit": "pending",
+      "notes": "Reports live in the Stripe Dashboard (Tax > Reports, CSV) — not rebuilt in-app. New admin /admin/tax page (src/app/(main)/admin/tax/page.tsx, ADMIN-gated): (1) deep-link + how-to to dashboard.stripe.com/tax/reports; (2) nexus panel from getTaxRegistrations() (src/lib/tax/nexus.ts → stripe.tax.registrations.list) with copy that Stripe emails threshold alerts; (3) pending tax-exemption approval queue (US-5.2 approve/reject actions, src/lib/tax/approvals.ts). Linked from admin dashboard ('Tax & reports') + NavDropdown ('Tax'). Removed obsolete TaxJar in-app reporting src/lib/tax/reporting.ts. CONNECT/1099-K AC is MOOT (founder-confirmed): single-seller, no Stripe Connect (US-4.3 Deferred) — not built. // LIVE-CONFIRM: tax.registrations.list real payload shape + that Stripe nexus alert emails are enabled on the account."
     },
     {
       "id": "US-5.4",
