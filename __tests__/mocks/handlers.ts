@@ -20,6 +20,7 @@ const stripeHandlers = [
       status: "complete",
       amount_total: 50000,
       currency: "usd",
+      total_details: { amount_tax: 0, breakdown: { taxes: [] } },
       metadata: { orderId: "" },
     })
   ),
@@ -33,6 +34,7 @@ const stripeHandlers = [
       status: isPaid ? "complete" : "open",
       amount_total: 30000,
       currency: "usd",
+      total_details: { amount_tax: 0, breakdown: { taxes: [] } },
       metadata: { orderId: "" },
     });
   }),
@@ -114,16 +116,34 @@ const prodigiHandlers = PRODIGI_BASES.flatMap((base) => [
   ),
 ]);
 
-// ─── TaxJar handlers ──────────────────────────────────────────────────────────
+// ─── Stripe Tax handlers (Epic 5) ─────────────────────────────────────────────
+// Stripe Tax computes/applies tax natively (no TaxJar). These cover the Customer
+// management used for tax exemptions (US-5.2) and the tax-registration list used
+// for the admin nexus panel (US-5.3). Tests override with server.use() to assert
+// exact request bodies.
 const taxHandlers = [
+  http.post("https://api.stripe.com/v1/customers", () =>
+    HttpResponse.json({ id: "cus_test_mock", object: "customer" })
+  ),
+  http.post("https://api.stripe.com/v1/customers/:id", ({ params }) =>
+    HttpResponse.json({ id: params.id, object: "customer", tax_exempt: "exempt" })
+  ),
+  http.get("https://api.stripe.com/v1/tax/registrations", () =>
+    HttpResponse.json({
+      object: "list",
+      data: [
+        { id: "taxreg_mock_or", object: "tax.registration", status: "active", country: "US", country_options: { us: { state: "OR" } } },
+      ],
+      has_more: false,
+    })
+  ),
+  // Legacy TaxJar handler — removed alongside src/lib/tax/calculate.ts in US-5.2.
   http.post("https://api.taxjar.com/v2/taxes", () =>
     HttpResponse.json({
       tax: {
         amount_to_collect: 8.5,
         rate: 0.085,
         has_nexus: true,
-        freight_taxable: false,
-        tax_source: "destination",
         breakdown: {
           state_tax_rate: 0.06,
           county_tax_rate: 0.0025,

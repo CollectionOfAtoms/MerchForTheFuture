@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { prisma } from "@/lib/db";
+import { DEFAULT_PRODUCT_TAX_CODE, DEFAULT_TAX_BEHAVIOR, isStripeTaxEnabled } from "@/lib/tax/codes";
 
 // Wrap fetch in a lambda so MSW's runtime-patched globalThis.fetch is always called,
 // even though the Stripe client is created at module load (before MSW patches fetch).
@@ -57,13 +58,17 @@ export async function createCheckoutSession(orderId: string): Promise<{
       {
         price_data: {
           currency: order.currency.toLowerCase(),
-          product_data: { name: "Artwork purchase" },
+          product_data: { name: "Artwork purchase", tax_code: DEFAULT_PRODUCT_TAX_CODE },
           unit_amount: amountInCents,
+          tax_behavior: DEFAULT_TAX_BEHAVIOR,
         },
         quantity: 1,
       },
     ],
     mode: "payment",
+    // Stripe Tax (US-5.1), env-gated like the cart flow. See docs/tax-configuration.md.
+    automatic_tax: { enabled: isStripeTaxEnabled() },
+    billing_address_collection: "required",
     return_url: `${baseUrl}/orders/${orderId}/fulfill?session_id={CHECKOUT_SESSION_ID}`,
     metadata: { orderId },
   });

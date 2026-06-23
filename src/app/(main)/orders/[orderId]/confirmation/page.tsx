@@ -34,9 +34,16 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pa
     );
   }
 
-  const order = await prisma.order.findUnique({ where: { id: orderId }, select: { buyerId: true, status: true } });
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { buyerId: true, status: true, subtotal: true, taxAmount: true, taxJurisdiction: true, totalAmount: true, currency: true },
+  });
   if (!order) notFound();
   if (order.buyerId !== user.id) redirect("/");
+
+  const tax = Number(order.taxAmount);
+  const money = (n: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: order.currency }).format(n);
 
   const shipments = await getOrderShipmentsView(orderId, user.id);
 
@@ -63,6 +70,29 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pa
       {shipments && (
         <div className="mt-4">
           <OrderShipments view={shipments} />
+        </div>
+      )}
+
+      {tax > 0 && (
+        <div className="mt-8 rounded-2xl border border-stone-200 bg-white p-5 text-sm">
+          <h2 className="mb-3 font-medium text-stone-900">Order total</h2>
+          <dl className="space-y-1">
+            <div className="flex justify-between text-stone-600">
+              <dt>Subtotal</dt>
+              <dd>{money(Number(order.subtotal))}</dd>
+            </div>
+            <div className="flex justify-between text-stone-600">
+              <dt>Tax{order.taxJurisdiction ? ` (${order.taxJurisdiction})` : ""}</dt>
+              <dd>{money(tax)}</dd>
+            </div>
+            <div className="flex justify-between border-t border-stone-200 pt-1 font-medium text-stone-900">
+              <dt>Total</dt>
+              <dd>{money(Number(order.totalAmount))}</dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-xs text-stone-500">
+            Your full tax breakdown is itemized on the Stripe receipt emailed to you.
+          </p>
         </div>
       )}
 

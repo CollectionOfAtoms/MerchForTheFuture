@@ -10,7 +10,45 @@ const STRIPE_FIXED_CENTS = 0.30;
 
 // ─── Shared fulfillment logic ─────────────────────────────────────────────────
 
-async function runFulfillment(orderId: string, chargeRef: string): Promise<void> {
+/** Tax read back from a paid Stripe session's total_details (US-5.1). */
+interface SessionTaxInfo {
+  /** Tax collected, in dollars. */
+  taxAmount: number;
+  /** Effective rate (tax / subtotal), 0–1. */
+  taxRate: number | null;
+  /** Jurisdiction name from the Stripe breakdown, if present. */
+  jurisdiction: string | null;
+  /** True charged total (items + shipping + tax), in dollars. */
+  amountTotal: number | null;
+}
+
+/**
+ * Extract the Stripe-computed tax from a retrieved Checkout Session. Returns
+ * undefined when Stripe Tax was off (no total_details / no tax) so the legacy
+ * no-tax path is untouched.
+ */
+function extractTaxInfo(
+  session: Awaited<ReturnType<typeof stripe.checkout.sessions.retrieve>>,
+  subtotal: number,
+): SessionTaxInfo | undefined {
+  const amountTaxCents = session.total_details?.amount_tax;
+  if (amountTaxCents == null || amountTaxCents <= 0) return undefined;
+  const taxAmount = amountTaxCents / 100;
+  const amountTotal = session.amount_total != null ? session.amount_total / 100 : null;
+  const breakdown = session.total_details?.breakdown?.taxes?.[0];
+  const jurisdiction =
+    (breakdown?.rate as { jurisdiction?: string; display_name?: string } | undefined)?.jurisdiction ??
+    (breakdown?.rate as { jurisdiction?: string; display_name?: string } | undefined)?.display_name ??
+    null;
+  const taxRate = subtotal > 0 ? Number((taxAmount / subtotal).toFixed(4)) : null;
+  return { taxAmount, taxRate, jurisdiction, amountTotal };
+}
+
+async function runFulfillment(
+  orderId: string,
+  chargeRef: string,
+  taxInfo?: SessionTaxInfo,
+): Promise<void> {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
@@ -22,13 +60,28 @@ async function runFulfillment(orderId: string, chargeRef: string): Promise<void>
   if (!order) throw new Error(`Order not found: ${orderId}`);
   if (order.status === "PAID") return;
 
-  const gross = Number(order.totalAmount);
+  // When Stripe Tax computed a tax line, the charged total is the session's
+  // amount_total (items + shipping + tax); fall back to subtotal + tax.
+  const gross = taxInfo
+    ? taxInfo.amountTotal ?? Number(order.totalAmount) + taxInfo.taxAmount
+    : Number(order.totalAmount);
   const platformFee = Number((gross * PLATFORM_FEE_RATE).toFixed(2));
   const processingFee = Number((gross * STRIPE_RATE + STRIPE_FIXED_CENTS).toFixed(2));
   const netPayout = Number((gross - platformFee - processingFee).toFixed(2));
 
   await prisma.$transaction([
-    prisma.order.update({ where: { id: order.id }, data: { status: "PAID" } }),
+    prisma.order.update({
+      where: { id: order.id },
+      data: taxInfo
+        ? {
+            status: "PAID",
+            taxAmount: taxInfo.taxAmount,
+            taxRate: taxInfo.taxRate,
+            taxJurisdiction: taxInfo.jurisdiction,
+            totalAmount: gross,
+          }
+        : { status: "PAID" },
+    }),
     prisma.transaction.create({
       data: {
         orderId: order.id,
@@ -135,7 +188,7 @@ export async function fulfillPaymentBySession(
     throw new Error("Payment not completed for this session.");
   }
 
-  await runFulfillment(orderId, sessionId);
+  await runFulfillment(orderId, sessionId, extractTaxInfo(session, Number(order.subtotal)));
 }
 
 /**
@@ -155,5 +208,5 @@ export async function resolveSessionFulfillment(
   const session = await stripe.checkout.sessions.retrieve(sessionId);
   if (session.payment_status !== "paid") return;
 
-  await runFulfillment(orderId, sessionId);
+  await runFulfillment(orderId, sessionId, extractTaxInfo(session, Number(order.subtotal)));
 }
