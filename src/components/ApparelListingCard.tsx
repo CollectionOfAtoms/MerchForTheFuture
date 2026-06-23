@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ApparelCard } from "@/lib/apparel/browse";
+import { localizedPrice, type DisplayCurrency } from "@/lib/tax/currency";
 
 /**
  * A single apparel tile on the `/shop` browse grid. Renders the normalized
@@ -8,12 +9,8 @@ import type { ApparelCard } from "@/lib/apparel/browse";
  * served from `images.podos.io`, which is not in the `next/image` host
  * allowlist; lifestyle photos on Vercel Blob render fine through it too.
  */
-export default function ApparelListingCard({ card }: { card: ApparelCard }) {
-  const price = card.retailPrice.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
+export default function ApparelListingCard({ card, display }: { card: ApparelCard; display?: DisplayCurrency | null }) {
+  const { primary: price, secondary } = localizedPrice(card.retailPrice, display);
 
   return (
     <Link
@@ -38,7 +35,10 @@ export default function ApparelListingCard({ card }: { card: ApparelCard }) {
       <div className="p-4">
         <p className="truncate text-sm font-semibold text-blue-slate">{card.title}</p>
         <div className="mt-1 flex items-center justify-between gap-2">
-          <span className="text-sm font-bold text-cerulean">{price}</span>
+          <span className="text-sm font-bold text-cerulean">
+            {price}
+            {secondary && <span className="ml-1 text-xs font-normal text-dark-cyan">({secondary})</span>}
+          </span>
           <span className="text-xs text-dark-cyan">
             Available in {card.colorCount} {card.colorCount === 1 ? "color" : "colors"}
           </span>

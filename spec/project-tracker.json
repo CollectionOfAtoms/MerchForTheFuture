@@ -580,12 +580,12 @@
       "id": "US-5.4",
       "epic": "Epic 5: Tax Calculation",
       "title": "Multi-Currency Display",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
+      "status": "Passed",
+      "testWrittenDate": "2026-06-22",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-22",
+      "testPassedCommit": "pending",
+      "notes": "Display-only conversion (founder-confirmed): checkout still settles USD; listing/browse prices show buyer local currency with USD secondary. getBuyerCurrency precedence (src/lib/tax/buyer-currency.ts): account pref (loginMetadata.preferences.currency) -> mftf_currency cookie -> x-vercel-ip-country geo map -> USD. Pure resolveBuyerCurrency/currencyForCountry/localizedPrice in src/lib/tax/currency.ts (client-safe; no prisma). New ExchangeRate table + daily FX cron /api/cron/refresh-fx (Bearer CRON_SECRET, 0 5 * * * in vercel.json, Hobby-safe) upserting USD->{EUR,GBP,CAD,AUD,JPY} via refreshExchangeRates (src/lib/tax/fx.ts); getStoredRate reads cached rates (display reads DB, never live per-request). Currency selector in /buyer/settings (updateCurrencyPreferenceAction). Display threaded into ListingCard, ApparelListingCard, ApparelProductView via browse/shop/shop[id]/prints pages (getDisplayCurrency). plan.ts live getExchangeRate (shipping FX) untouched. // NOTE: guests override only via geo/cookie (spec only requires account-preference override). Stripe documents the USD charge on its receipt."
     },
     {
       "id": "US-6.1",

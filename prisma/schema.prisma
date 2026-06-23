@@ -188,6 +188,20 @@ model TaxExemptionCertificate {
   @@index([status])
 }
 
+/// Cached display exchange rate (US-5.4). Rates are refreshed at least daily by a
+/// cron and read for buyer-facing local-currency DISPLAY only — checkout always
+/// settles in USD. One row per (base, quote) pair, upserted on each refresh.
+model ExchangeRate {
+  id            String   @id @default(cuid())
+  baseCurrency  String
+  quoteCurrency String
+  rate          Decimal  @db.Decimal(18, 8)
+  fetchedAt     DateTime @default(now())
+
+  @@unique([baseCurrency, quoteCurrency])
+  @@index([baseCurrency])
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String

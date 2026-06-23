@@ -6,7 +6,9 @@ import {
   deleteAddressAction,
   setDefaultAddressAction,
   updateNotificationPrefsAction,
+  updateCurrencyPreferenceAction,
 } from "@/app/actions/account";
+import { getSupportedCurrencies } from "@/lib/tax/currency";
 import ProfileForm from "@/app/(main)/settings/ProfileForm";
 import TaxCertificateUploader from "@/components/TaxCertificateUploader";
 import { getLatestCertificate } from "@/lib/tax/exemption";
@@ -23,8 +25,9 @@ export default async function BuyerSettingsPage() {
     getLatestCertificate(user.id),
   ]);
 
-  const notifPrefs = (dbUser?.loginMetadata as { notifications?: { outbidEmails?: boolean } } | null)?.notifications;
-  const outbidEmailsEnabled = notifPrefs?.outbidEmails !== false;
+  const meta = dbUser?.loginMetadata as { notifications?: { outbidEmails?: boolean }; preferences?: { currency?: string } } | null;
+  const outbidEmailsEnabled = meta?.notifications?.outbidEmails !== false;
+  const currencyPref = meta?.preferences?.currency ?? "USD";
 
   const inputClass = "w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900";
   const labelClass = "block text-xs font-medium text-stone-600 mb-1";
@@ -132,6 +135,28 @@ export default async function BuyerSettingsPage() {
             </div>
           </form>
         </details>
+      </section>
+
+      {/* Display Preferences */}
+      <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm space-y-4">
+        <h2 className="text-sm font-semibold text-stone-700">Display Preferences</h2>
+        <p className="text-sm text-stone-600">
+          Choose the currency prices are shown in. This is for display only — orders are charged in USD.
+        </p>
+        <form action={async (fd) => { "use server"; await updateCurrencyPreferenceAction(fd); }} className="flex items-center gap-3">
+          <label htmlFor="currency" className="text-sm text-stone-900">Currency</label>
+          <select id="currency" name="currency" defaultValue={currencyPref} className={`${inputClass} max-w-[10rem]`}>
+            {getSupportedCurrencies().map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <button
+            type="submit"
+            className="rounded-full bg-stone-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-stone-700 transition-colors"
+          >
+            Save
+          </button>
+        </form>
       </section>
 
       {/* Notifications */}

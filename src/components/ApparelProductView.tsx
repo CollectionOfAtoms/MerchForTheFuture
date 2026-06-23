@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ApparelDetail } from "@/lib/apparel/detail";
+import { localizedPrice, type DisplayCurrency } from "@/lib/tax/currency";
 import { addToCartAction } from "@/app/actions/cart";
 
 /**
@@ -24,7 +25,7 @@ import { addToCartAction } from "@/app/actions/cart";
  * Uses plain `<img>` because referenced listings fall back to Teemill mockups
  * served from `images.podos.io`, which is not in the `next/image` allowlist.
  */
-export default function ApparelProductView({ detail }: { detail: ApparelDetail }) {
+export default function ApparelProductView({ detail, display }: { detail: ApparelDetail; display?: DisplayCurrency | null }) {
   // Index of the per-colour mockup for a given colour, or -1 if none is tagged
   // (lifestyle-photo listings). Shared by the default-colour initializer and
   // selectColor so the carousel pairs with the chosen colour consistently.
@@ -42,11 +43,7 @@ export default function ApparelProductView({ detail }: { detail: ApparelDetail }
   const [added, setAdded] = useState(false);
   const router = useRouter();
 
-  const price = detail.retailPrice.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
+  const { primary: price, secondary: priceSecondary } = localizedPrice(detail.retailPrice, display);
 
   const hasImages = detail.images.length > 0;
   const activeImage = hasImages ? detail.images[Math.min(imageIndex, detail.images.length - 1)] : null;
@@ -130,7 +127,10 @@ export default function ApparelProductView({ detail }: { detail: ApparelDetail }
         <div className="space-y-6">
           <div>
             <h1 className="text-2xl font-semibold text-stone-900">{detail.title}</h1>
-            <p className="mt-2 text-2xl font-bold text-stone-900">{price}</p>
+            <p className="mt-2 text-2xl font-bold text-stone-900">
+              {price}
+              {priceSecondary && <span className="ml-2 text-sm font-normal text-stone-500">({priceSecondary})</span>}
+            </p>
           </div>
 
           {detail.description && (

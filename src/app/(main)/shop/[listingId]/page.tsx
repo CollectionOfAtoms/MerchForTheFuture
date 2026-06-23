@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { getApparelListingDetail, getApparelListingOwnership } from "@/lib/apparel/detail";
 import ApparelProductView from "@/components/ApparelProductView";
 import OwnerUnlistedNotice from "@/components/seller/OwnerUnlistedNotice";
+import { auth } from "@/auth";
+import { getDisplayCurrency } from "@/lib/tax/buyer-currency";
 
 interface PageProps {
   params: Promise<{ listingId: string }>;
@@ -27,6 +29,9 @@ export default async function ApparelDetailPage({ params }: PageProps) {
   ]);
   if (!detail) notFound();
 
+  const session = await auth();
+  const display = await getDisplayCurrency((session?.user as { id?: string } | undefined)?.id);
+
   return (
     <>
       {ownership && (
@@ -36,7 +41,7 @@ export default async function ApparelDetailPage({ params }: PageProps) {
           editHref={`/seller/apparel/${listingId}/edit`}
         />
       )}
-      <ApparelProductView detail={detail} />
+      <ApparelProductView detail={detail} display={display} />
     </>
   );
 }
