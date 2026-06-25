@@ -33,3 +33,22 @@ export async function getStoredRate(from: string, to: string): Promise<number | 
   });
   return row ? Number(row.rate) : null;
 }
+
+/**
+ * Like getStoredRate, but lazily seeds the cache on a miss (US-5.4 follow-up).
+ * The daily cron normally fills ExchangeRate, but the table is empty on a fresh
+ * dev DB rebuild and in the window right after a deploy before the first cron
+ * run — there, currency display would silently fall back to USD. On a miss we
+ * fetch + upsert once (best-effort; failures leave the rate null → USD fallback),
+ * so subsequent reads hit the cache. No-op once rates exist.
+ */
+export async function getStoredRateOrSeed(from: string, to: string): Promise<number | null> {
+  const cached = await getStoredRate(from, to);
+  if (cached != null) return cached;
+  try {
+    await refreshExchangeRates();
+  } catch {
+    return null;
+  }
+  return getStoredRate(from, to);
+}

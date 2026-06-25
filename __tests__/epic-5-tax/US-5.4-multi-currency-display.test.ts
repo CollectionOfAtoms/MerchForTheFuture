@@ -9,7 +9,7 @@ vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
 const { formatCurrency, getSupportedCurrencies, currencyForCountry, resolveBuyerCurrency, convertWithRate } =
   await import("@/lib/tax/currency");
-const { refreshExchangeRates, getStoredRate } = await import("@/lib/tax/fx");
+const { refreshExchangeRates, getStoredRate, getStoredRateOrSeed } = await import("@/lib/tax/fx");
 const { updateCurrencyPreferenceAction } = await import("@/app/actions/account");
 const { auth } = await import("@/auth");
 
@@ -84,6 +84,15 @@ describe("US-5.4 — Multi-Currency Display", () => {
 
     it("returns null for an uncached pair", async () => {
       expect(await getStoredRate("USD", "EUR")).toBeNull();
+    });
+
+    it("lazily seeds the cache on a miss (getStoredRateOrSeed), then reads cached", async () => {
+      expect(await prisma.exchangeRate.count()).toBe(0);
+      const rate = await getStoredRateOrSeed("USD", "EUR");
+      expect(rate).toBeCloseTo(0.92, 2); // fetched + upserted from the MSW fixture
+      expect(await prisma.exchangeRate.count()).toBeGreaterThan(0);
+      // Identity pair never needs a fetch.
+      expect(await getStoredRateOrSeed("USD", "USD")).toBe(1);
     });
   });
 

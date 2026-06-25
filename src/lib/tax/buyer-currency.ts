@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { resolveBuyerCurrency } from "./currency";
-import { getStoredRate } from "./fx";
+import { getStoredRateOrSeed } from "./fx";
 
 /** Cookie that remembers a guest/buyer's chosen or detected display currency. */
 export const CURRENCY_COOKIE = "mftf_currency";
@@ -28,6 +28,6 @@ export async function getBuyerCurrency(userId?: string | null): Promise<string> 
  */
 export async function getDisplayCurrency(userId?: string | null): Promise<{ currency: string; rate: number | null }> {
   const currency = await getBuyerCurrency(userId);
-  const rate = currency === "USD" ? null : await getStoredRate("USD", currency);
+  const rate = currency === "USD" ? null : await getStoredRateOrSeed("USD", currency);
   return { currency, rate };
 }
