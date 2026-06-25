@@ -58,7 +58,17 @@ function logTaxDebug(session: Awaited<ReturnType<typeof stripe.checkout.sessions
     automaticTax: session.automatic_tax?.status,
     automaticTaxEnabled: session.automatic_tax?.enabled,
     customer: session.customer ?? null,
+    // If this is "exempt"/"reverse", Stripe returns $0 tax regardless of address
+    // or registration (US-5.2). A common cause of a surprising $0 while testing.
+    customerTaxExempt: session.customer_details?.tax_exempt ?? null,
     billingAddress: session.customer_details?.address ?? null,
+    // Per-jurisdiction reasons (e.g. "customer_exempt", "not_collecting",
+    // "not_subject_to_tax", "product_exempt"). Requires breakdown to be present.
+    taxabilityReasons:
+      session.total_details?.breakdown?.taxes?.map((t) => ({
+        amountCents: t.amount,
+        reason: (t as { taxability_reason?: string }).taxability_reason ?? null,
+      })) ?? null,
     amountTaxCents: session.total_details?.amount_tax ?? null,
     amountTotalCents: session.amount_total ?? null,
   });
@@ -203,7 +213,7 @@ export async function fulfillPaymentBySession(
   if (!order) throw new Error("Order not found.");
   if (order.status === "PAID") return;
 
-  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["total_details.breakdown"] });
   logTaxDebug(session);
   if (session.payment_status !== "paid") {
     throw new Error("Payment not completed for this session.");
@@ -226,7 +236,7 @@ export async function resolveSessionFulfillment(
   if (order.stripeSessionId !== sessionId) return;
   if (order.status === "PAID") return;
 
-  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["total_details.breakdown"] });
   logTaxDebug(session);
   if (session.payment_status !== "paid") return;
 
