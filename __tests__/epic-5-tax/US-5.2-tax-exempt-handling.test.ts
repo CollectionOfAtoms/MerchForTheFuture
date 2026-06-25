@@ -171,29 +171,51 @@ describe("US-5.2 — Tax-Exempt Handling (Stripe Customer tax_exempt)", () => {
   });
 
   describe("checkout integration", () => {
-    it("attaches the buyer's Stripe Customer to the session and records the cert on the order", async () => {
+    /** Capture the Stripe customers.update (POST /v1/customers/:id) body. */
+    function captureCustomerUpdate(): { get: () => string } {
+      let body = "";
+      server.use(
+        http.post("https://api.stripe.com/v1/customers/:id", async ({ request, params }) => {
+          body = decodeURIComponent(await request.text());
+          return HttpResponse.json({ id: params.id, object: "customer" });
+        }),
+      );
+      return { get: () => body };
+    }
+
+    it("attaches the buyer's Stripe Customer, prefills the address, and records the cert", async () => {
       const buyer = await seedBuyer({ stripeCustomerId: "cus_exempt_1" });
       const seller = await seedBuyer();
       const cert = await prisma.taxExemptionCertificate.create({ data: { userId: buyer.id, fileUrl: "u", exemptionType: "exempt", status: "APPROVED" } });
       const cart = await seedPrintCart(buyer.id, seller.id);
       const captured = captureStripeSession();
+      const custUpdate = captureCustomerUpdate();
 
       const { orderId } = await createCartCheckout(buyer.id, cart.id, ADDRESS);
       const body = decodeURIComponent(captured.get());
       expect(body).toContain("customer=cus_exempt_1");
 
+      // The collected address is synced onto the Customer so Stripe Tax uses it.
+      const upd = custUpdate.get();
+      expect(upd).toContain("address[line1]=1 St");
+      expect(upd).toContain("address[postal_code]=97201");
+      expect(upd).toContain("address[country]=US");
+
       const order = await prisma.order.findUnique({ where: { id: orderId } });
       expect(order!.taxExemptCertId).toBe(cert.id);
     });
 
-    it("omits the customer field when the buyer has none", async () => {
+    it("ensures + attaches a Customer (with the address) even when the buyer had none", async () => {
       const buyer = await seedBuyer();
       const seller = await seedBuyer();
       const cart = await seedPrintCart(buyer.id, seller.id);
       const captured = captureStripeSession();
+
       await createCartCheckout(buyer.id, cart.id, ADDRESS);
       const body = decodeURIComponent(captured.get());
-      expect(body).not.toContain("customer=");
+      expect(body).toContain("customer=cus_test_mock"); // created via the global customers handler
+      const fresh = await prisma.user.findUnique({ where: { id: buyer.id } });
+      expect(fresh!.stripeCustomerId).toBe("cus_test_mock");
     });
   });
 });

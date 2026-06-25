@@ -87,14 +87,19 @@ expect a non-zero amount and still see $0, work through this list:
    sessions (the embedded form shows a "TEST" badge).
 3. **Origin address set?** Dashboard → Tax → Settings must have an origin address, or
    Stripe can't compute.
-4. **The address Stripe taxes is the one entered IN the Stripe iframe.** This is embedded
-   Checkout with `billing_address_collection: "required"`. We do **not** send the shipping
-   address you typed in our own checkout form to Stripe — Stripe taxes on the **billing
-   address the buyer fills in inside the Stripe payment form**. If that address is blank,
-   incomplete (no ZIP), or a different (unregistered) state, tax stays $0. Enter a complete
-   address in a registered state, e.g. `1301 5th Ave, Seattle, WA 98101`.
+4. **Which address Stripe taxes:**
+   - **Cart checkout** pre-fills Stripe from the address the buyer enters in our own
+     checkout form: we ensure a Stripe **Customer** and sync that address onto it
+     (`ensureBuyerStripeCustomerWithAddress`, `src/lib/tax/customer.ts`), then attach the
+     Customer to the session with `customer_update`. The Stripe form shows the address
+     pre-filled and editable; Stripe Tax computes from it. So the address you typed in our
+     form is what's taxed (unless the buyer edits it in the Stripe form).
+   - **Legacy buy-now** (`createCheckoutSession`) collects the address **inside the Stripe
+     iframe** (`billing_address_collection: "required"`) because that flow gathers shipping
+     after payment — so for buy-now, enter a complete registered-state address in the Stripe
+     form, e.g. `1301 5th Ave, Seattle, WA 98101`.
 5. **Tax updates live as the address is completed.** $0 before a full, valid address is
-   entered is expected; it should update once state + ZIP are present.
+   present is expected; it updates once state + ZIP are set (pre-filled for cart checkout).
 
 ### Echoing what Stripe actually used
 
@@ -110,8 +115,9 @@ billing address Stripe used, `automaticTax` status, and the computed tax cents
   address in a registered state.
 - `failed` — a configuration error (e.g. missing origin address).
 
-> Note: there is no address for us to log at *session creation* — the buyer enters it
-> inside the Stripe form, so the echo necessarily happens after the session is retrieved.
+> Note: for cart checkout the address is synced onto the Stripe Customer before the session
+> is created (so it's pre-filled); for buy-now the buyer enters it inside the Stripe form.
+> Either way the echo reads the address Stripe actually used after the session is retrieved.
 
 ## Reporting
 

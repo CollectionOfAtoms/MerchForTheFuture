@@ -12,6 +12,7 @@ import type { FulfillmentShippingAddress } from "@/lib/fulfillment/types";
 import { planCheckout, type CheckoutPlan } from "./plan";
 import { DEFAULT_PRODUCT_TAX_CODE, SHIPPING_TAX_CODE, DEFAULT_TAX_BEHAVIOR, isStripeTaxEnabled } from "@/lib/tax/codes";
 import { getActiveCertificate } from "@/lib/tax/exemption";
+import { ensureBuyerStripeCustomerWithAddress } from "@/lib/tax/customer";
 
 export interface CartCheckoutResult {
   orderId: string;
@@ -74,13 +75,12 @@ export async function createCartCheckout(
     throw new Error("Your cart has no purchasable items.");
   }
 
-  // Tax exemption (US-5.2): if this buyer has an approved certificate, attach
-  // their Stripe Customer so Stripe Tax applies the exemption, and stamp the
-  // applied certificate onto the order for the transaction record.
-  const buyer = await prisma.user.findUnique({
-    where: { id: buyerId },
-    select: { stripeCustomerId: true },
-  });
+  // Ensure a Stripe Customer with the collected address (US-5.4 follow-up): this
+  // pre-fills the address in embedded Checkout so the buyer doesn't re-enter it,
+  // and lets Stripe Tax compute from the address we already have. The same Customer
+  // carries any approved tax exemption (US-5.2). We also stamp the applied
+  // certificate onto the order for the transaction record.
+  const customerId = await ensureBuyerStripeCustomerWithAddress(buyerId, address);
   const activeCert = await getActiveCertificate(buyerId);
   const taxExemptCertId = activeCert ? activeCert.id : null;
 
@@ -153,11 +153,11 @@ export async function createCartCheckout(
     // (incl. tax) is read back from total_details on fulfillment.
     automatic_tax: { enabled: isStripeTaxEnabled() },
     billing_address_collection: "required",
-    // Attach the buyer's Stripe Customer (US-5.2) so any approved tax exemption is
-    // applied; let Stripe save the collected address back onto the Customer.
-    ...(buyer?.stripeCustomerId
-      ? { customer: buyer.stripeCustomerId, customer_update: { address: "auto" as const, shipping: "auto" as const } }
-      : {}),
+    // Attach the buyer's Stripe Customer (pre-filled with the collected address):
+    // Stripe Tax computes from it immediately and any approved exemption (US-5.2)
+    // applies. customer_update lets the buyer edit the address and saves it back.
+    customer: customerId,
+    customer_update: { address: "auto", shipping: "auto", name: "auto" },
     return_url: `${baseUrl}/orders/${order.id}/confirmation?session_id={CHECKOUT_SESSION_ID}`,
     metadata: { orderId: order.id },
   });
