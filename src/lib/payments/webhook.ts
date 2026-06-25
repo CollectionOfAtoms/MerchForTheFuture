@@ -44,6 +44,26 @@ function extractTaxInfo(
   return { taxAmount, taxRate, jurisdiction, amountTotal };
 }
 
+/**
+ * Sanity-check echo for Stripe Tax (US-5.1): logs the address Stripe actually
+ * used + the automatic_tax status + computed tax. A $0 tax line almost always
+ * shows up here as `status: "requires_location_inputs"` (incomplete/unregistered
+ * address) — the buyer's billing address is entered inside the Stripe iframe, not
+ * sent by us. Gated by DROPSHIPPING_DEBUG. See docs/tax-configuration.md.
+ */
+function logTaxDebug(session: Awaited<ReturnType<typeof stripe.checkout.sessions.retrieve>>): void {
+  if (!process.env.DROPSHIPPING_DEBUG) return;
+  console.log("[tax-debug] stripe session tax", {
+    id: session.id,
+    automaticTax: session.automatic_tax?.status,
+    automaticTaxEnabled: session.automatic_tax?.enabled,
+    customer: session.customer ?? null,
+    billingAddress: session.customer_details?.address ?? null,
+    amountTaxCents: session.total_details?.amount_tax ?? null,
+    amountTotalCents: session.amount_total ?? null,
+  });
+}
+
 async function runFulfillment(
   orderId: string,
   chargeRef: string,
@@ -184,6 +204,7 @@ export async function fulfillPaymentBySession(
   if (order.status === "PAID") return;
 
   const session = await stripe.checkout.sessions.retrieve(sessionId);
+  logTaxDebug(session);
   if (session.payment_status !== "paid") {
     throw new Error("Payment not completed for this session.");
   }
@@ -206,6 +227,7 @@ export async function resolveSessionFulfillment(
   if (order.status === "PAID") return;
 
   const session = await stripe.checkout.sessions.retrieve(sessionId);
+  logTaxDebug(session);
   if (session.payment_status !== "paid") return;
 
   await runFulfillment(orderId, sessionId, extractTaxInfo(session, Number(order.subtotal)));

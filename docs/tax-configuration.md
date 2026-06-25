@@ -73,6 +73,46 @@ follows the configured behavior in the Dashboard. Our policy:
 This avoids collecting tax we have no authority to remit. Revisit per jurisdiction as the
 business approaches nexus thresholds — see nexus monitoring (US-5.3, admin Tax page).
 
+## Troubleshooting — "the tax line shows $0"
+
+A $0 tax line is usually **correct** (we only collect where registered), but if you
+expect a non-zero amount and still see $0, work through this list:
+
+1. **Is there a registration for that jurisdiction?** Stripe Tax returns $0 for any
+   jurisdiction where you have **no** registration. Add one under Dashboard → Tax →
+   Registrations. Oregon, Montana, New Hampshire, Delaware, and Alaska have **no state
+   sales tax** — they will always be $0.
+2. **Test vs live mode must match.** The registration must exist in the **same mode** as
+   the `STRIPE_SECRET_KEY` the app uses. Test-mode registrations only affect test-mode
+   sessions (the embedded form shows a "TEST" badge).
+3. **Origin address set?** Dashboard → Tax → Settings must have an origin address, or
+   Stripe can't compute.
+4. **The address Stripe taxes is the one entered IN the Stripe iframe.** This is embedded
+   Checkout with `billing_address_collection: "required"`. We do **not** send the shipping
+   address you typed in our own checkout form to Stripe — Stripe taxes on the **billing
+   address the buyer fills in inside the Stripe payment form**. If that address is blank,
+   incomplete (no ZIP), or a different (unregistered) state, tax stays $0. Enter a complete
+   address in a registered state, e.g. `1301 5th Ave, Seattle, WA 98101`.
+5. **Tax updates live as the address is completed.** $0 before a full, valid address is
+   entered is expected; it should update once state + ZIP are present.
+
+### Echoing what Stripe actually used
+
+Set `DROPSHIPPING_DEBUG=1` and complete a test checkout (card `4242 4242 4242 4242`).
+On the confirmation/webhook path we log a `[tax-debug] stripe session tax` line with the
+billing address Stripe used, `automaticTax` status, and the computed tax cents
+(`src/lib/payments/webhook.ts` → `logTaxDebug`). The most useful field is
+**`automaticTax`**:
+
+- `complete` — Stripe computed tax for the address.
+- `requires_location_inputs` — the address was missing/incomplete, so tax is $0. This is
+  the typical cause of an unexpected $0: the in-iframe billing address wasn't a complete
+  address in a registered state.
+- `failed` — a configuration error (e.g. missing origin address).
+
+> Note: there is no address for us to log at *session creation* — the buyer enters it
+> inside the Stripe form, so the echo necessarily happens after the session is retrieved.
+
 ## Reporting
 
 Tax collection reports live in the **Stripe Dashboard** (Tax → Reports, exportable as

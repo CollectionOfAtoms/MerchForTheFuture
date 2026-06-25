@@ -125,6 +125,9 @@ describe("US-5.1 — Auto-Calculate Tax by Buyer Location (Stripe Tax)", () => {
     });
 
     it("leaves automatic_tax off by default (no env)", async () => {
+      // Explicit off — deterministic regardless of a developer's local .env.local
+      // (which may set STRIPE_TAX_ENABLED=true for manual testing).
+      vi.stubEnv("STRIPE_TAX_ENABLED", "");
       const captured = captureStripe();
       const buyer = await seedUser();
       const seller = await seedUser();
