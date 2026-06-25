@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { resolveCartForRead } from "@/lib/cart/request";
 import { getCartView } from "@/lib/cart/cart";
 import { getDefaultShippingAddress } from "@/lib/account/address";
+import { getDisplayCurrency } from "@/lib/tax/buyer-currency";
 import CheckoutClient from "@/components/CheckoutClient";
 
 export const metadata: Metadata = {
@@ -31,11 +32,13 @@ export default async function CheckoutPage() {
 
   // Pre-fill the shipping form with the buyer's primary saved address, if any.
   const initialAddress = await getDefaultShippingAddress(user.id);
+  // Display-only local-currency cue in the summary (US-5.4). Stripe still charges USD.
+  const display = await getDisplayCurrency(user.id);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <h1 className="text-2xl font-semibold text-stone-900">Checkout</h1>
-      <CheckoutClient view={view} initialAddress={initialAddress} />
+      <CheckoutClient view={view} initialAddress={initialAddress} display={display} />
     </main>
   );
 }
