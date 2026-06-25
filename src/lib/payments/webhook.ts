@@ -51,8 +51,21 @@ function extractTaxInfo(
  * address) — the buyer's billing address is entered inside the Stripe iframe, not
  * sent by us. Gated by DROPSHIPPING_DEBUG. See docs/tax-configuration.md.
  */
-function logTaxDebug(session: Awaited<ReturnType<typeof stripe.checkout.sessions.retrieve>>): void {
+async function logTaxDebug(session: Awaited<ReturnType<typeof stripe.checkout.sessions.retrieve>>): Promise<void> {
   if (!process.env.DROPSHIPPING_DEBUG) return;
+  // Tangible goods are taxed on the DESTINATION (shipping) address, not billing.
+  // We sync that from our own checkout form onto the Customer's shipping address,
+  // so an Oregon (no-sales-tax) destination correctly yields $0 even if a WA
+  // billing address is typed in the Stripe form. Surface both to avoid confusion.
+  let taxDestination: unknown = null;
+  if (typeof session.customer === "string") {
+    try {
+      const customer = await stripe.customers.retrieve(session.customer);
+      if (!("deleted" in customer)) taxDestination = customer.shipping?.address ?? customer.address ?? null;
+    } catch {
+      /* best-effort debug only */
+    }
+  }
   console.log("[tax-debug] stripe session tax", {
     id: session.id,
     automaticTax: session.automatic_tax?.status,
@@ -62,6 +75,8 @@ function logTaxDebug(session: Awaited<ReturnType<typeof stripe.checkout.sessions
     // or registration (US-5.2). A common cause of a surprising $0 while testing.
     customerTaxExempt: session.customer_details?.tax_exempt ?? null,
     billingAddress: session.customer_details?.address ?? null,
+    // The address tax is actually computed on (shipping destination).
+    taxDestinationAddress: taxDestination,
     // Per-jurisdiction reasons (e.g. "customer_exempt", "not_collecting",
     // "not_subject_to_tax", "product_exempt"). Requires breakdown to be present.
     taxabilityReasons:
@@ -214,7 +229,7 @@ export async function fulfillPaymentBySession(
   if (order.status === "PAID") return;
 
   const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["total_details.breakdown"] });
-  logTaxDebug(session);
+  await logTaxDebug(session);
   if (session.payment_status !== "paid") {
     throw new Error("Payment not completed for this session.");
   }
@@ -237,7 +252,7 @@ export async function resolveSessionFulfillment(
   if (order.status === "PAID") return;
 
   const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["total_details.breakdown"] });
-  logTaxDebug(session);
+  await logTaxDebug(session);
   if (session.payment_status !== "paid") return;
 
   await runFulfillment(orderId, sessionId, extractTaxInfo(session, Number(order.subtotal)));

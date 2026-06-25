@@ -82,6 +82,15 @@ expect a non-zero amount and still see $0, work through this list:
    jurisdiction where you have **no** registration. Add one under Dashboard → Tax →
    Registrations. Oregon, Montana, New Hampshire, Delaware, and Alaska have **no state
    sales tax** — they will always be $0.
+
+0. **Tax is computed on the SHIPPING destination, not billing.** Physical goods are taxed
+   where they ship **to**. We sync the address collected in our own checkout form onto the
+   Stripe Customer's *shipping* address, and Stripe taxes that. So a buyer who lives in
+   Oregon (no sales tax) gets `$0` / `not_subject_to_tax` **even if they type a Washington
+   billing address into the Stripe payment form** — billing doesn't change the destination.
+   To see WA tax, the **shipping** address (our checkout form's address) must be in WA.
+   The `[tax-debug]` echo logs both `billingAddress` and `taxDestinationAddress` so you can
+   tell which is which.
 2. **Test vs live mode must match.** The registration must exist in the **same mode** as
    the `STRIPE_SECRET_KEY` the app uses. Test-mode registrations only affect test-mode
    sessions (the embedded form shows a "TEST" badge).
