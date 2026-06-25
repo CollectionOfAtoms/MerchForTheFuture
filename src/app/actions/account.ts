@@ -123,6 +123,24 @@ export async function setDefaultAddressAction(addressId: string): Promise<Action
   return { success: true };
 }
 
+export async function updateCurrencyPreferenceAction(formData: FormData): Promise<ActionResult> {
+  const { id: userId } = await requireAuthUser();
+  const { getSupportedCurrencies } = await import("@/lib/tax/currency");
+  const currency = (formData.get("currency") as string)?.trim();
+  if (!currency || !getSupportedCurrencies().includes(currency)) {
+    return { error: "Unsupported currency." };
+  }
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const existing = (user?.loginMetadata as Record<string, unknown> | null) ?? {};
+  const existingPrefs = (existing.preferences as Record<string, unknown> | undefined) ?? {};
+  await prisma.user.update({
+    where: { id: userId },
+    data: { loginMetadata: { ...existing, preferences: { ...existingPrefs, currency } } },
+  });
+  revalidatePath("/buyer/settings");
+  return { success: true };
+}
+
 export async function updateNotificationPrefsAction(formData: FormData): Promise<ActionResult> {
   const { id: userId } = await requireAuthUser();
   const outbidEmails = formData.getAll("outbidEmails").includes("true");

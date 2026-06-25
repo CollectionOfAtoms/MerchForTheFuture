@@ -127,6 +127,9 @@ model User {
   roles            Role[]    @default([BUYER])
   twoFactorEnabled Boolean   @default(false)
   stripeAccountId  String?
+  /// Buyer-side Stripe Customer id (US-5.2). Distinct from stripeAccountId (seller
+  /// billing-portal customer). Attached to checkout so Stripe Tax enforces exemptions.
+  stripeCustomerId String?
   loginMetadata    Json?
   taxExemption     Json?
   createdAt        DateTime  @default(now())
@@ -141,6 +144,7 @@ model User {
   addresses       UserAddress[]
   apparelListings ApparelListing[]
   cart            Cart?
+  taxCertificates TaxExemptionCertificate[]
 
   @@index([email])
 }
@@ -161,6 +165,41 @@ model UserAddress {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// Buyer tax-exemption certificate (US-5.2). Buyer uploads a cert (PDF/image);
+/// an admin reviews and approves it, which sets the buyer's Stripe Customer
+/// `tax_exempt` so Stripe Tax stops collecting at checkout. exemptionType maps to
+/// the Stripe Customer tax_exempt values ("exempt" | "reverse").
+model TaxExemptionCertificate {
+  id            String    @id @default(cuid())
+  userId        String
+  fileUrl       String
+  exemptionType String    @default("exempt")
+  status        String    @default("PENDING")
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+/// Cached display exchange rate (US-5.4). Rates are refreshed at least daily by a
+/// cron and read for buyer-facing local-currency DISPLAY only — checkout always
+/// settles in USD. One row per (base, quote) pair, upserted on each refresh.
+model ExchangeRate {
+  id            String   @id @default(cuid())
+  baseCurrency  String
+  quoteCurrency String
+  rate          Decimal  @db.Decimal(18, 8)
+  fetchedAt     DateTime @default(now())
+
+  @@unique([baseCurrency, quoteCurrency])
+  @@index([baseCurrency])
 }
 
 model Account {
@@ -379,6 +418,8 @@ model Order {
   taxAmount             Decimal          @db.Decimal(12, 2) @default(0)
   taxRate               Decimal?         @db.Decimal(6, 4)
   taxJurisdiction       String?
+  /// FK to the approved TaxExemptionCertificate applied to this order, if any (US-5.2).
+  taxExemptCertId       String?
   totalAmount           Decimal          @db.Decimal(12, 2)
   currency              String           @default("USD")
   shippingName          String?

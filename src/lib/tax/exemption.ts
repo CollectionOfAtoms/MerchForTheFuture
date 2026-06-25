@@ -1,66 +1,34 @@
 import { prisma } from "@/lib/db";
+import type { TaxExemptionCertificate } from "@/generated/prisma/client";
 
-interface TaxExemptionData {
-  certificateId: string;
-  exemptionType: string;
-  state: string;
-  expiresAt: Date;
-}
+/**
+ * Buyer tax-exemption status (US-5.2). Under Stripe Tax the exemption is enforced
+ * by Stripe (the buyer's Customer `tax_exempt` flag), set when an admin approves a
+ * certificate. These helpers read the approval record for display + to stamp the
+ * applied certificate onto an order; they do not compute tax.
+ */
 
-interface StoredExemption {
-  certificateId: string;
-  exemptionType: string;
-  state: string;
-  expiresAt: string;
-}
-
-export async function isTaxExempt(userId: string): Promise<boolean> {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user?.taxExemption) return false;
-
-  const exemption = user.taxExemption as unknown as StoredExemption;
-  if (!exemption.certificateId) return false;
-
-  const expires = new Date(exemption.expiresAt);
-  return expires > new Date();
-}
-
-export async function getTaxExemption(userId: string): Promise<TaxExemptionData | null> {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user?.taxExemption) return null;
-
-  const exemption = user.taxExemption as unknown as StoredExemption;
-  if (!exemption.certificateId) return null;
-
-  return {
-    certificateId: exemption.certificateId,
-    exemptionType: exemption.exemptionType,
-    state: exemption.state,
-    expiresAt: new Date(exemption.expiresAt),
-  };
-}
-
-export async function setTaxExemption(
+/** The buyer's currently-approved certificate, if any. */
+export async function getActiveCertificate(
   userId: string,
-  data: TaxExemptionData | null
-): Promise<void> {
-  if (!data) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { taxExemption: {} },
-    });
-    return;
-  }
+): Promise<TaxExemptionCertificate | null> {
+  return prisma.taxExemptionCertificate.findFirst({
+    where: { userId, status: "APPROVED" },
+    orderBy: { reviewedAt: "desc" },
+  });
+}
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      taxExemption: {
-        certificateId: data.certificateId,
-        exemptionType: data.exemptionType,
-        state: data.state,
-        expiresAt: data.expiresAt.toISOString(),
-      },
-    },
+/** True when the buyer has an approved exemption certificate. */
+export async function isTaxExempt(userId: string): Promise<boolean> {
+  return (await getActiveCertificate(userId)) !== null;
+}
+
+/** The buyer's latest certificate of any status (for the settings UI). */
+export async function getLatestCertificate(
+  userId: string,
+): Promise<TaxExemptionCertificate | null> {
+  return prisma.taxExemptionCertificate.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
   });
 }

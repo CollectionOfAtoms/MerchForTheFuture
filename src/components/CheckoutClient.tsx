@@ -6,6 +6,7 @@ import type { CheckoutSummary } from "@/lib/checkout/types";
 import type { FulfillmentShippingAddress } from "@/lib/fulfillment/types";
 import { createCheckoutAction } from "@/app/actions/checkout";
 import CartPaymentForm from "@/components/CartPaymentForm";
+import { convertWithRate, formatCurrency, type DisplayCurrency } from "@/lib/tax/currency";
 
 const usd = (n: number) => `$${n.toFixed(2)}`;
 
@@ -22,10 +23,13 @@ const FIELD =
 export default function CheckoutClient({
   view,
   initialAddress,
+  display,
 }: {
   view: CartView;
   /** The buyer's primary saved address, pre-filled into the form when present. */
   initialAddress?: FulfillmentShippingAddress | null;
+  /** Buyer's display currency + USD→currency rate (US-5.4). Display only — Stripe charges USD. */
+  display?: DisplayCurrency | null;
 }) {
   const [address, setAddress] = useState<FulfillmentShippingAddress>(
     initialAddress ?? {
@@ -199,7 +203,18 @@ export default function CheckoutClient({
               <div className="flex justify-between text-stone-600"><span>Items</span><span>{usd(summary.itemsSubtotal)}</span></div>
               <div className="flex justify-between text-stone-600"><span>Shipping</span><span>{usd(computedShipping)}</span></div>
               <div className="flex justify-between font-medium text-stone-900"><span>Total before tax</span><span>{usd(computedTotal)}</span></div>
-              <p className="text-xs text-stone-500">Tax is calculated at payment.</p>
+              {display && display.currency !== "USD" && display.rate != null && (
+                <div className="flex justify-between text-xs text-stone-500">
+                  <span>Approx. in {display.currency}</span>
+                  <span>≈ {formatCurrency(convertWithRate(computedTotal, display.rate), display.currency)}</span>
+                </div>
+              )}
+              <p className="text-xs text-stone-500">
+                Tax is calculated at payment.
+                {display && display.currency !== "USD" && display.rate != null
+                  ? " Your card is charged in USD."
+                  : ""}
+              </p>
             </div>
 
             {mustReconfirm && (

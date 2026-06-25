@@ -2,6 +2,8 @@ import Link from "next/link";
 import { browseArtworks } from "@/lib/artworks/browse";
 import ListingCard from "@/components/ListingCard";
 import type { SortOrder } from "@/lib/artworks/browse";
+import { auth } from "@/auth";
+import { getDisplayCurrency } from "@/lib/tax/buyer-currency";
 
 const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
   { value: "newest", label: "Newest" },
@@ -34,6 +36,9 @@ export default async function PrintsPage({ searchParams }: PrintsPageProps) {
     limit: PAGE_SIZE,
     filters: { availability: "print" },
   });
+
+  const session = await auth();
+  const display = await getDisplayCurrency((session?.user as { id?: string } | undefined)?.id);
 
   function buildUrl(overrides: Record<string, string | undefined>) {
     const merged: Record<string, string> = {};
@@ -113,7 +118,7 @@ export default async function PrintsPage({ searchParams }: PrintsPageProps) {
       ) : (
         <div className="columns-2 gap-4 sm:columns-3 lg:columns-4">
           {artworks.map((card) => (
-            <ListingCard key={card.id} card={card} />
+            <ListingCard key={card.id} card={card} display={display} />
           ))}
         </div>
       )}

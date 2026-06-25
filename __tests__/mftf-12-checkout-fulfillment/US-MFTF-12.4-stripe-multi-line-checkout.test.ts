@@ -91,6 +91,7 @@ describe("US-MFTF-12.4 — multi-line Stripe checkout session", () => {
     useShippingHandlers();
   });
   afterEach(async () => {
+    vi.unstubAllEnvs();
     await resetDatabase();
   });
 
@@ -127,6 +128,9 @@ describe("US-MFTF-12.4 — multi-line Stripe checkout session", () => {
     });
 
     it("sends one Stripe line per item + one per shipment group (tax deferred to Epic 5)", async () => {
+      // Assert the default-off behavior deterministically, independent of any
+      // STRIPE_TAX_ENABLED set in a developer's local .env.local.
+      vi.stubEnv("STRIPE_TAX_ENABLED", "");
       const captured = captureStripe();
       const buyer = await seedUser();
       const seller = await seedUser();

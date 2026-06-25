@@ -1,19 +1,15 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { ArtworkCard } from "@/lib/artworks/browse";
+import { localizedPrice, type DisplayCurrency } from "@/lib/tax/currency";
 
-function formatPrice(card: ArtworkCard): string {
-  if (card.price == null) return "";
-  const amount = card.price.toLocaleString("en-US", {
-    style: "currency",
-    currency: card.currency ?? "USD",
-    maximumFractionDigits: 0,
-  });
-  return card.saleType === "AUCTION" ? `Bid from ${amount}` : amount;
-}
-
-export default function ListingCard({ card }: { card: ArtworkCard }) {
-  const price = formatPrice(card);
+export default function ListingCard({ card, display }: { card: ArtworkCard; display?: DisplayCurrency | null }) {
+  const localized = card.price == null ? null : localizedPrice(card.price, display);
+  const price = localized
+    ? card.saleType === "AUCTION"
+      ? `Bid from ${localized.primary}`
+      : localized.primary
+    : "";
   const isSold = card.originalStatus === "SOLD";
   const badge =
     isSold
@@ -51,7 +47,14 @@ export default function ListingCard({ card }: { card: ArtworkCard }) {
           <p className="mt-0.5 truncate text-xs text-tuscan-sun/80">{card.artist}</p>
         )}
         <div className="mt-2 flex items-center justify-between gap-2">
-          {price && !isSold && <span className="text-sm font-bold text-white">{price}</span>}
+          {price && !isSold && (
+            <span className="text-sm font-bold text-white">
+              {price}
+              {localized?.secondary && (
+                <span className="ml-1 text-xs font-normal text-tuscan-sun/70">({localized.secondary})</span>
+              )}
+            </span>
+          )}
           {badge && (
             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>
               {badge.label}

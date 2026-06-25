@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getApparelListings } from "@/lib/apparel/browse";
 import ApparelListingCard from "@/components/ApparelListingCard";
+import { auth } from "@/auth";
+import { getDisplayCurrency } from "@/lib/tax/buyer-currency";
 
 const PAGE_SIZE = 24;
 
@@ -19,6 +21,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const page = Math.max(1, parseInt(typeof params.page === "string" ? params.page : "1", 10) || 1);
 
   const { listings, total, totalPages } = await getApparelListings({ page, limit: PAGE_SIZE });
+  const session = await auth();
+  const display = await getDisplayCurrency((session?.user as { id?: string } | undefined)?.id);
 
   function pageUrl(p: number): string {
     return p <= 1 ? "/shop" : `/shop?page=${p}`;
@@ -40,7 +44,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {listings.map((card) => (
-            <ApparelListingCard key={card.id} card={card} />
+            <ApparelListingCard key={card.id} card={card} display={display} />
           ))}
         </div>
       )}

@@ -10,6 +10,9 @@ import type { Prisma } from "@/generated/prisma/client";
 import { stripe } from "@/lib/payments/stripe";
 import type { FulfillmentShippingAddress } from "@/lib/fulfillment/types";
 import { planCheckout, type CheckoutPlan } from "./plan";
+import { DEFAULT_PRODUCT_TAX_CODE, SHIPPING_TAX_CODE, DEFAULT_TAX_BEHAVIOR, isStripeTaxEnabled } from "@/lib/tax/codes";
+import { getActiveCertificate } from "@/lib/tax/exemption";
+import { ensureBuyerStripeCustomerWithAddress } from "@/lib/tax/customer";
 
 export interface CartCheckoutResult {
   orderId: string;
@@ -19,7 +22,12 @@ export interface CartCheckoutResult {
 }
 
 export interface StripeLineItem {
-  price_data: { currency: string; product_data: { name: string }; unit_amount: number };
+  price_data: {
+    currency: string;
+    product_data: { name: string; tax_code: string };
+    unit_amount: number;
+    tax_behavior: "exclusive" | "inclusive" | "unspecified";
+  };
   quantity: number;
 }
 
@@ -34,8 +42,9 @@ export function buildCartLineItems(plan: CheckoutPlan): StripeLineItem[] {
     g.items.map((i) => ({
       price_data: {
         currency: "usd",
-        product_data: { name: `${i.title} (${i.selectionSummary})`.trim() },
+        product_data: { name: `${i.title} (${i.selectionSummary})`.trim(), tax_code: DEFAULT_PRODUCT_TAX_CODE },
         unit_amount: Math.round(i.unitPrice * 100),
+        tax_behavior: DEFAULT_TAX_BEHAVIOR,
       },
       quantity: i.quantity,
     })),
@@ -46,8 +55,9 @@ export function buildCartLineItems(plan: CheckoutPlan): StripeLineItem[] {
     .map(({ g, index }) => ({
       price_data: {
         currency: "usd",
-        product_data: { name: `Shipment ${index + 1} — shipping` },
+        product_data: { name: `Shipment ${index + 1} — shipping`, tax_code: SHIPPING_TAX_CODE },
         unit_amount: Math.round(g.shippingCost * 100),
+        tax_behavior: DEFAULT_TAX_BEHAVIOR,
       },
       quantity: 1,
     }));
@@ -65,6 +75,15 @@ export async function createCartCheckout(
     throw new Error("Your cart has no purchasable items.");
   }
 
+  // Ensure a Stripe Customer with the collected address (US-5.4 follow-up): this
+  // pre-fills the address in embedded Checkout so the buyer doesn't re-enter it,
+  // and lets Stripe Tax compute from the address we already have. The same Customer
+  // carries any approved tax exemption (US-5.2). We also stamp the applied
+  // certificate onto the order for the transaction record.
+  const customerId = await ensureBuyerStripeCustomerWithAddress(buyerId, address);
+  const activeCert = await getActiveCertificate(buyerId);
+  const taxExemptCertId = activeCert ? activeCert.id : null;
+
   // Persist the order + rows BEFORE creating the Stripe session, so the webhook
   // always has rows to act on (US-MFTF-12.4 AC). Cart orders leave the legacy
   // single-listing FKs null (app-layer invariant, src/lib/orders/invariants.ts).
@@ -76,6 +95,7 @@ export async function createCartCheckout(
         status: "PENDING",
         subtotal: plan.itemsSubtotal,
         taxAmount: 0,
+        taxExemptCertId,
         totalAmount: plan.total,
         currency: "USD",
         shippingName: address.name,
@@ -125,11 +145,19 @@ export async function createCartCheckout(
     ui_mode: "embedded_page",
     line_items: lineItems,
     mode: "payment",
-    // TODO(Epic 5 — Tax Calculation): re-enable Stripe automatic_tax. It requires a
-    // `tax_behavior` on every price + product tax categories + tax registration, so
-    // it's deferred to Epic 5; until then checkout proceeds with no tax line
-    // (Order.taxAmount stays 0). Flip via STRIPE_TAX_ENABLED once Epic 5 lands.
-    automatic_tax: { enabled: process.env.STRIPE_TAX_ENABLED === "true" },
+    // Stripe Tax (US-5.1). Each line carries a tax_behavior + product tax_code
+    // (buildCartLineItems); a billing address is collected so Stripe can resolve
+    // the jurisdiction. Gated by STRIPE_TAX_ENABLED (default off pre-launch until
+    // Dashboard tax registrations exist — see docs/tax-configuration.md). When on,
+    // Stripe computes the tax line shown before confirmation; the paid total
+    // (incl. tax) is read back from total_details on fulfillment.
+    automatic_tax: { enabled: isStripeTaxEnabled() },
+    billing_address_collection: "required",
+    // Attach the buyer's Stripe Customer (pre-filled with the collected address):
+    // Stripe Tax computes from it immediately and any approved exemption (US-5.2)
+    // applies. customer_update lets the buyer edit the address and saves it back.
+    customer: customerId,
+    customer_update: { address: "auto", shipping: "auto", name: "auto" },
     return_url: `${baseUrl}/orders/${order.id}/confirmation?session_id={CHECKOUT_SESSION_ID}`,
     metadata: { orderId: order.id },
   });
