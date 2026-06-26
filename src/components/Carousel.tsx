@@ -2,6 +2,26 @@
 
 import { useEffect, useRef, useState } from "react";
 
+/** A white "<" / ">" chevron with a soft dark drop-shadow so the white stroke
+ *  stays visible on any background (light, dark, or busy product imagery). */
+function ChevronIcon({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-6 w-6"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      style={{ filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7))" }}
+    >
+      {direction === "left" ? <polyline points="15 18 9 12 15 6" /> : <polyline points="9 18 15 12 9 6" />}
+    </svg>
+  );
+}
+
 export interface CarouselImage {
   url: string;
   /**
@@ -110,21 +130,24 @@ export default function Carousel({
 
         {count > 1 && (
           <>
+            {/* Subtle nav: transparent button (keeps a comfortable click target)
+                with a white chevron. A soft dark drop-shadow on the white stroke
+                keeps it legible on any background, light or dark. */}
             <button
               type="button"
               onClick={() => step(-1)}
               aria-label="Previous image"
-              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow transition-colors hover:bg-white"
+              className="absolute left-1 top-1/2 -translate-y-1/2 bg-transparent p-3 text-white transition-opacity hover:opacity-80"
             >
-              ‹
+              <ChevronIcon direction="left" />
             </button>
             <button
               type="button"
               onClick={() => step(1)}
               aria-label="Next image"
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow transition-colors hover:bg-white"
+              className="absolute right-1 top-1/2 -translate-y-1/2 bg-transparent p-3 text-white transition-opacity hover:opacity-80"
             >
-              ›
+              <ChevronIcon direction="right" />
             </button>
           </>
         )}
