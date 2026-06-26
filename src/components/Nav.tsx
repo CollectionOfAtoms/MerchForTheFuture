@@ -27,16 +27,16 @@ export default async function Nav() {
     user && roles.includes("ADMIN") ? countDropshipExceptions() : Promise.resolve(0),
   ]);
   return (
-    <header className="border-b border-tuscan-sun/40 bg-tuscan-sun">
+    <header className="border-b border-tuscan-sun/40 bg-tuscan-sun dark:border-bar-dark dark:bg-bar-dark">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="font-display text-xl tracking-tight text-cerulean">
+        <Link href="/" className="font-display text-xl tracking-tight text-cerulean dark:text-cream">
           Merch for the Future
         </Link>
 
         {/* Desktop nav — Browse / Auctions / Prints always visible */}
-        <nav className="hidden items-center gap-8 text-sm text-blue-slate sm:flex">
+        <nav className="hidden items-center gap-8 text-sm text-blue-slate dark:text-cream sm:flex">
           {sharedLinks.map((l) => (
-            <Link key={l.href} href={l.href} className="hover:text-cerulean transition-colors">
+            <Link key={l.href} href={l.href} className="hover:text-cerulean dark:hover:text-white transition-colors">
               {l.label}
             </Link>
           ))}
@@ -56,7 +56,7 @@ export default async function Nav() {
             <>
               <Link
                 href="/sign-in"
-                className="hidden sm:block text-blue-slate hover:text-cerulean transition-colors"
+                className="hidden sm:block text-blue-slate dark:text-cream hover:text-cerulean dark:hover:text-white transition-colors"
               >
                 Sign in
               </Link>

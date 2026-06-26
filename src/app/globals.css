@@ -24,6 +24,12 @@
   --color-blue-slate: #577590;
   --color-cerulean: #277da1;
 
+  /* Named warm off-white (matches the light page tint). Used for the top-bar
+     text in dark mode. */
+  --color-cream: #fefbf1;
+  /* Very dark grey for the dark-mode top bar. */
+  --color-bar-dark: #1a1a1a;
+
   /* Semantic chrome tokens — resolve through the light/dark variables below so
      `bg-bg`, `bg-surface`, `text-text`, `text-muted`, `border-border`,
      `bg-accent`, `text-accent-contrast` flip with the active theme. These govern
@@ -55,11 +61,87 @@
 .dark,
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #1c1917;
-  --surface: #292524;
-  --text: #f5f5f4;
-  --muted: #a8a29e;
-  --border: #44403c;
+  /* Three tiers of grey so structure stays legible: the #1a1a1a top bar is the
+     darkest, the page is a touch lighter (so the navbar reads against it), and
+     boxes/cards are lighter still. Text is cream. */
+  --bg: #2a2a2a;            /* page background — ~ a step lighter than the bar */
+  --surface: #383838;       /* cards / panels / boxes (were pure white) */
+  --surface-hover: #444444; /* subtle hover / raised / disabled fills */
+  --control: #4a4a4a;       /* primary buttons + selected pills (were near-black) */
+  --control-hover: #5a5a5a;
+  --text: #fefbf1;          /* cream */
+  --muted: #b3aea4;         /* secondary / dimmed cream-grey */
+  --border: #4d4d4d;
   --accent: #fcd968;
-  --accent-contrast: #1c1917;
+  --accent-contrast: #1a1a1a;
+}
+
+/* ── Dark-mode palette remap ──────────────────────────────────────────────────
+   Most pages predate the semantic tokens and hard-code the neutral Tailwind
+   palette (bg-white, text-stone-900, border-stone-200, …). Rather than touch
+   every file, remap those neutral utilities to the dark tokens under the dark
+   root so every page flips at once. Brand colors (tuscan-sun, cerulean) and
+   semantic status colors (emerald/amber/red/sky/rose) are intentionally left
+   untouched. `:is(.dark, …)` gives these enough specificity to win, and being
+   unlayered they also beat Tailwind's layered utilities. */
+:is(.dark, [data-theme="dark"]) {
+  /* Page-level backgrounds (the lightest neutrals) → page bg. */
+  & :is(.bg-gray-50, .bg-stone-50, .bg-neutral-50, .bg-zinc-50) {
+    background-color: var(--bg);
+  }
+  /* Cards / panels / boxes that were white → a lighter grey surface. */
+  & :is(.bg-white, .bg-gray-100, .bg-stone-100, .bg-neutral-100, .bg-zinc-100) {
+    background-color: var(--surface);
+  }
+  /* Raised / disabled fills. */
+  & :is(.bg-gray-200, .bg-stone-200, .bg-neutral-200) {
+    background-color: var(--surface-hover);
+  }
+  /* Primary buttons / selected pills (near-black) → a visible elevated control. */
+  & :is(.bg-gray-900, .bg-stone-900, .bg-stone-800) {
+    background-color: var(--control);
+  }
+  & :is(.bg-stone-700, .bg-stone-600) {
+    background-color: var(--control-hover);
+  }
+  /* Hover fills. */
+  & :is(.hover\:bg-white, .hover\:bg-gray-50, .hover\:bg-gray-100, .hover\:bg-stone-50, .hover\:bg-stone-100):hover {
+    background-color: var(--surface-hover);
+  }
+  & :is(.hover\:bg-gray-900, .hover\:bg-stone-600, .hover\:bg-stone-700, .hover\:bg-stone-800):hover {
+    background-color: var(--control-hover);
+  }
+
+  /* Primary / body text (the darkest neutrals) → cream. */
+  & :is(.text-black, .text-gray-900, .text-gray-800, .text-gray-700,
+        .text-stone-900, .text-stone-800, .text-stone-700,
+        .text-neutral-900, .text-neutral-800, .text-neutral-700,
+        .text-zinc-900, .text-zinc-800, .text-zinc-700) {
+    color: var(--text);
+  }
+  /* Secondary / muted text. */
+  & :is(.text-gray-600, .text-gray-500, .text-gray-400, .text-gray-300,
+        .text-stone-600, .text-stone-500, .text-stone-400, .text-stone-300, .text-stone-200,
+        .text-neutral-500, .text-neutral-400, .text-zinc-500, .text-zinc-400) {
+    color: var(--muted);
+  }
+  & :is(.hover\:text-gray-900, .hover\:text-gray-700, .hover\:text-stone-900, .hover\:text-stone-700):hover {
+    color: var(--text);
+  }
+
+  /* Neutral borders → the dark border token. */
+  & :is(.border-gray-100, .border-gray-200, .border-gray-300,
+        .border-stone-100, .border-stone-200, .border-stone-300, .border-stone-400, .border-stone-500, .border-stone-900,
+        .border-neutral-200, .border-zinc-200) {
+    border-color: var(--border);
+  }
+  /* Divide dividers. */
+  & :is(.divide-gray-50, .divide-gray-100, .divide-stone-50, .divide-stone-100, .divide-stone-200)
+    > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--border);
+  }
+  /* Input placeholders. */
+  & :is(.placeholder\:text-stone-400, .placeholder\:text-gray-400)::placeholder {
+    color: var(--muted);
+  }
 }

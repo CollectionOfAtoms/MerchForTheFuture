@@ -91,7 +91,10 @@ export default function ApparelProductView({ detail, display }: { detail: Appare
         {/* Carousel */}
         <div className="space-y-3">
           <div
-            className="overflow-hidden rounded-2xl bg-stone-100"
+            // Fixed-size viewer: the box keeps a constant aspect ratio as the
+            // buyer cycles images, and each image is letterboxed inside it with
+            // object-contain rather than resizing the box to its dimensions.
+            className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl bg-stone-100"
             // Composite the seller-chosen background behind the (transparent)
             // mockup at render time — the stored image is never modified (US-19.7).
             style={activeImage?.backgroundColor ? { backgroundColor: activeImage.backgroundColor } : undefined}
@@ -101,12 +104,10 @@ export default function ApparelProductView({ detail, display }: { detail: Appare
               <img
                 src={activeImage.url}
                 alt={`${detail.title} (${Math.min(imageIndex, detail.images.length - 1) + 1} of ${detail.images.length})`}
-                className="mx-auto max-h-[70vh] w-full object-contain"
+                className="h-full w-full object-contain"
               />
             ) : (
-              <div className="flex h-72 w-full items-center justify-center">
-                <span className="text-sm text-stone-400">No image</span>
-              </div>
+              <span className="text-sm text-stone-400">No image</span>
             )}
           </div>
 

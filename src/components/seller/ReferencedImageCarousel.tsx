@@ -40,14 +40,16 @@ export default function ReferencedImageCarousel({
   return (
     <div className="space-y-3">
       <div
-        className="relative mx-auto overflow-hidden rounded-2xl bg-stone-100"
+        // Fixed-size viewer: constant aspect ratio as the seller cycles images;
+        // each image is letterboxed with object-contain instead of resizing the box.
+        className="relative mx-auto flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl bg-stone-100"
         style={bgFor(active) ? { backgroundColor: bgFor(active) } : undefined}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={active.url}
           alt={`${title} — ${active.kind === "mockup" ? `${active.label} mockup` : "lifestyle photo"} (${idx + 1} of ${images.length})`}
-          className="mx-auto max-h-[60vh] w-full object-contain"
+          className="h-full w-full object-contain"
         />
         <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white">
           {active.kind === "mockup" ? `Teemill mockup${active.label ? ` · ${active.label}` : ""}` : "Lifestyle photo"}
