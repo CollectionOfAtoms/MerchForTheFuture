@@ -42,7 +42,9 @@ export default function ReferencedImageCarousel({
       <div
         // Fixed-size viewer: constant aspect ratio as the seller cycles images;
         // each image is letterboxed with object-contain instead of resizing the box.
-        className="relative mx-auto flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl bg-stone-100"
+        // The letterbox area is transparent; only a mockup's chosen background
+        // (US-19.7, applied inline) fills the frame.
+        className="relative mx-auto flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl"
         style={bgFor(active) ? { backgroundColor: bgFor(active) } : undefined}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -93,10 +93,11 @@ export default function ApparelProductView({ detail, display }: { detail: Appare
           <div
             // Fixed-size viewer: the box keeps a constant aspect ratio as the
             // buyer cycles images, and each image is letterboxed inside it with
-            // object-contain rather than resizing the box to its dimensions.
-            className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl bg-stone-100"
-            // Composite the seller-chosen background behind the (transparent)
-            // mockup at render time — the stored image is never modified (US-19.7).
+            // object-contain rather than resizing the box to its dimensions. The
+            // letterbox area is transparent (the page shows through) — only a
+            // mockup's seller-chosen background (US-19.7, applied inline below)
+            // fills the frame; the stored image is never modified.
+            className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl"
             style={activeImage?.backgroundColor ? { backgroundColor: activeImage.backgroundColor } : undefined}
           >
             {activeImage ? (
