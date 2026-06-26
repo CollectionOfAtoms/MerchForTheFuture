@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ApparelDetail } from "@/lib/apparel/detail";
 import { localizedPrice, type DisplayCurrency } from "@/lib/tax/currency";
@@ -46,6 +46,29 @@ export default function ApparelProductView({ detail, display }: { detail: Appare
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState(false);
   const router = useRouter();
+
+  // Left/Right arrow keys cycle the carousel (with wraparound) while on the
+  // listing page. Ignored while the user is typing in a form field or holding a
+  // modifier, and disabled when there is nothing to cycle. Manual navigation
+  // never changes the selected colour or size.
+  const imageCount = detail.images.length;
+  useEffect(() => {
+    if (imageCount <= 1) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setImageIndex((i) => (i + 1) % imageCount);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setImageIndex((i) => (i - 1 + imageCount) % imageCount);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [imageCount]);
 
   const { primary: price, secondary: priceSecondary } = localizedPrice(detail.retailPrice, display);
 

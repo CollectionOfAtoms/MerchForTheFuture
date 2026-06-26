@@ -55,4 +55,31 @@ describe("ApparelProductView — lifestyle-then-mockups union (US-MFTF-19.1)", (
     fireEvent.click(screen.getByRole("button", { name: /stone/i }));
     expect((screen.getAllByRole("img")[0] as HTMLImageElement).src).toBe("https://blob/mockup-Stone.jpg");
   });
+
+  it("cycles the carousel with the Left/Right arrow keys", () => {
+    render(<ApparelProductView detail={unionDetail} />);
+    const main = () => (screen.getAllByRole("img")[0] as HTMLImageElement).src;
+    expect(main()).toBe("https://blob/life-display.jpg");
+
+    fireEvent.keyDown(document, { key: "ArrowRight" });
+    expect(main()).toBe("https://blob/mockup-Evergreen.jpg");
+    fireEvent.keyDown(document, { key: "ArrowRight" });
+    expect(main()).toBe("https://blob/mockup-Stone.jpg");
+    // Wraps around past the end.
+    fireEvent.keyDown(document, { key: "ArrowRight" });
+    expect(main()).toBe("https://blob/life-display.jpg");
+    // And backwards, wrapping below zero.
+    fireEvent.keyDown(document, { key: "ArrowLeft" });
+    expect(main()).toBe("https://blob/mockup-Stone.jpg");
+  });
+
+  it("ignores arrow keys while typing in a form field", () => {
+    render(<ApparelProductView detail={unionDetail} />);
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+    fireEvent.keyDown(input, { key: "ArrowRight" });
+    expect((screen.getAllByRole("img")[0] as HTMLImageElement).src).toBe("https://blob/life-display.jpg");
+    input.remove();
+  });
 });
