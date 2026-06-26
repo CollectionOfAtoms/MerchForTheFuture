@@ -7,6 +7,7 @@ import {
 } from "@/lib/apparel/referenced";
 import { getApparelSizesForBlank, normalizeSizes } from "@/lib/apparel/sizes";
 import { colorNameToHex } from "@/lib/apparel/color-hex";
+import { resolveMockupBackground } from "@/lib/apparel/mockup-background";
 
 /**
  * A swatch in the buyer-facing colour picker, normalized across sourcing modes:
@@ -24,6 +25,12 @@ export interface ApparelDetailImage {
   url: string;
   /** Colour name when the image is a per-colour mockup; null for lifestyle photos. */
   colorName: string | null;
+  /**
+   * Background color to composite behind a transparent Teemill mockup at render
+   * time (US-MFTF-19.7). Resolved per mockup from the listing's stored map (default
+   * white when unset). Null for lifestyle photos (opaque — nothing to composite).
+   */
+  backgroundColor?: string | null;
 }
 
 /**
@@ -104,10 +111,17 @@ function toImages(listing: RawDetail): ApparelDetailImage[] {
   // colour label so ApparelProductView's colour→image jump still works; lifestyle
   // photos carry a null colour. DESIGNED listings have no mockup source, so the
   // union is just their lifestyle images — identical code path, no provider branch.
+  const backgrounds = (listing.mockupBackgrounds as Record<string, string> | null) ?? null;
   return referencedListingCarousel({
     lifestyle: listing.images,
     variants: listing.referencedVariants,
-  }).map((m) => ({ url: m.url, colorName: m.label }));
+  }).map((m) => ({
+    url: m.url,
+    colorName: m.label,
+    // Compose the seller-chosen background only behind mockups (transparent);
+    // lifestyle photos are opaque, so they carry no background.
+    backgroundColor: m.kind === "mockup" ? resolveMockupBackground(backgrounds, m.label) : null,
+  }));
 }
 
 /**

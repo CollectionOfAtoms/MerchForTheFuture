@@ -141,6 +141,7 @@ export async function getReferencedListingForEdit(listingId: string) {
     providerBaseCurrency: listing.providerBaseCurrency,
     providerBasePrice: listing.providerBasePrice != null ? Number(listing.providerBasePrice) : null,
     usLandedCost: listing.usLandedCost,
+    mockupBackgrounds: (listing.mockupBackgrounds as Record<string, string> | null) ?? null,
     snapshotFetchedAt: listing.snapshotFetchedAt,
     colors: referencedListingColors(listing.referencedVariants),
     sizes: referencedListingSizes(listing.referencedVariants),

@@ -90,7 +90,12 @@ export default function ApparelProductView({ detail, display }: { detail: Appare
       <div className="grid gap-10 lg:grid-cols-2">
         {/* Carousel */}
         <div className="space-y-3">
-          <div className="overflow-hidden rounded-2xl bg-stone-100">
+          <div
+            className="overflow-hidden rounded-2xl bg-stone-100"
+            // Composite the seller-chosen background behind the (transparent)
+            // mockup at render time — the stored image is never modified (US-19.7).
+            style={activeImage?.backgroundColor ? { backgroundColor: activeImage.backgroundColor } : undefined}
+          >
             {activeImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -120,7 +125,12 @@ export default function ApparelProductView({ detail, display }: { detail: Appare
                   }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.url} alt={`${detail.title} thumbnail ${i + 1}`} className="h-16 w-16 object-cover" />
+                  <img
+                    src={img.url}
+                    alt={`${detail.title} thumbnail ${i + 1}`}
+                    className="h-16 w-16 object-cover"
+                    style={img.backgroundColor ? { backgroundColor: img.backgroundColor } : undefined}
+                  />
                 </button>
               ))}
             </div>

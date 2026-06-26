@@ -223,6 +223,47 @@ export async function updateReferencedListingAction(
   return { success: true };
 }
 
+// ─── setMockupBackgroundAction (US-MFTF-19.7) ─────────────────────────────────
+
+type MockupBgResult = { error: string } | { success: true };
+
+/**
+ * Set (or clear) the background color for one mockup, keyed by the mockup's
+ * stable identity (colorName), on a referenced listing the seller owns. The color
+ * is stored as an opaque string in the ApparelListing.mockupBackgrounds JSON map —
+ * any valid color value is accepted (the picker's five swatches are a UI concern
+ * only). An empty value removes the key, falling back to the render-time default
+ * (white). The stored mockup image is never touched — compositing is at render
+ * time. Survives re-sync because the map is keyed by colorName, not variant id.
+ */
+export async function setMockupBackgroundAction(
+  listingId: string,
+  colorName: string,
+  color: string,
+): Promise<MockupBgResult> {
+  const owned = await loadOwnedReferencedListing(listingId);
+  if ("error" in owned && owned.error) return { error: owned.error };
+
+  if (!colorName) return { error: "A mockup colour is required." };
+
+  const current = (owned.listing.mockupBackgrounds as Record<string, string> | null) ?? {};
+  const next = { ...current };
+  const trimmed = color.trim();
+  if (trimmed === "") {
+    delete next[colorName];
+  } else {
+    next[colorName] = trimmed;
+  }
+
+  await prisma.apparelListing.update({
+    where: { id: listingId },
+    data: { mockupBackgrounds: next },
+  });
+
+  revalidatePath(editPath(listingId));
+  return { success: true };
+}
+
 // ─── resyncReferencedListingAction ────────────────────────────────────────────
 
 type ResyncResult = { error: string } | { changes: string[] };

@@ -4,10 +4,15 @@ import { render, screen, cleanup } from "@testing-library/react";
 
 const updateReferencedListingAction = vi.fn();
 const resyncReferencedListingAction = vi.fn();
+const setMockupBackgroundAction = vi.fn();
 vi.mock("@/app/actions/referenced-apparel", () => ({
   updateReferencedListingAction: (...a: unknown[]) => updateReferencedListingAction(...a),
   resyncReferencedListingAction: (...a: unknown[]) => resyncReferencedListingAction(...a),
+  setMockupBackgroundAction: (...a: unknown[]) => setMockupBackgroundAction(...a),
 }));
+// EditReferencedListingForm now embeds the mockup-background picker, which uses
+// the app router (US-MFTF-19.7).
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 
 const { default: EditReferencedListingForm } = await import(
   "@/components/seller/EditReferencedListingForm"
@@ -26,6 +31,7 @@ const listing = {
   providerBaseCurrency: "GBP",
   providerBasePrice: 21,
   usLandedCost: null,
+  mockupBackgrounds: null,
   snapshotFetchedAt: new Date("2026-06-13T00:00:00Z").toISOString(),
   colors: [
     { colorName: "Evergreen", colorHex: "#23312d" },
@@ -69,7 +75,9 @@ describe("US-MFTF-13.4 — EditReferencedListingForm", () => {
 
   it("shows Teemill-owned colours and sizes as read-only (not editable inputs)", () => {
     render(<EditReferencedListingForm listing={listing} costThresholds={thresholds} />);
-    expect(screen.getByText("Evergreen")).toBeInTheDocument();
+    // "Evergreen" now also labels the per-mockup background picker (US-MFTF-19.7),
+    // so it appears more than once; the colour is still shown read-only here.
+    expect(screen.getAllByText("Evergreen").length).toBeGreaterThan(0);
     expect(screen.getByText(/S, M, L/)).toBeInTheDocument();
     // Colours are not rendered as toggle buttons/checkboxes here.
     expect(screen.queryByRole("checkbox")).toBeNull();

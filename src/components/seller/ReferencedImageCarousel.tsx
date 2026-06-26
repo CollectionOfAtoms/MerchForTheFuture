@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ReferencedCarouselImage } from "@/lib/apparel/referenced";
+import { resolveMockupBackground, type MockupBackgrounds } from "@/lib/apparel/mockup-background";
 
 /**
  * Central image carousel for the referenced-listing edit page. Shows uploaded
@@ -12,11 +13,16 @@ import type { ReferencedCarouselImage } from "@/lib/apparel/referenced";
 export default function ReferencedImageCarousel({
   images,
   title,
+  backgrounds,
 }: {
   images: ReferencedCarouselImage[];
   title: string;
+  /** Per-mockup background map (US-MFTF-19.7); composited behind mockups here too. */
+  backgrounds?: MockupBackgrounds | null;
 }) {
   const [current, setCurrent] = useState(0);
+  const bgFor = (img: ReferencedCarouselImage) =>
+    img.kind === "mockup" ? resolveMockupBackground(backgrounds, img.label) : undefined;
 
   if (images.length === 0) {
     return (
@@ -33,7 +39,10 @@ export default function ReferencedImageCarousel({
 
   return (
     <div className="space-y-3">
-      <div className="relative mx-auto overflow-hidden rounded-2xl bg-stone-100">
+      <div
+        className="relative mx-auto overflow-hidden rounded-2xl bg-stone-100"
+        style={bgFor(active) ? { backgroundColor: bgFor(active) } : undefined}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={active.url}
@@ -78,7 +87,12 @@ export default function ReferencedImageCarousel({
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt={`${title} thumbnail ${i + 1}`} className="h-14 w-[72px] object-cover" />
+              <img
+                src={img.url}
+                alt={`${title} thumbnail ${i + 1}`}
+                className="h-14 w-[72px] object-cover"
+                style={bgFor(img) ? { backgroundColor: bgFor(img) } : undefined}
+              />
             </button>
           ))}
         </div>

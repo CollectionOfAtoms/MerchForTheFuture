@@ -623,6 +623,12 @@ model ApparelListing {
   /// checkout, or margin calculation. Null = not yet recorded. Shaped so a future
   /// automated quoter can populate the same field without a migration.
   usLandedCost        Int?
+  /// REFERENCED listings only — per-mockup background colors (US-MFTF-19.7), a map
+  /// of mockup identity (colorName) → opaque color string. Deliberately an
+  /// open-ended JSON value, NOT an enum, so future colors/background images need no
+  /// migration. Composited behind the transparent Teemill mockup at render time;
+  /// the stored image is never modified. Unset/missing key → default (white).
+  mockupBackgrounds   Json?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
