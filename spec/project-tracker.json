@@ -2223,11 +2223,11 @@
       "id": "US-MFTF-19.2",
       "epic": "Epic MFTF-19: Storefront Polish & Pricing Visibility",
       "title": "Navigable Admin Project-Tracker Page with Passed Dates",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
+      "status": "Passed",
+      "testWrittenDate": "2026-06-25",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-25",
+      "testPassedCommit": "pending",
       "notes": "Independent, immediately useful \u2014 sequenced early. Admin tracker page gets section navigation (jump list / sticky nav / collapsible sections) keyed by epic so admin can jump/collapse without scrolling the full 191-story list. Each story row shows testPassedDate when present, clear empty state otherwise. Section nav reflects ALL epics in the data (designed/referenced/original/BUG/CHORE) \u2014 no hardcoded epic list; updates as data does. Per-epic status counts (Passed/Not Started/Deferred) visible at section level. Keyboard-operable nav + collapse controls expose expanded/collapsed state. Admin-gated (existing access control). Reads existing tracker data \u2014 presentation only, no data change. IMPORTANT: render passed-date even where testPassedCommit is the 'pending' placeholder (Epic 5 stories) \u2014 do not gate the date on a real commit hash; CHORE-16 owns backfilling commits. Test the grouping/counting transform (stories -> epic sections w/ counts + passed-dates) as a pure fn; component test for nav presence, collapse toggle state, row passed-date + empty state."
     },
     {
