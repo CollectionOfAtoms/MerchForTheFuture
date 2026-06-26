@@ -618,6 +618,11 @@ model ApparelListing {
   providerBasePrice   Decimal?  @db.Decimal(12, 2)
   /// REFERENCED listings only — when the cached snapshot was last refreshed.
   snapshotFetchedAt   DateTime?
+  /// REFERENCED listings only — founder-recorded US-landed unit cost in USD cents
+  /// (US-MFTF-19.5). A curation/reference datum only: never used in any pricing,
+  /// checkout, or margin calculation. Null = not yet recorded. Shaped so a future
+  /// automated quoter can populate the same field without a migration.
+  usLandedCost        Int?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

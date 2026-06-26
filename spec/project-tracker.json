@@ -2256,11 +2256,11 @@
       "id": "US-MFTF-19.5",
       "epic": "Epic MFTF-19: Storefront Polish & Pricing Visibility",
       "title": "Founder Records US-Landed Cost per Teemill Product",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
+      "status": "Passed",
+      "testWrittenDate": "2026-06-25",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-25",
+      "testPassedCommit": "pending",
       "notes": "MANUAL data-source MVP with a seam for later automation (founder eyeballs US cost the way they do now; automated POST /orders quoting deferred \u2014 blocked by Open Q#3 rate limits + UNVERIFIED whether an unconfirmed POST /orders expires/bills, and the \u00a30 bundled-shipping quirk). Referenced (Teemill) listing/catalog entry stores a founder-entered US-landed cost as USD (nullable; null = not recorded). Editable by founder (seller/admin) from referenced-listing context; validates non-negative currency. INDEPENDENT of providerBasePrice (cached GBP) and retailPrice \u2014 a curation datum, NOT used in any checkout/pricing/margin/sticker calc. Server-side persistence (server action/route) auth-gated seller/admin. Data model shaped so an automated quoter can later populate the SAME field with no migration. New nullable field e.g. ApparelListing.usLandedCost as integer cents USD \u2014 schema change, prisma db push to both DBs. Auth mocked via vi.mock(). Test round-trip + that it never enters a pricing path."
     },
     {

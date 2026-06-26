@@ -25,6 +25,7 @@ const listing = {
   providerProductRef: "https://api.teemill.com/v1/catalog/products/x",
   providerBaseCurrency: "GBP",
   providerBasePrice: 21,
+  usLandedCost: null,
   snapshotFetchedAt: new Date("2026-06-13T00:00:00Z").toISOString(),
   colors: [
     { colorName: "Evergreen", colorHex: "#23312d" },

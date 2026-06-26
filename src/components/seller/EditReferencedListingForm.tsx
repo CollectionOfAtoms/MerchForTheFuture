@@ -23,6 +23,8 @@ export interface ReferencedListingForForm {
   providerProductRef: string | null;
   providerBaseCurrency: string | null;
   providerBasePrice: number | null;
+  /** Founder-recorded US-landed cost in USD cents (US-MFTF-19.5); null = not recorded. */
+  usLandedCost: number | null;
   snapshotFetchedAt: string | Date | null;
   colors: { colorName: string; colorHex: string }[];
   sizes: string[];
@@ -189,6 +191,29 @@ export default function EditReferencedListingForm({
               className={`${FIELD} pl-7`}
             />
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="usLandedCost" className={LABEL}>
+            US-landed cost (USD)
+          </label>
+          <div className="relative max-w-40">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-stone-400">$</span>
+            <input
+              id="usLandedCost"
+              name="usLandedCost"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={listing.usLandedCost != null ? (listing.usLandedCost / 100).toFixed(2) : ""}
+              className={`${FIELD} pl-7`}
+            />
+          </div>
+          {/* Curation note only — never affects the buyer's price (US-MFTF-19.5). */}
+          <p className="mt-1.5 text-xs text-stone-400">
+            What it costs to land this garment to a US buyer. For your reference when curating —
+            it never changes the retail price. Leave blank if not yet known.
+          </p>
         </div>
 
         <div className="flex items-center justify-end gap-3">
