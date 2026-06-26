@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import { getApparelListingDetail, getApparelListingOwnership } from "@/lib/apparel/detail";
 import ApparelProductView from "@/components/ApparelProductView";
 import OwnerUnlistedNotice from "@/components/seller/OwnerUnlistedNotice";
+import OwnerEditButton from "@/components/seller/OwnerEditButton";
 import { auth } from "@/auth";
+import { isListingOwner } from "@/lib/seller/listing-status";
 import { getDisplayCurrency } from "@/lib/tax/buyer-currency";
 
 interface PageProps {
@@ -30,15 +32,19 @@ export default async function ApparelDetailPage({ params }: PageProps) {
   if (!detail) notFound();
 
   const session = await auth();
-  const display = await getDisplayCurrency((session?.user as { id?: string } | undefined)?.id);
+  const viewerId = (session?.user as { id?: string } | undefined)?.id;
+  const display = await getDisplayCurrency(viewerId);
+  const editHref = `/seller/apparel/${listingId}/edit`;
+  const ownerViewing = !!ownership && isListingOwner(viewerId, ownership.sellerId);
 
   return (
     <>
+      {ownerViewing && <OwnerEditButton editHref={editHref} />}
       {ownership && (
         <OwnerUnlistedNotice
           sellerId={ownership.sellerId}
           status={ownership.status}
-          editHref={`/seller/apparel/${listingId}/edit`}
+          editHref={editHref}
         />
       )}
       <ApparelProductView detail={detail} display={display} />
