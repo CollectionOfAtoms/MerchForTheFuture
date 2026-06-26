@@ -11,6 +11,7 @@ import {
   referencedListingSizes,
   teemillDescriptionToText,
 } from "@/lib/apparel/referenced";
+import { getManagerActor, canManageListing } from "@/lib/seller/authz";
 
 type ActionResult = { error: string } | undefined;
 
@@ -25,19 +26,20 @@ async function getSellerId(): Promise<string | null> {
 }
 
 /**
- * Loads a referenced listing the current seller owns. Returns `{ error }` for an
- * unauthenticated/non-seller caller ("Unauthorized") or a listing that does not
- * exist, belongs to someone else, or is not a referenced listing.
+ * Loads a referenced listing the current actor may manage — its owning seller or
+ * any admin (canManageListing). Returns `{ error }` for a caller who can't manage
+ * listings at all ("Unauthorized") or a listing that does not exist, isn't theirs
+ * to manage, or is not a referenced listing.
  */
 async function loadOwnedReferencedListing(listingId: string) {
-  const sellerId = await getSellerId();
-  if (!sellerId) return { error: "Unauthorized" as const };
+  const actor = await getManagerActor();
+  if (!actor) return { error: "Unauthorized" as const };
 
   const listing = await prisma.apparelListing.findUnique({
     where: { id: listingId },
     include: { referencedVariants: true },
   });
-  if (!listing || listing.sellerId !== sellerId || listing.sourcingMode !== "REFERENCED") {
+  if (!listing || listing.sourcingMode !== "REFERENCED" || !canManageListing(actor, listing.sellerId)) {
     return { error: "Listing not found." as const };
   }
   return { listing };
