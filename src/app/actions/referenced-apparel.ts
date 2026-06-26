@@ -200,23 +200,12 @@ export async function updateReferencedListingAction(
     return { error: "Retail price must be at least $1." };
   }
 
-  // US-landed cost (US-MFTF-19.5): a founder-entered USD value, stored as integer
-  // cents, nullable (blank = not recorded). A curation datum only — it is written
-  // here but never read by any pricing/checkout/margin path. Validated as a
-  // non-negative currency amount, independent of retailPrice and providerBasePrice.
-  const usLandedRaw = (formData.get("usLandedCost") as string | null)?.trim() ?? "";
-  let usLandedCost: number | null = null;
-  if (usLandedRaw !== "") {
-    const dollars = parseFloat(usLandedRaw);
-    if (!isFinite(dollars) || dollars < 0) {
-      return { error: "US-landed cost must be a non-negative dollar amount." };
-    }
-    usLandedCost = Math.round(dollars * 100);
-  }
-
+  // NOTE: the US-landed cost (US-MFTF-19.5) is intentionally NOT writable here.
+  // It is an admin-set curation datum — sellers see it read-only. The write lives
+  // in the admin-gated setUsLandedCostAction (src/app/actions/us-landed-cost.ts).
   await prisma.apparelListing.update({
     where: { id: listingId },
-    data: { title, description, retailPrice, usLandedCost },
+    data: { title, description, retailPrice },
   });
 
   revalidatePath(editPath(listingId));

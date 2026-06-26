@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getTeemillCatalogRows, type CostSortDir } from "@/lib/admin/teemill-catalog";
 import { getPricingConfig } from "@/lib/pricing/config";
-import UsLandedCostBadge from "@/components/pricing/UsLandedCostBadge";
+import UsLandedCostEditor from "@/components/admin/UsLandedCostEditor";
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -66,7 +66,7 @@ export default async function TeemillCatalogPage({ searchParams }: PageProps) {
                   </td>
                   <td className="px-5 py-3 text-xs text-stone-500">{r.status}</td>
                   <td className="px-5 py-3">
-                    <UsLandedCostBadge cost={r.usLandedCost} thresholds={thresholds} />
+                    <UsLandedCostEditor listingId={r.id} cost={r.usLandedCost} thresholds={thresholds} />
                   </td>
                 </tr>
               ))

@@ -219,28 +219,13 @@ export default function EditReferencedListingForm({
 
         <div>
           <div className="mb-1.5 flex items-center gap-2">
-            <label htmlFor="usLandedCost" className="text-xs font-medium text-stone-600">
-              US-landed cost (USD)
-            </label>
-            {/* Saved value + its color band at a glance (US-MFTF-19.6). */}
+            <span className="text-xs font-medium text-stone-600">US-landed cost (USD)</span>
+            {/* View-only for the seller (US-MFTF-19.5): the value + its color band.
+                Only an admin can set it (admin Teemill catalog view). */}
             <UsLandedCostBadge cost={listing.usLandedCost} thresholds={costThresholds} />
           </div>
-          <div className="relative max-w-40">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-stone-400">$</span>
-            <input
-              id="usLandedCost"
-              name="usLandedCost"
-              type="number"
-              min="0"
-              step="0.01"
-              defaultValue={listing.usLandedCost != null ? (listing.usLandedCost / 100).toFixed(2) : ""}
-              className={`${FIELD} pl-7`}
-            />
-          </div>
-          {/* Curation note only — never affects the buyer's price (US-MFTF-19.5). */}
-          <p className="mt-1.5 text-xs text-stone-400">
-            What it costs to land this garment to a US buyer. For your reference when curating —
-            it never changes the retail price. Leave blank if not yet known.
+          <p className="text-xs text-stone-400">
+            Set by an admin as a curation reference — it never affects the retail price.
           </p>
         </div>
 

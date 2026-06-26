@@ -4,11 +4,14 @@ import { prisma, resetDatabase } from "../helpers/db";
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 
+const { setUsLandedCostAction } = await import("@/app/actions/us-landed-cost");
 const { updateReferencedListingAction } = await import("@/app/actions/referenced-apparel");
 const { getApparelListingDetail } = await import("@/lib/apparel/detail");
 const { auth } = await import("@/auth");
 
 const mockedAuth = vi.mocked(auth);
+const asAdmin = (id = "admin-1") => mockedAuth.mockResolvedValue({ user: { id, roles: ["ADMIN"] } } as never);
+const asSeller = (id: string) => mockedAuth.mockResolvedValue({ user: { id, roles: ["SELLER"] } } as never);
 
 async function seedSeller() {
   return prisma.user.create({
@@ -44,37 +47,28 @@ function makeForm(fields: Record<string, string>): FormData {
   return fd;
 }
 
-function asSeller(id: string) {
-  mockedAuth.mockResolvedValue({ user: { id, roles: ["SELLER"] } } as never);
-}
-
-describe("US-MFTF-19.5 — founder records US-landed cost", () => {
+describe("US-MFTF-19.5 — US-landed cost is admin-set, seller view-only", () => {
   beforeEach(() => resetDatabase());
   afterEach(() => vi.clearAllMocks());
 
-  it("round-trips a US-landed cost as integer cents (USD)", async () => {
+  it("an admin round-trips the cost as integer cents (USD)", async () => {
     const seller = await seedSeller();
     const listing = await seedReferencedListing(seller.id);
-    asSeller(seller.id);
+    asAdmin();
 
-    const res = await updateReferencedListingAction(
-      listing.id,
-      undefined,
-      makeForm({ title: "Powered By Plants", retailPrice: "32", usLandedCost: "12.50" }),
-    );
+    const res = await setUsLandedCostAction(listing.id, "12.50");
     expect(res).toMatchObject({ success: true });
-
     const row = await prisma.apparelListing.findUnique({ where: { id: listing.id } });
     expect(row!.usLandedCost).toBe(1250);
   });
 
-  it("clears the cost when the field is left blank (null = not recorded)", async () => {
+  it("an admin clears the cost with a blank value (null = not recorded)", async () => {
     const seller = await seedSeller();
     const listing = await seedReferencedListing(seller.id);
     await prisma.apparelListing.update({ where: { id: listing.id }, data: { usLandedCost: 999 } });
-    asSeller(seller.id);
+    asAdmin();
 
-    await updateReferencedListingAction(listing.id, undefined, makeForm({ title: "Powered By Plants", retailPrice: "32", usLandedCost: "" }));
+    await setUsLandedCostAction(listing.id, "");
     const row = await prisma.apparelListing.findUnique({ where: { id: listing.id } });
     expect(row!.usLandedCost).toBeNull();
   });
@@ -82,21 +76,37 @@ describe("US-MFTF-19.5 — founder records US-landed cost", () => {
   it("rejects a negative cost", async () => {
     const seller = await seedSeller();
     const listing = await seedReferencedListing(seller.id);
-    asSeller(seller.id);
+    asAdmin();
 
-    const res = await updateReferencedListingAction(listing.id, undefined, makeForm({ title: "Powered By Plants", retailPrice: "32", usLandedCost: "-3" }));
+    const res = await setUsLandedCostAction(listing.id, "-3");
     expect(res).toMatchObject({ error: expect.any(String) });
     const row = await prisma.apparelListing.findUnique({ where: { id: listing.id } });
     expect(row!.usLandedCost).toBeNull();
   });
 
-  it("is auth-gated: a non-seller cannot write the cost", async () => {
+  it("is admin-gated: a seller cannot set the cost", async () => {
     const seller = await seedSeller();
     const listing = await seedReferencedListing(seller.id);
-    mockedAuth.mockResolvedValue({ user: { id: "someone-else", roles: ["BUYER"] } } as never);
+    asSeller(seller.id);
 
-    const res = await updateReferencedListingAction(listing.id, undefined, makeForm({ title: "X", retailPrice: "32", usLandedCost: "10" }));
+    const res = await setUsLandedCostAction(listing.id, "10");
     expect(res).toMatchObject({ error: expect.any(String) });
+    const row = await prisma.apparelListing.findUnique({ where: { id: listing.id } });
+    expect(row!.usLandedCost).toBeNull();
+  });
+
+  it("the seller's update action never writes the cost, even if a value is submitted", async () => {
+    const seller = await seedSeller();
+    const listing = await seedReferencedListing(seller.id);
+    asSeller(seller.id);
+
+    // A crafted form with usLandedCost must be ignored by the seller path.
+    const res = await updateReferencedListingAction(
+      listing.id,
+      undefined,
+      makeForm({ title: "Powered By Plants", retailPrice: "32", usLandedCost: "99.99" }),
+    );
+    expect(res).toMatchObject({ success: true });
     const row = await prisma.apparelListing.findUnique({ where: { id: listing.id } });
     expect(row!.usLandedCost).toBeNull();
   });
@@ -104,11 +114,10 @@ describe("US-MFTF-19.5 — founder records US-landed cost", () => {
   it("never leaks the US-landed cost into the buyer projection or any pricing path", async () => {
     const seller = await seedSeller();
     const listing = await seedReferencedListing(seller.id);
-    asSeller(seller.id);
-    await updateReferencedListingAction(listing.id, undefined, makeForm({ title: "Powered By Plants", retailPrice: "32", usLandedCost: "12.50" }));
+    asAdmin();
+    await setUsLandedCostAction(listing.id, "12.50");
 
     const detail = await getApparelListingDetail(listing.id);
-    // The buyer still pays the fixed USD retail price; the cost is invisible.
     expect(detail!.retailPrice).toBe(32);
     expect(JSON.stringify(detail)).not.toContain("1250");
     expect(JSON.stringify(detail)).not.toMatch(/usLandedCost/i);
