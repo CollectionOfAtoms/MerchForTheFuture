@@ -42,6 +42,8 @@ const listing = {
     "https://teemill.com/create-a-product/powered-by-plants/?project=merchforthefuture-451391",
 };
 
+const thresholds = { amberAboveCents: 1500, redAboveCents: 2500 };
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -49,7 +51,7 @@ afterEach(() => {
 
 describe("US-MFTF-13.4 — EditReferencedListingForm", () => {
   it("renders a central carousel with the listing's images (lifestyle + mockups)", () => {
-    render(<EditReferencedListingForm listing={listing} />);
+    render(<EditReferencedListingForm listing={listing} costThresholds={thresholds} />);
     // First image (lifestyle) shown in the main viewer + a thumbnail each.
     const imgs = screen.getAllByRole("img");
     const srcs = imgs.map((i) => i.getAttribute("src"));
@@ -60,13 +62,13 @@ describe("US-MFTF-13.4 — EditReferencedListingForm", () => {
   });
 
   it("renders editable merchandising fields (title, retail price)", () => {
-    render(<EditReferencedListingForm listing={listing} />);
+    render(<EditReferencedListingForm listing={listing} costThresholds={thresholds} />);
     expect((screen.getByLabelText(/title/i) as HTMLInputElement).value).toBe("Powered By Plants");
     expect((screen.getByLabelText(/retail price/i) as HTMLInputElement).value).toBe("32");
   });
 
   it("shows Teemill-owned colours and sizes as read-only (not editable inputs)", () => {
-    render(<EditReferencedListingForm listing={listing} />);
+    render(<EditReferencedListingForm listing={listing} costThresholds={thresholds} />);
     expect(screen.getByText("Evergreen")).toBeInTheDocument();
     expect(screen.getByText(/S, M, L/)).toBeInTheDocument();
     // Colours are not rendered as toggle buttons/checkboxes here.
@@ -74,7 +76,7 @@ describe("US-MFTF-13.4 — EditReferencedListingForm", () => {
   });
 
   it("renders an 'Edit on Teemill' link that opens in a new tab using the stored fallback URL", () => {
-    render(<EditReferencedListingForm listing={listing} />);
+    render(<EditReferencedListingForm listing={listing} costThresholds={thresholds} />);
     const link = screen.getByRole("link", { name: /edit on teemill/i });
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
@@ -82,12 +84,12 @@ describe("US-MFTF-13.4 — EditReferencedListingForm", () => {
   });
 
   it("offers a 'Re-sync from Teemill' control", () => {
-    render(<EditReferencedListingForm listing={listing} />);
+    render(<EditReferencedListingForm listing={listing} costThresholds={thresholds} />);
     expect(screen.getByRole("button", { name: /re-?sync from teemill/i })).toBeInTheDocument();
   });
 
   it("guides the seller to re-sync after editing on Teemill", () => {
-    render(<EditReferencedListingForm listing={listing} />);
+    render(<EditReferencedListingForm listing={listing} costThresholds={thresholds} />);
     expect(screen.getByText(/after editing on teemill, re-?sync/i)).toBeInTheDocument();
   });
 });

@@ -7,6 +7,8 @@ import {
 } from "@/app/actions/referenced-apparel";
 import ReferencedImageCarousel from "@/components/seller/ReferencedImageCarousel";
 import type { ReferencedCarouselImage } from "@/lib/apparel/referenced";
+import UsLandedCostBadge from "@/components/pricing/UsLandedCostBadge";
+import type { BandThresholds } from "@/lib/pricing/band";
 
 const FIELD =
   "rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-stone-400 focus:outline-none w-full";
@@ -35,8 +37,10 @@ export interface ReferencedListingForForm {
 
 export default function EditReferencedListingForm({
   listing,
+  costThresholds,
 }: {
   listing: ReferencedListingForForm;
+  costThresholds: BandThresholds;
 }) {
   const action = updateReferencedListingAction.bind(null, listing.id);
   const [state, formAction, pending] = useActionState(
@@ -194,9 +198,13 @@ export default function EditReferencedListingForm({
         </div>
 
         <div>
-          <label htmlFor="usLandedCost" className={LABEL}>
-            US-landed cost (USD)
-          </label>
+          <div className="mb-1.5 flex items-center gap-2">
+            <label htmlFor="usLandedCost" className="text-xs font-medium text-stone-600">
+              US-landed cost (USD)
+            </label>
+            {/* Saved value + its color band at a glance (US-MFTF-19.6). */}
+            <UsLandedCostBadge cost={listing.usLandedCost} thresholds={costThresholds} />
+          </div>
           <div className="relative max-w-40">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-stone-400">$</span>
             <input

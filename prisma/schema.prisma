@@ -641,6 +641,17 @@ model ApparelListing {
   @@index([providerProductRef])
 }
 
+/// Singleton site config for the founder-facing US-landed-cost color band
+/// (US-MFTF-19.6). Two admin-configurable thresholds in USD cents: at or below
+/// `amberAboveCents` is green, above it up to `redAboveCents` is amber, above
+/// `redAboveCents` is red. Presentation only — never persists a per-product band.
+model PricingConfig {
+  id              String   @id @default("default")
+  amberAboveCents Int
+  redAboveCents   Int
+  updatedAt       DateTime @updatedAt
+}
+
 /// Cached, orderable variant snapshot for a REFERENCED (Teemill) apparel listing.
 /// One row per orderable colour × size combination, ingested from the provider
 /// catalog (US-MFTF-13.2). Buyers/checkout read these; only the FulfillmentProvider

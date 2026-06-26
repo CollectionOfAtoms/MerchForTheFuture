@@ -10,6 +10,7 @@ import ApparelImageManager from "@/components/seller/ApparelImageManager";
 import EditReferencedListingForm from "@/components/seller/EditReferencedListingForm";
 import ListingStatusControls from "@/components/seller/ListingStatusControls";
 import { isPubliclyViewable } from "@/lib/seller/listing-status";
+import { getPricingConfig } from "@/lib/pricing/config";
 // (ApparelImageManager is shared by both the designed and referenced edit views.)
 
 /**
@@ -47,6 +48,7 @@ export default async function EditApparelListingPage({
   const referenced = await getReferencedListingForEdit(listingId);
   if (referenced) {
     if (referenced.sellerId !== user.id) redirect("/seller/listings");
+    const costThresholds = await getPricingConfig();
     return (
       <div className="mx-auto max-w-2xl px-6 py-12">
         <div className="mb-8 flex items-start justify-between gap-4">
@@ -70,6 +72,7 @@ export default async function EditApparelListingPage({
               ? referenced.snapshotFetchedAt.toISOString()
               : null,
           }}
+          costThresholds={costThresholds}
         />
 
         {/* Lifestyle-photo management — these lead the carousel above, ahead of

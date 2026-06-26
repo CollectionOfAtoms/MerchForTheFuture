@@ -2267,11 +2267,11 @@
       "id": "US-MFTF-19.6",
       "epic": "Epic MFTF-19: Storefront Polish & Pricing Visibility",
       "title": "US-Pricing Signal on Admin Catalog View and Seller Picker",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
+      "status": "Passed",
+      "testWrittenDate": "2026-06-25",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-25",
+      "testPassedCommit": "pending",
       "notes": "Depends on 19.5. Show recorded US-landed cost (USD) on BOTH the admin Teemill catalog/audit view AND the seller listing-creation picker; clear 'not recorded' state when null. Number AND a display-only color band (green/amber/red) derived from two ADMIN-configurable thresholds, rendered as a badge \u2014 band is presentational, recomputed from the stored number, no label state persisted; sellers see both number + band at a glance. Not-recorded => neutral badge, not a misleading band. Both surfaces read the same value from 19.5 \u2014 single source of truth. Admin view supports sort/group by US-landed cost (cheapest-first scan). Thresholds stored as two config values (amber-above, red-above), not per-product. Test band derivation as a pure fn over (cost, thresholds) incl null->'not recorded'; component tests both surfaces for recorded/not-recorded/each band. Buyer-facing surfaces untouched \u2014 confirm no cost-data leak to buyer views."
     },
     {
