@@ -41,8 +41,8 @@ export interface CarouselImage {
  * this so selecting a colour can jump to that colour's mockup).
  *
  * Behaviour, in one place so the two callers stay consistent:
- * - fixed-size aspect-square frame; each image is letterboxed with object-contain
- *   so the box never resizes to the image's dimensions;
+ * - fixed-size 5:4 frame; each image is letterboxed with object-contain so the
+ *   box never resizes to the image's dimensions;
  * - the letterbox area is transparent unless the active image carries a
  *   backgroundColor (US-MFTF-19.7), which fills the frame;
  * - on-screen ‹ › arrows and a thumbnail strip when there is more than one image;
@@ -108,7 +108,13 @@ export default function Carousel({
   return (
     <div className="space-y-3">
       <div
-        className="relative mx-auto flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl"
+        // Default frame is 5:4. Combined with object-contain + the transparent
+        // letterbox and overflow-hidden rounded corners, this gives the intended
+        // behaviour: a 5:4 photo fills the box so its corners are clipped to the
+        // rounding (corners revealed), while a square photo is pillarboxed and its
+        // rounding sits in the transparent side bars (corners not revealed). A
+        // mockup's seller-chosen background still fills the frame (US-MFTF-19.7).
+        className="relative mx-auto flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-2xl"
         style={active?.backgroundColor ? { backgroundColor: active.backgroundColor } : undefined}
       >
         {active ? (
