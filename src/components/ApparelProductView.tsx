@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ApparelDetail } from "@/lib/apparel/detail";
 import { localizedPrice, type DisplayCurrency } from "@/lib/tax/currency";
 import { addToCartAction } from "@/app/actions/cart";
+import Carousel from "@/components/Carousel";
 
 /**
  * Buyer-facing apparel product view: lifestyle/mockup carousel, colour picker,
@@ -47,33 +48,8 @@ export default function ApparelProductView({ detail, display }: { detail: Appare
   const [added, setAdded] = useState(false);
   const router = useRouter();
 
-  // Left/Right arrow keys cycle the carousel (with wraparound) while on the
-  // listing page. Ignored while the user is typing in a form field or holding a
-  // modifier, and disabled when there is nothing to cycle. Manual navigation
-  // never changes the selected colour or size.
-  const imageCount = detail.images.length;
-  useEffect(() => {
-    if (imageCount <= 1) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
-      if (e.key === "ArrowRight") {
-        e.preventDefault();
-        setImageIndex((i) => (i + 1) % imageCount);
-      } else if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        setImageIndex((i) => (i - 1 + imageCount) % imageCount);
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [imageCount]);
-
   const { primary: price, secondary: priceSecondary } = localizedPrice(detail.retailPrice, display);
 
-  const hasImages = detail.images.length > 0;
-  const activeImage = hasImages ? detail.images[Math.min(imageIndex, detail.images.length - 1)] : null;
   const canAddToCart = colorIndex !== null && size !== null && !isPending;
 
   function selectColor(i: number) {
@@ -111,56 +87,15 @@ export default function ApparelProductView({ detail, display }: { detail: Appare
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <div className="grid gap-10 lg:grid-cols-2">
-        {/* Carousel */}
-        <div className="space-y-3">
-          <div
-            // Fixed-size viewer: the box keeps a constant aspect ratio as the
-            // buyer cycles images, and each image is letterboxed inside it with
-            // object-contain rather than resizing the box to its dimensions. The
-            // letterbox area is transparent (the page shows through) — only a
-            // mockup's seller-chosen background (US-19.7, applied inline below)
-            // fills the frame; the stored image is never modified.
-            className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl"
-            style={activeImage?.backgroundColor ? { backgroundColor: activeImage.backgroundColor } : undefined}
-          >
-            {activeImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={activeImage.url}
-                alt={`${detail.title} (${Math.min(imageIndex, detail.images.length - 1) + 1} of ${detail.images.length})`}
-                className="h-full w-full object-contain"
-              />
-            ) : (
-              <span className="text-sm text-stone-400">No image</span>
-            )}
-          </div>
-
-          {detail.images.length > 1 && (
-            <div className="flex flex-wrap justify-center gap-2">
-              {detail.images.map((img, i) => (
-                <button
-                  type="button"
-                  key={img.url}
-                  onClick={() => setImageIndex(i)}
-                  aria-label={`View image ${i + 1}`}
-                  className={`overflow-hidden rounded-lg border-2 transition-colors ${
-                    i === Math.min(imageIndex, detail.images.length - 1)
-                      ? "border-stone-900"
-                      : "border-transparent hover:border-stone-400"
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={img.url}
-                    alt={`${detail.title} thumbnail ${i + 1}`}
-                    className="h-16 w-16 object-cover"
-                    style={img.backgroundColor ? { backgroundColor: img.backgroundColor } : undefined}
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Carousel — shared component (src/components/Carousel.tsx). Controlled so
+            selecting a colour can jump to that colour's mockup; manual carousel
+            navigation just updates imageIndex and never changes colour/size. */}
+        <Carousel
+          title={detail.title}
+          images={detail.images.map((img) => ({ url: img.url, backgroundColor: img.backgroundColor }))}
+          index={imageIndex}
+          onIndexChange={setImageIndex}
+        />
 
         {/* Details + selection */}
         <div className="space-y-6">
