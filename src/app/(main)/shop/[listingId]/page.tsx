@@ -5,7 +5,7 @@ import ApparelProductView from "@/components/ApparelProductView";
 import OwnerUnlistedNotice from "@/components/seller/OwnerUnlistedNotice";
 import OwnerEditButton from "@/components/seller/OwnerEditButton";
 import { auth } from "@/auth";
-import { isListingOwner } from "@/lib/seller/listing-status";
+import { canManageListing } from "@/lib/seller/listing-status";
 import { getDisplayCurrency } from "@/lib/tax/buyer-currency";
 
 interface PageProps {
@@ -32,14 +32,14 @@ export default async function ApparelDetailPage({ params }: PageProps) {
   if (!detail) notFound();
 
   const session = await auth();
-  const viewerId = (session?.user as { id?: string } | undefined)?.id;
-  const display = await getDisplayCurrency(viewerId);
+  const sessionUser = session?.user as { id?: string; roles?: string[] } | undefined;
+  const display = await getDisplayCurrency(sessionUser?.id);
   const editHref = `/seller/apparel/${listingId}/edit`;
-  const ownerViewing = !!ownership && isListingOwner(viewerId, ownership.sellerId);
+  const canEdit = !!ownership && canManageListing(sessionUser, ownership.sellerId);
 
   return (
     <>
-      {ownerViewing && <OwnerEditButton editHref={editHref} />}
+      {canEdit && <OwnerEditButton editHref={editHref} />}
       {ownership && (
         <OwnerUnlistedNotice
           sellerId={ownership.sellerId}
