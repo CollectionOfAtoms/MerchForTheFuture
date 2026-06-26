@@ -35,9 +35,13 @@ export default function ApparelProductView({ detail, display }: { detail: Appare
   const defaultColorIndex = detail.colors.length > 0 ? 0 : null;
   const [colorIndex, setColorIndex] = useState<number | null>(defaultColorIndex);
   const [size, setSize] = useState<string | null>(null);
-  const [imageIndex, setImageIndex] = useState(() =>
-    defaultColorIndex !== null ? Math.max(mockupIndexForColor(defaultColorIndex), 0) : 0
-  );
+  // The carousel opens on the first media item (US-MFTF-19.1): with the
+  // lifestyle-then-mockups union that is the first lifestyle photo when one
+  // exists, else the first mockup. The first colour is still pre-selected
+  // (US-MFTF-16.2) but the initial slide no longer jumps to its mockup —
+  // selecting a colour does that. For a mockups-only listing the first mockup is
+  // index 0 and is the first colour's mockup, so both behaviours agree.
+  const [imageIndex, setImageIndex] = useState(0);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState(false);
