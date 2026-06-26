@@ -36,8 +36,8 @@ describe("globals.css dark-mode tokens", () => {
   it("overrides a known token to a different dark value than the light default", () => {
     // Light default lives on :root; dark override under the dark selector. Pull the
     // page-background variable from each and assert they differ.
-    const lightMatch = css.match(/:root\s*\{[^}]*?--bg:\s*([^;]+);/s);
-    const darkMatch = css.match(/(?:\.dark|\[data-theme=["']dark["']\])[^{]*\{[^}]*?--bg:\s*([^;]+);/s);
+    const lightMatch = css.match(/:root\s*\{[^}]*?--bg:\s*([^;]+);/);
+    const darkMatch = css.match(/(?:\.dark|\[data-theme=["']dark["']\])[^{]*\{[^}]*?--bg:\s*([^;]+);/);
     expect(lightMatch, "no light --bg on :root").toBeTruthy();
     expect(darkMatch, "no dark --bg override").toBeTruthy();
     expect(lightMatch![1].trim()).not.toBe(darkMatch![1].trim());

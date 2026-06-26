@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import MobileMenu from "@/components/MobileMenu";
 import NavDropdown from "@/components/NavDropdown";
 import CartBadge from "@/components/CartBadge";
+import ThemeToggle from "@/components/ThemeToggle";
 import { getCartCountForRequest } from "@/lib/cart/request";
 import { countSellerOriginalsToShip } from "@/lib/fulfillment/originals";
 import { countDropshipExceptions } from "@/lib/fulfillment/admin";
@@ -42,6 +43,7 @@ export default async function Nav() {
         </nav>
 
         <div className="flex items-center gap-3 text-sm">
+          <ThemeToggle />
           <CartBadge count={cartCount} />
           {user ? (
             <NavDropdown

@@ -2245,11 +2245,11 @@
       "id": "US-MFTF-19.4",
       "epic": "Epic MFTF-19: Storefront Polish & Pricing Visibility",
       "title": "Dark Mode Toggle with OS-Aware Persistence",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
+      "status": "Passed",
+      "testWrittenDate": "2026-06-25",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-06-25",
+      "testPassedCommit": "pending",
       "notes": "Depends on 19.3 (tokens must exist to flip). First visit, no stored pref => follow OS prefers-color-scheme. Visible toggle switches light/dark; choice persists across navigation + future visits. Persistence readable during SSR so correct theme renders on INITIAL PAINT WITH NO FLASH (App Router) => cookie-based, not localStorage-only. Persisted manual choice precedence > OS; OS governs only when no manual choice stored. Toggle keyboard-operable w/ accessible label + pressed/checked state. Works for authed + guest (no account). Spec resolution as reading cookie server-side and setting root attribute before hydration. Test resolver precedence (cookie > OS > light default) as pure fn; component test toggle flips root attr + writes cookie + accessible name/role. No DB persistence \u2014 cookie matches existing guest-cart cookie pattern."
     },
     {
