@@ -9,6 +9,7 @@ import { countSellerOriginalsToShip } from "@/lib/fulfillment/originals";
 import { countDropshipExceptions } from "@/lib/fulfillment/admin";
 
 const sharedLinks = [
+  { href: "/discover", label: "Discover" },
   { href: "/shop", label: "Shop" },
   { href: "/browse", label: "Browse" },
   { href: "/browse?type=auction", label: "Auctions" },
