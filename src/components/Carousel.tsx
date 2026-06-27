@@ -58,12 +58,22 @@ export default function Carousel({
   index: controlledIndex,
   onIndexChange,
   emptyLabel = "No image",
+  onActivate,
+  activateLabel = "View image",
+  enableKeyboard = true,
 }: {
   images: CarouselImage[];
   title: string;
   index?: number;
   onIndexChange?: (index: number) => void;
   emptyLabel?: string;
+  /** When set, the main image becomes a button that calls this with the active
+   *  index (e.g. the artwork page opens a fullscreen lightbox). */
+  onActivate?: (index: number) => void;
+  /** Accessible label for the activate button (when onActivate is set). */
+  activateLabel?: string;
+  /** Left/Right key navigation; disable to avoid clashing with an open overlay. */
+  enableKeyboard?: boolean;
 }) {
   const count = images.length;
   const isControlled = controlledIndex != null;
@@ -83,7 +93,7 @@ export default function Carousel({
   const step = (delta: number) => goto(indexRef.current + delta);
 
   useEffect(() => {
-    if (count <= 1) return;
+    if (count <= 1 || !enableKeyboard) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
@@ -99,9 +109,9 @@ export default function Carousel({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // step/goto read the ref, so the listener only needs (re)binding when the
-    // number of images changes.
+    // number of images changes or keyboard nav is toggled.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count]);
+  }, [count, enableKeyboard]);
 
   const active = count > 0 ? images[index] : null;
 
@@ -118,12 +128,24 @@ export default function Carousel({
         style={active?.backgroundColor ? { backgroundColor: active.backgroundColor } : undefined}
       >
         {active ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={active.url}
-            alt={`${title} (${index + 1} of ${count})`}
-            className="h-full w-full object-contain"
-          />
+          onActivate ? (
+            <button
+              type="button"
+              onClick={() => onActivate(index)}
+              aria-label={activateLabel}
+              className="block h-full w-full cursor-zoom-in"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={active.url} alt={`${title} (${index + 1} of ${count})`} className="h-full w-full object-contain" />
+            </button>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={active.url}
+              alt={`${title} (${index + 1} of ${count})`}
+              className="h-full w-full object-contain"
+            />
+          )
         ) : (
           <span className="text-sm text-stone-400">{emptyLabel}</span>
         )}
