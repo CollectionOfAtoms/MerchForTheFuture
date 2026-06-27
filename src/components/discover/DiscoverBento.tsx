@@ -71,21 +71,22 @@ function TileCard({ tile, i }: { tile: DiscoverTile; i: number }) {
 
       {/* Popout: floats above the grid on hover, card width = image width. */}
       <div className="pointer-events-none absolute left-1/2 top-0 z-50 w-max max-w-[90vw] -translate-x-1/2 scale-95 opacity-0 transition-all duration-300 ease-out group-hover:pointer-events-auto group-hover:scale-100 group-hover:opacity-100">
-        <div className="overflow-hidden rounded-2xl bg-surface shadow-2xl ring-1 ring-border">
+        <div className="max-h-[550px] overflow-hidden rounded-2xl bg-surface shadow-2xl ring-1 ring-border">
           {/* Image butts against the top of the card; no side bars (card hugs it).
               Mockups keep their assigned background colour regardless of theme. */}
           <div className="relative">
             <Link href={tile.href} className="block">
               {current && (
-                // Fixed display width of 420px (capped to 90vw on small screens)
-                // with auto height: tall images stay tall, square/wide images never
-                // exceed 420px wide, nothing distorts. The card hugs this width;
-                // max-h caps very tall images on short screens.
+                // Width capped at 420px (90vw on small screens) and height capped so
+                // the whole box stays ≤ 550px. With both maxes + auto sizing the
+                // image scales to fit without distortion: square/wide images hit the
+                // 420px width cap; tall-skinny images hit the height cap (their width
+                // then falls below 420px, which is fine). The card hugs the result.
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={current.url}
                   alt={tile.title}
-                  className="block h-auto w-[min(420px,90vw)] max-h-[85vh]"
+                  className="block h-auto w-auto max-h-[430px] max-w-[min(420px,90vw)]"
                   style={current.backgroundColor ? { backgroundColor: current.backgroundColor } : undefined}
                 />
               )}
