@@ -77,14 +77,15 @@ function TileCard({ tile, i }: { tile: DiscoverTile; i: number }) {
           <div className="relative">
             <Link href={tile.href} className="block">
               {current && (
-                // Natural size, but at least 420px wide (capped to 90vw on small
-                // screens). Height is auto, so scaling up to the 420px floor never
-                // distorts; max-w/max-h cap large images. The card hugs this width.
+                // Fixed display width of 420px (capped to 90vw on small screens)
+                // with auto height: tall images stay tall, square/wide images never
+                // exceed 420px wide, nothing distorts. The card hugs this width;
+                // max-h caps very tall images on short screens.
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={current.url}
                   alt={tile.title}
-                  className="block h-auto w-auto min-w-[min(420px,90vw)] max-h-[85vh] max-w-[90vw]"
+                  className="block h-auto w-[min(420px,90vw)] max-h-[85vh]"
                   style={current.backgroundColor ? { backgroundColor: current.backgroundColor } : undefined}
                 />
               )}
