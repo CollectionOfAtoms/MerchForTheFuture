@@ -24,6 +24,8 @@ export interface BrowseOptions {
 export interface ArtworkCard {
   id: string;
   title: string;
+  /** Optional — surfaced for the Discover hover card; omitted by most callers. */
+  description?: string | null;
   medium: string | null;
   year: number | null;
   sellerId: string;
@@ -139,6 +141,7 @@ function toCard(raw: Awaited<ReturnType<typeof fetchRaw>>[number]): ArtworkCard 
   return {
     id: raw.id,
     title: raw.title,
+    description: raw.description,
     medium: raw.medium,
     year: raw.year,
     sellerId: raw.sellerId,

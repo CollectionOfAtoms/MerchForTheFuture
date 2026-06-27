@@ -4,11 +4,11 @@ import type { ApparelCard } from "@/lib/apparel/browse";
 import type { ArtworkCard } from "@/lib/artworks/browse";
 
 function apparel(over: Partial<ApparelCard> = {}): ApparelCard {
-  return { id: "a1", title: "Tee", primaryImageUrl: "https://x/a.jpg", retailPrice: 28, colorCount: 2, ...over };
+  return { id: "a1", title: "Tee", description: "A soft organic tee.", primaryImageUrl: "https://x/a.jpg", retailPrice: 28, colorCount: 2, ...over };
 }
 function art(over: Partial<ArtworkCard>): ArtworkCard {
   return {
-    id: "art1", title: "Sunrise", medium: null, year: null, sellerId: "s1", artist: null,
+    id: "art1", title: "Sunrise", description: "Oil on canvas.", medium: null, year: null, sellerId: "s1", artist: null,
     primaryImageUrl: "https://x/art.jpg", hasOriginal: true, hasPrint: false,
     originalStatus: "ACTIVE", saleType: "FIXED_PRICE", price: 500, currency: "USD", publishedAt: new Date(),
     ...over,
@@ -16,10 +16,24 @@ function art(over: Partial<ArtworkCard>): ArtworkCard {
 }
 
 describe("toDiscoverTiles", () => {
-  it("maps an apparel card to a /shop tile with a USD price", () => {
+  it("maps an apparel card to a /shop tile with a USD price and description excerpt", () => {
     const [tile] = toDiscoverTiles([apparel()], []);
     expect(tile).toMatchObject({ kind: "apparel", href: "/shop/a1", badge: "Apparel", price: 28 });
     expect(tile.priceLabel).toBe("$28");
+    expect(tile.description).toBe("A soft organic tee.");
+  });
+
+  it("collapses whitespace and truncates a long description to an excerpt", () => {
+    const long = "Line one.\n\nLine two with   extra spaces. " + "x".repeat(300);
+    const [tile] = toDiscoverTiles([apparel({ description: long })], []);
+    expect(tile.description!.length).toBeLessThanOrEqual(201); // 200 + ellipsis
+    expect(tile.description).toMatch(/^Line one\. Line two/);
+    expect(tile.description!.endsWith("…")).toBe(true);
+  });
+
+  it("uses a null excerpt when there's no description", () => {
+    const [tile] = toDiscoverTiles([apparel({ description: null })], []);
+    expect(tile.description).toBeNull();
   });
 
   it("maps a fixed-price original to an /artwork tile", () => {

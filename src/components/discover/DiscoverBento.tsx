@@ -48,9 +48,16 @@ export default function DiscoverBento({ tiles }: { tiles: DiscoverTile[] }) {
             {t.badge}
           </span>
 
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-3 transition-opacity duration-200 group-hover:opacity-0">
+          {/* Caption: title + price always; the description excerpt unfurls on
+              hover so the popped-out tile reads like a little info card. */}
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-3">
             <p className="truncate text-sm font-medium text-white">{t.title}</p>
             <p className="text-xs text-white/80">{t.priceLabel}</p>
+            {t.description && (
+              <p className="mt-1 max-h-0 overflow-hidden text-xs leading-snug text-white/75 opacity-0 transition-all duration-300 ease-out group-hover:mt-1.5 group-hover:max-h-24 group-hover:opacity-100">
+                <span className="line-clamp-3">{t.description}</span>
+              </p>
+            )}
           </div>
         </Link>
       ))}

@@ -16,10 +16,20 @@ export interface DiscoverTile {
   price: number | null;
   priceLabel: string;
   badge: string;
+  /** Short plain-text excerpt for the hover card; null when there's no description. */
+  description: string | null;
 }
 
 function formatPrice(amount: number, currency = "USD"): string {
   return amount.toLocaleString("en-US", { style: "currency", currency, maximumFractionDigits: 0 });
+}
+
+/** Collapse to plain text and cap length for the hover card (the first few lines). */
+function excerpt(text: string | null | undefined, maxChars = 200): string | null {
+  if (!text) return null;
+  const collapsed = text.replace(/\s+/g, " ").trim();
+  if (!collapsed) return null;
+  return collapsed.length > maxChars ? `${collapsed.slice(0, maxChars).trimEnd()}…` : collapsed;
 }
 
 /** An artwork is buyable when its original is on sale, or prints are available. */
@@ -37,6 +47,7 @@ function apparelTile(card: ApparelCard): DiscoverTile {
     price: card.retailPrice,
     priceLabel: formatPrice(card.retailPrice),
     badge: "Apparel",
+    description: excerpt(card.description),
   };
 }
 
@@ -67,6 +78,7 @@ function artTile(card: ArtworkCard): DiscoverTile {
     price,
     priceLabel,
     badge,
+    description: excerpt(card.description),
   };
 }
 

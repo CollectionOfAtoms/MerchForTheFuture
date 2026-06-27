@@ -11,6 +11,8 @@ import { referencedListingColors } from "@/lib/apparel/referenced";
 export interface ApparelCard {
   id: string;
   title: string;
+  /** Optional — surfaced for the Discover hover card; omitted by most callers. */
+  description?: string | null;
   primaryImageUrl: string | null;
   retailPrice: number;
   colorCount: number;
@@ -65,6 +67,7 @@ function toCard(listing: RawListing): ApparelCard {
   return {
     id: listing.id,
     title: listing.title,
+    description: listing.description,
     primaryImageUrl,
     retailPrice: Number(listing.retailPrice),
     colorCount,
