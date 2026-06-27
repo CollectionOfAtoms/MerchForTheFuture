@@ -16,6 +16,18 @@ function spanClass(i: number): string {
   return ""; // square (1×1)
 }
 
+/**
+ * Fixed popout-image height per span, chosen to exceed the cell's rendered height
+ * (auto-rows are 160–180px; a 2-row span is ~330–370px), so the popped image is
+ * always at least as large as it appears in the bento. Height is fixed and width
+ * is auto, so the image never distorts.
+ */
+function imageHeightClass(i: number): string {
+  const m = i % 7;
+  const isLarge = m === 0 || m === 2 || m === 5; // feature or tall spans
+  return isLarge ? "h-[440px]" : "h-[320px]";
+}
+
 function Chevron({ direction }: { direction: "left" | "right" }) {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -76,11 +88,14 @@ function TileCard({ tile, i }: { tile: DiscoverTile; i: number }) {
           <div className="relative">
             <Link href={tile.href} className="block">
               {current && (
+                // Fixed height (≥ the bento tile), auto width → never smaller than
+                // shown, never distorted. The card hugs this width; max-h caps it
+                // on short screens.
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={current.url}
                   alt={tile.title}
-                  className="block h-auto max-h-[50vh] w-auto max-w-[80vw]"
+                  className={`block w-auto max-h-[80vh] ${imageHeightClass(i)}`}
                   style={current.backgroundColor ? { backgroundColor: current.backgroundColor } : undefined}
                 />
               )}
@@ -110,11 +125,14 @@ function TileCard({ tile, i }: { tile: DiscoverTile; i: number }) {
             )}
           </div>
 
-          {/* Details in the open space beneath the image. */}
-          <div className="p-3">
-            <p className="text-sm font-semibold text-text">{tile.title}</p>
+          {/* Details in the open space beneath the image. `w-0 min-w-full` makes
+              this column take the image's width (not contribute its own intrinsic
+              width), so a long title/description wraps instead of widening the
+              card past the image. */}
+          <div className="w-0 min-w-full p-3">
+            <p className="break-words text-sm font-semibold text-text">{tile.title}</p>
             <p className="text-xs text-muted">{tile.priceLabel}</p>
-            {tile.description && <p className="mt-1.5 line-clamp-3 text-xs leading-snug text-muted">{tile.description}</p>}
+            {tile.description && <p className="mt-1.5 line-clamp-3 break-words text-xs leading-snug text-muted">{tile.description}</p>}
           </div>
         </div>
       </div>
