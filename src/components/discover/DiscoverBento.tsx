@@ -27,18 +27,18 @@ export default function DiscoverBento({ tiles }: { tiles: DiscoverTile[] }) {
         <Link
           key={`${t.kind}-${t.id}`}
           href={t.href}
-          className={`group relative overflow-hidden rounded-2xl bg-surface shadow-sm transition-[transform,box-shadow] duration-300 ease-out hover:z-50 hover:scale-[1.6] hover:shadow-2xl ${spanClass(i)}`}
+          className={`group relative overflow-hidden rounded-2xl bg-surface shadow-sm transition-[transform,box-shadow] duration-300 ease-out hover:z-50 hover:scale-[1.6] hover:bg-neutral-900 hover:shadow-2xl ${spanClass(i)}`}
         >
           {t.imageUrl ? (
-            // Resting: cover-crop to the tile shape. Hover: contain to reveal the
-            // whole piece (letterboxed on the surface bg). object-fit isn't
-            // animatable, but the smooth part is the tile lifting/scaling above
-            // the grid.
+            // Resting: cover-crop to the tile shape. Hover: contain + top-aligned so
+            // the whole piece butts against the top of the popout (no bar above it),
+            // leaving the space beneath for the details. The matte goes dark on hover
+            // so there's never a white bar around the image.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={t.imageUrl}
               alt={t.title}
-              className="h-full w-full object-cover group-hover:object-contain"
+              className="h-full w-full object-cover group-hover:object-contain group-hover:object-top"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xs text-muted">No image</div>
