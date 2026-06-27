@@ -16,17 +16,6 @@ function spanClass(i: number): string {
   return ""; // square (1×1)
 }
 
-/**
- * Fixed popout-image height per span, chosen to exceed the cell's rendered height
- * (auto-rows are 160–180px; a 2-row span is ~330–370px), so the popped image is
- * always at least as large as it appears in the bento. Height is fixed and width
- * is auto, so the image never distorts.
- */
-function imageHeightClass(i: number): string {
-  const m = i % 7;
-  const isLarge = m === 0 || m === 2 || m === 5; // feature or tall spans
-  return isLarge ? "h-[440px]" : "h-[320px]";
-}
 
 function Chevron({ direction }: { direction: "left" | "right" }) {
   return (
@@ -81,21 +70,21 @@ function TileCard({ tile, i }: { tile: DiscoverTile; i: number }) {
       </Link>
 
       {/* Popout: floats above the grid on hover, card width = image width. */}
-      <div className="pointer-events-none absolute left-1/2 top-0 z-50 w-max max-w-[80vw] -translate-x-1/2 scale-95 opacity-0 transition-all duration-300 ease-out group-hover:pointer-events-auto group-hover:scale-100 group-hover:opacity-100">
+      <div className="pointer-events-none absolute left-1/2 top-0 z-50 w-max max-w-[90vw] -translate-x-1/2 scale-95 opacity-0 transition-all duration-300 ease-out group-hover:pointer-events-auto group-hover:scale-100 group-hover:opacity-100">
         <div className="overflow-hidden rounded-2xl bg-surface shadow-2xl ring-1 ring-border">
           {/* Image butts against the top of the card; no side bars (card hugs it).
               Mockups keep their assigned background colour regardless of theme. */}
           <div className="relative">
             <Link href={tile.href} className="block">
               {current && (
-                // Fixed height (≥ the bento tile), auto width → never smaller than
-                // shown, never distorted. The card hugs this width; max-h caps it
-                // on short screens.
+                // Natural size, but at least 420px wide (capped to 90vw on small
+                // screens). Height is auto, so scaling up to the 420px floor never
+                // distorts; max-w/max-h cap large images. The card hugs this width.
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={current.url}
                   alt={tile.title}
-                  className={`block w-auto max-h-[80vh] ${imageHeightClass(i)}`}
+                  className="block h-auto w-auto min-w-[min(420px,90vw)] max-h-[85vh] max-w-[90vw]"
                   style={current.backgroundColor ? { backgroundColor: current.backgroundColor } : undefined}
                 />
               )}
