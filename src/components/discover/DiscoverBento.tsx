@@ -71,7 +71,7 @@ function TileCard({ tile, i }: { tile: DiscoverTile; i: number }) {
 
       {/* Popout: floats above the grid on hover, card width = image width. */}
       <div className="pointer-events-none absolute left-1/2 top-0 z-50 w-max max-w-[90vw] -translate-x-1/2 scale-95 opacity-0 transition-all duration-300 ease-out group-hover:pointer-events-auto group-hover:scale-100 group-hover:opacity-100">
-        <div className="max-h-[550px] overflow-hidden rounded-2xl bg-surface shadow-2xl ring-1 ring-border">
+        <div className="max-h-[630px] overflow-hidden rounded-2xl bg-surface shadow-2xl ring-1 ring-border">
           {/* Image butts against the top of the card; no side bars (card hugs it).
               Mockups keep their assigned background colour regardless of theme. */}
           <div className="relative">
@@ -86,7 +86,7 @@ function TileCard({ tile, i }: { tile: DiscoverTile; i: number }) {
                 <img
                   src={current.url}
                   alt={tile.title}
-                  className="block h-auto w-auto max-h-[430px] max-w-[min(420px,90vw)]"
+                  className="block h-auto w-auto max-h-[510px] max-w-[min(420px,90vw)]"
                   style={current.backgroundColor ? { backgroundColor: current.backgroundColor } : undefined}
                 />
               )}
