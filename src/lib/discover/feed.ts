@@ -6,18 +6,31 @@ import { browseArtworks, type ArtworkCard } from "@/lib/artworks/browse";
  * one uniform shape so the grid never branches on kind. The normalize + shuffle
  * steps are pure (below) and unit-tested; getDiscoverFeed wires them to the data.
  */
+export interface DiscoverImage {
+  url: string;
+  /** Render-time background (transparent Teemill mockup's colour); null otherwise. */
+  backgroundColor: string | null;
+}
+
 export interface DiscoverTile {
   kind: "apparel" | "art";
   id: string;
   title: string;
   href: string;
-  imageUrl: string | null;
+  /** The listing's images (primary first); the popout carousel navigates these. */
+  images: DiscoverImage[];
   /** USD amount when there's a single sticker price, else null (auctions/prints). */
   price: number | null;
   priceLabel: string;
   badge: string;
   /** Short plain-text excerpt for the hover card; null when there's no description. */
   description: string | null;
+}
+
+/** The listing's media, or a single-image fallback from the primary image. */
+function mediaOf(media: DiscoverImage[] | undefined, primary: string | null): DiscoverImage[] {
+  if (media && media.length > 0) return media;
+  return primary ? [{ url: primary, backgroundColor: null }] : [];
 }
 
 function formatPrice(amount: number, currency = "USD"): string {
@@ -43,7 +56,7 @@ function apparelTile(card: ApparelCard): DiscoverTile {
     id: card.id,
     title: card.title,
     href: `/shop/${card.id}`,
-    imageUrl: card.primaryImageUrl,
+    images: mediaOf(card.media, card.primaryImageUrl),
     price: card.retailPrice,
     priceLabel: formatPrice(card.retailPrice),
     badge: "Apparel",
@@ -74,7 +87,7 @@ function artTile(card: ArtworkCard): DiscoverTile {
     id: card.id,
     title: card.title,
     href: `/artwork/${card.id}`,
-    imageUrl: card.primaryImageUrl,
+    images: mediaOf(card.media, card.primaryImageUrl),
     price,
     priceLabel,
     badge,

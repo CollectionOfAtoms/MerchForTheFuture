@@ -23,6 +23,20 @@ describe("toDiscoverTiles", () => {
     expect(tile.description).toBe("A soft organic tee.");
   });
 
+  it("carries the listing's media as the navigable image set, preserving backgrounds", () => {
+    const media = [
+      { url: "https://x/life.jpg", backgroundColor: null },
+      { url: "https://x/mock.jpg", backgroundColor: "#000000" },
+    ];
+    const [tile] = toDiscoverTiles([apparel({ media })], []);
+    expect(tile.images).toEqual(media);
+  });
+
+  it("falls back to a single-image set from the primary image when media is absent", () => {
+    const [tile] = toDiscoverTiles([apparel({ media: undefined, primaryImageUrl: "https://x/only.jpg" })], []);
+    expect(tile.images).toEqual([{ url: "https://x/only.jpg", backgroundColor: null }]);
+  });
+
   it("collapses whitespace and truncates a long description to an excerpt", () => {
     const long = "Line one.\n\nLine two with   extra spaces. " + "x".repeat(300);
     const [tile] = toDiscoverTiles([apparel({ description: long })], []);
