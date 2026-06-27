@@ -2,16 +2,18 @@ import Link from "next/link";
 import type { DiscoverTile } from "@/lib/discover/feed";
 
 /**
- * Bento layout for the Discover homepage. A dense grid with a few larger tiles so
- * the mixed apparel/art feed reads as intentional regardless of (shuffled) order.
- * Span variety is by position, so it stays stable while the content rotates.
+ * Bento layout for the Discover homepage. A dense grid of squares, portraits, and
+ * the occasional 2×2 feature tile — shapes that suit apparel/art imagery (no flat
+ * wide boxes). Span variety is by position, so it stays stable while the content
+ * rotates. On hover a tile "pops out": it lifts above the grid (scale + shadow +
+ * raised z-index) and switches from a cropped cover to the full piece (contain),
+ * with the label overlay fading so the whole image is visible.
  */
 function spanClass(i: number): string {
-  const m = i % 6;
-  if (m === 0) return "sm:col-span-2 sm:row-span-2"; // feature tile
-  if (m === 4) return "sm:row-span-2"; // tall
-  if (m === 2) return "lg:col-span-2"; // wide (large screens)
-  return "";
+  const m = i % 7;
+  if (m === 0) return "sm:col-span-2 sm:row-span-2"; // feature (2×2 square)
+  if (m === 2 || m === 5) return "row-span-2"; // tall (portrait)
+  return ""; // square (1×1)
 }
 
 export default function DiscoverBento({ tiles }: { tiles: DiscoverTile[] }) {
@@ -25,24 +27,28 @@ export default function DiscoverBento({ tiles }: { tiles: DiscoverTile[] }) {
         <Link
           key={`${t.kind}-${t.id}`}
           href={t.href}
-          className={`group relative overflow-hidden rounded-2xl bg-surface ${spanClass(i)}`}
+          className={`group relative overflow-hidden rounded-2xl bg-surface shadow-sm transition-[transform,box-shadow] duration-300 ease-out hover:z-50 hover:scale-[1.6] hover:shadow-2xl ${spanClass(i)}`}
         >
           {t.imageUrl ? (
+            // Resting: cover-crop to the tile shape. Hover: contain to reveal the
+            // whole piece (letterboxed on the surface bg). object-fit isn't
+            // animatable, but the smooth part is the tile lifting/scaling above
+            // the grid.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={t.imageUrl}
               alt={t.title}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className="h-full w-full object-cover group-hover:object-contain"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xs text-muted">No image</div>
           )}
 
-          <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white">
+          <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white transition-opacity duration-200 group-hover:opacity-0">
             {t.badge}
           </span>
 
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-3">
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-3 transition-opacity duration-200 group-hover:opacity-0">
             <p className="truncate text-sm font-medium text-white">{t.title}</p>
             <p className="text-xs text-white/80">{t.priceLabel}</p>
           </div>
