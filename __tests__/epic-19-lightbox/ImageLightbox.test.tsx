@@ -1,21 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi, afterAll } from "vitest";
 import { render, screen, fireEvent, within, act } from "@testing-library/react";
-import React from "react";
 
 // ─── Mocks (hoisted before imports) ───────────────────────────────────────────
 
-vi.mock("next/image", () => ({
-  default: ({
-    src,
-    alt,
-    className,
-  }: {
-    src: string;
-    alt: string;
-    className?: string;
-  }) => React.createElement("img", { src, alt, className }),
-}));
+// (ImageLightbox now renders the shared Carousel, which uses plain <img> — no
+// next/image mock needed.)
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(),

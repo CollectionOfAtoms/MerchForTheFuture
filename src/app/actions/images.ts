@@ -1,6 +1,5 @@
 "use server";
 
-import { auth } from "@/auth";
 import { del } from "@vercel/blob";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -12,20 +11,20 @@ import {
 } from "@/lib/artworks/images";
 import { generateVariants } from "@/lib/artworks/variants";
 import { prisma } from "@/lib/db";
+import { getManagerActor, canManageListing } from "@/lib/seller/authz";
 
 type ActionResult = { error: string } | { success: true; imageId?: string };
 
 async function requireSellerOwnsListing(listingId: string): Promise<string> {
-  const session = await auth();
-  const user = session?.user as { id?: string; roles?: string[] } | undefined;
-  if (!user?.id) redirect("/sign-in");
-  if (!user.roles?.includes("SELLER")) redirect("/");
+  const actor = await getManagerActor();
+  if (!actor) redirect("/sign-in");
 
   const listing = await prisma.originalListing.findUnique({
     where: { id: listingId },
     select: { artwork: { select: { id: true, sellerId: true } } },
   });
-  if (!listing || listing.artwork.sellerId !== user.id) redirect("/seller/listings");
+  // Owner seller or any admin may manage the listing's images.
+  if (!listing || !canManageListing(actor, listing.artwork.sellerId)) redirect("/seller/listings");
   return listing.artwork.id;
 }
 
@@ -74,16 +73,14 @@ export async function regenerateVariantsAction(
 ): Promise<ActionResult> {
   // Use a direct ownership check — does not redirect, returns { error } on all
   // failures, and works regardless of listing status (PUBLISHED, SOLD, etc.).
-  const session = await auth();
-  const user = session?.user as { id?: string; roles?: string[] } | undefined;
-  if (!user?.id) return { error: "Not authenticated." };
-  if (!user.roles?.includes("SELLER")) return { error: "Not authorised." };
+  const actor = await getManagerActor();
+  if (!actor) return { error: "Not authorised." };
 
   const listing = await prisma.originalListing.findUnique({
     where: { id: listingId },
     select: { artwork: { select: { id: true, sellerId: true } } },
   });
-  if (!listing || listing.artwork.sellerId !== user.id) return { error: "Listing not found." };
+  if (!listing || !canManageListing(actor, listing.artwork.sellerId)) return { error: "Listing not found." };
 
   const image = await prisma.artworkImage.findUnique({ where: { id: imageId } });
   if (!image || image.artworkId !== listing.artwork.id) return { error: "Image not found." };

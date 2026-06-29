@@ -7,6 +7,10 @@ import {
 } from "@/app/actions/referenced-apparel";
 import ReferencedImageCarousel from "@/components/seller/ReferencedImageCarousel";
 import type { ReferencedCarouselImage } from "@/lib/apparel/referenced";
+import UsLandedCostBadge from "@/components/pricing/UsLandedCostBadge";
+import type { BandThresholds } from "@/lib/pricing/band";
+import MockupBackgroundPicker from "@/components/seller/MockupBackgroundPicker";
+import type { MockupBackgrounds } from "@/lib/apparel/mockup-background";
 
 const FIELD =
   "rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-stone-400 focus:outline-none w-full";
@@ -23,6 +27,10 @@ export interface ReferencedListingForForm {
   providerProductRef: string | null;
   providerBaseCurrency: string | null;
   providerBasePrice: number | null;
+  /** Founder-recorded US-landed cost in USD cents (US-MFTF-19.5); null = not recorded. */
+  usLandedCost: number | null;
+  /** Per-mockup background colors keyed by colorName (US-MFTF-19.7). */
+  mockupBackgrounds: MockupBackgrounds | null;
   snapshotFetchedAt: string | Date | null;
   colors: { colorName: string; colorHex: string }[];
   sizes: string[];
@@ -33,8 +41,10 @@ export interface ReferencedListingForForm {
 
 export default function EditReferencedListingForm({
   listing,
+  costThresholds,
 }: {
   listing: ReferencedListingForForm;
+  costThresholds: BandThresholds;
 }) {
   const action = updateReferencedListingAction.bind(null, listing.id);
   const [state, formAction, pending] = useActionState(
@@ -58,9 +68,14 @@ export default function EditReferencedListingForm({
 
   return (
     <div className="space-y-8">
-      {/* Central preview — lifestyle photos first, then Teemill mockups. */}
+      {/* Central preview — lifestyle photos first, then Teemill mockups, each
+          mockup composited on its chosen background (US-MFTF-19.7). */}
       <div className="mx-auto max-w-md">
-        <ReferencedImageCarousel images={listing.carouselImages} title={listing.title} />
+        <ReferencedImageCarousel
+          images={listing.carouselImages}
+          title={listing.title}
+          backgrounds={listing.mockupBackgrounds}
+        />
       </div>
 
       {/* Provider banner — Teemill is named openly in referenced mode. */}
@@ -132,6 +147,17 @@ export default function EditReferencedListingForm({
         )}
       </div>
 
+      {/* Per-mockup background selection (US-MFTF-19.7) */}
+      <div className="rounded-2xl border border-stone-200 bg-white p-6">
+        <MockupBackgroundPicker
+          listingId={listing.id}
+          mockups={listing.carouselImages
+            .filter((img) => img.kind === "mockup" && img.label)
+            .map((img) => ({ colorName: img.label as string, url: img.url }))}
+          backgrounds={listing.mockupBackgrounds}
+        />
+      </div>
+
       {/* Editable merchandising */}
       <form action={formAction} className="rounded-2xl border border-stone-200 bg-white p-6 space-y-5">
         <h2 className="text-sm font-semibold text-stone-800">Merchandising</h2>
@@ -189,6 +215,18 @@ export default function EditReferencedListingForm({
               className={`${FIELD} pl-7`}
             />
           </div>
+        </div>
+
+        <div>
+          <div className="mb-1.5 flex items-center gap-2">
+            <span className="text-xs font-medium text-stone-600">US-landed cost (USD)</span>
+            {/* View-only for the seller (US-MFTF-19.5): the value + its color band.
+                Only an admin can set it (admin Teemill catalog view). */}
+            <UsLandedCostBadge cost={listing.usLandedCost} thresholds={costThresholds} />
+          </div>
+          <p className="text-xs text-stone-400">
+            Set by an admin as a curation reference — it never affects the retail price.
+          </p>
         </div>
 
         <div className="flex items-center justify-end gap-3">

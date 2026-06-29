@@ -23,7 +23,7 @@ export default async function AdminDashboardPage() {
   const tracker = computeTrackerSummary(trackerData);
 
   return (
-    <main className="min-h-screen bg-white px-4 py-10">
+    <main className="min-h-screen bg-bg px-4 py-10">
       <div className="mx-auto max-w-5xl space-y-8">
 
         {/* Header */}

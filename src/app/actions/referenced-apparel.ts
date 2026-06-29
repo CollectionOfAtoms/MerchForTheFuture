@@ -11,6 +11,7 @@ import {
   referencedListingSizes,
   teemillDescriptionToText,
 } from "@/lib/apparel/referenced";
+import { getManagerActor, canManageListing } from "@/lib/seller/authz";
 
 type ActionResult = { error: string } | undefined;
 
@@ -25,19 +26,20 @@ async function getSellerId(): Promise<string | null> {
 }
 
 /**
- * Loads a referenced listing the current seller owns. Returns `{ error }` for an
- * unauthenticated/non-seller caller ("Unauthorized") or a listing that does not
- * exist, belongs to someone else, or is not a referenced listing.
+ * Loads a referenced listing the current actor may manage — its owning seller or
+ * any admin (canManageListing). Returns `{ error }` for a caller who can't manage
+ * listings at all ("Unauthorized") or a listing that does not exist, isn't theirs
+ * to manage, or is not a referenced listing.
  */
 async function loadOwnedReferencedListing(listingId: string) {
-  const sellerId = await getSellerId();
-  if (!sellerId) return { error: "Unauthorized" as const };
+  const actor = await getManagerActor();
+  if (!actor) return { error: "Unauthorized" as const };
 
   const listing = await prisma.apparelListing.findUnique({
     where: { id: listingId },
     include: { referencedVariants: true },
   });
-  if (!listing || listing.sellerId !== sellerId || listing.sourcingMode !== "REFERENCED") {
+  if (!listing || listing.sourcingMode !== "REFERENCED" || !canManageListing(actor, listing.sellerId)) {
     return { error: "Listing not found." as const };
   }
   return { listing };
@@ -200,9 +202,53 @@ export async function updateReferencedListingAction(
     return { error: "Retail price must be at least $1." };
   }
 
+  // NOTE: the US-landed cost (US-MFTF-19.5) is intentionally NOT writable here.
+  // It is an admin-set curation datum — sellers see it read-only. The write lives
+  // in the admin-gated setUsLandedCostAction (src/app/actions/us-landed-cost.ts).
   await prisma.apparelListing.update({
     where: { id: listingId },
     data: { title, description, retailPrice },
+  });
+
+  revalidatePath(editPath(listingId));
+  return { success: true };
+}
+
+// ─── setMockupBackgroundAction (US-MFTF-19.7) ─────────────────────────────────
+
+type MockupBgResult = { error: string } | { success: true };
+
+/**
+ * Set (or clear) the background color for one mockup, keyed by the mockup's
+ * stable identity (colorName), on a referenced listing the seller owns. The color
+ * is stored as an opaque string in the ApparelListing.mockupBackgrounds JSON map —
+ * any valid color value is accepted (the picker's five swatches are a UI concern
+ * only). An empty value removes the key, falling back to the render-time default
+ * (white). The stored mockup image is never touched — compositing is at render
+ * time. Survives re-sync because the map is keyed by colorName, not variant id.
+ */
+export async function setMockupBackgroundAction(
+  listingId: string,
+  colorName: string,
+  color: string,
+): Promise<MockupBgResult> {
+  const owned = await loadOwnedReferencedListing(listingId);
+  if ("error" in owned && owned.error) return { error: owned.error };
+
+  if (!colorName) return { error: "A mockup colour is required." };
+
+  const current = (owned.listing.mockupBackgrounds as Record<string, string> | null) ?? {};
+  const next = { ...current };
+  const trimmed = color.trim();
+  if (trimmed === "") {
+    delete next[colorName];
+  } else {
+    next[colorName] = trimmed;
+  }
+
+  await prisma.apparelListing.update({
+    where: { id: listingId },
+    data: { mockupBackgrounds: next },
   });
 
   revalidatePath(editPath(listingId));

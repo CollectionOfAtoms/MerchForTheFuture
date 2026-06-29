@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { del } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { getManagerActor, canManageListing } from "@/lib/seller/authz";
 
 type ActionResult = { error: string } | undefined;
 type MutationResult = { error: string } | { success: true; imageId?: string };
@@ -22,19 +23,20 @@ async function getSellerId(): Promise<string | null> {
 }
 
 /**
- * Loads an apparel listing the current seller owns. Returns `{ error }` for an
- * unauthenticated/non-seller caller ("Unauthorized") or a listing that does not
- * exist or belongs to someone else ("Listing not found.").
+ * Loads an apparel listing the current actor may manage — its owning seller or any
+ * admin (canManageListing). Returns `{ error }` for a caller who can't manage
+ * listings at all ("Unauthorized") or a listing that does not exist or isn't theirs
+ * to manage ("Listing not found.").
  */
 async function loadOwnedListing(listingId: string) {
-  const sellerId = await getSellerId();
-  if (!sellerId) return { error: "Unauthorized" as const };
+  const actor = await getManagerActor();
+  if (!actor) return { error: "Unauthorized" as const };
 
   const listing = await prisma.apparelListing.findUnique({
     where: { id: listingId },
     include: { productType: { include: { colors: { select: { id: true } } } } },
   });
-  if (!listing || listing.sellerId !== sellerId) {
+  if (!listing || !canManageListing(actor, listing.sellerId)) {
     return { error: "Listing not found." as const };
   }
   return { listing };

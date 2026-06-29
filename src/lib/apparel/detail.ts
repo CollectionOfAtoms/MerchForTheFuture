@@ -3,10 +3,11 @@ import type { Prisma } from "@/generated/prisma/client";
 import {
   referencedListingColors,
   referencedListingSizes,
-  referencedListingImages,
+  referencedListingCarousel,
 } from "@/lib/apparel/referenced";
 import { getApparelSizesForBlank, normalizeSizes } from "@/lib/apparel/sizes";
 import { colorNameToHex } from "@/lib/apparel/color-hex";
+import { resolveMockupBackground } from "@/lib/apparel/mockup-background";
 
 /**
  * A swatch in the buyer-facing colour picker, normalized across sourcing modes:
@@ -24,6 +25,12 @@ export interface ApparelDetailImage {
   url: string;
   /** Colour name when the image is a per-colour mockup; null for lifestyle photos. */
   colorName: string | null;
+  /**
+   * Background color to composite behind a transparent Teemill mockup at render
+   * time (US-MFTF-19.7). Resolved per mockup from the listing's stored map (default
+   * white when unset). Null for lifestyle photos (opaque — nothing to composite).
+   */
+  backgroundColor?: string | null;
 }
 
 /**
@@ -96,18 +103,24 @@ function toSizes(listing: RawDetail): string[] {
 }
 
 function toImages(listing: RawDetail): ApparelDetailImage[] {
-  // Uploaded lifestyle photos win in both modes (the read orders them primary
-  // first); referenced listings without photos fall back to cached mockups.
-  if (listing.images.length > 0) {
-    return listing.images.map((i) => ({ url: i.displayUrl ?? i.originalUrl, colorName: null }));
-  }
-  // referencedListingImages returns mockups (one per distinct colour) when there
-  // are no lifestyle photos. Pair each mockup back to its colour for the optional
-  // colour→image swap on the detail page.
-  const urls = referencedListingImages({ lifestyle: [], variants: listing.referencedVariants });
-  return urls.map((url) => ({
-    url,
-    colorName: listing.referencedVariants.find((v) => v.mockupUrl === url)?.colorName ?? null,
+  // US-MFTF-19.1 — show the UNION of lifestyle photos then mockups, never one set
+  // to the exclusion of the other. referencedListingCarousel orders all lifestyle
+  // photos (stored order) first, then the distinct per-colour mockups (stored
+  // order), de-duping URLs. The first active slide is therefore the first
+  // lifestyle photo when one exists, else the first mockup. Mockups keep their
+  // colour label so ApparelProductView's colour→image jump still works; lifestyle
+  // photos carry a null colour. DESIGNED listings have no mockup source, so the
+  // union is just their lifestyle images — identical code path, no provider branch.
+  const backgrounds = (listing.mockupBackgrounds as Record<string, string> | null) ?? null;
+  return referencedListingCarousel({
+    lifestyle: listing.images,
+    variants: listing.referencedVariants,
+  }).map((m) => ({
+    url: m.url,
+    colorName: m.label,
+    // Compose the seller-chosen background only behind mockups (transparent);
+    // lifestyle photos are opaque, so they carry no background.
+    backgroundColor: m.kind === "mockup" ? resolveMockupBackground(backgrounds, m.label) : null,
   }));
 }
 

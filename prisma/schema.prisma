@@ -618,6 +618,17 @@ model ApparelListing {
   providerBasePrice   Decimal?  @db.Decimal(12, 2)
   /// REFERENCED listings only — when the cached snapshot was last refreshed.
   snapshotFetchedAt   DateTime?
+  /// REFERENCED listings only — founder-recorded US-landed unit cost in USD cents
+  /// (US-MFTF-19.5). A curation/reference datum only: never used in any pricing,
+  /// checkout, or margin calculation. Null = not yet recorded. Shaped so a future
+  /// automated quoter can populate the same field without a migration.
+  usLandedCost        Int?
+  /// REFERENCED listings only — per-mockup background colors (US-MFTF-19.7), a map
+  /// of mockup identity (colorName) → opaque color string. Deliberately an
+  /// open-ended JSON value, NOT an enum, so future colors/background images need no
+  /// migration. Composited behind the transparent Teemill mockup at render time;
+  /// the stored image is never modified. Unset/missing key → default (white).
+  mockupBackgrounds   Json?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -634,6 +645,17 @@ model ApparelListing {
   @@index([status])
   @@index([productTypeId])
   @@index([providerProductRef])
+}
+
+/// Singleton site config for the founder-facing US-landed-cost color band
+/// (US-MFTF-19.6). Two admin-configurable thresholds in USD cents: at or below
+/// `amberAboveCents` is green, above it up to `redAboveCents` is amber, above
+/// `redAboveCents` is red. Presentation only — never persists a per-product band.
+model PricingConfig {
+  id              String   @id @default("default")
+  amberAboveCents Int
+  redAboveCents   Int
+  updatedAt       DateTime @updatedAt
 }
 
 /// Cached, orderable variant snapshot for a REFERENCED (Teemill) apparel listing.

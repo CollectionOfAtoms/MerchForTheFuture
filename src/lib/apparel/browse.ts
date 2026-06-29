@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
-import { referencedListingColors } from "@/lib/apparel/referenced";
+import { referencedListingColors, referencedListingCarousel } from "@/lib/apparel/referenced";
+import { resolveMockupBackground } from "@/lib/apparel/mockup-background";
 
 /**
  * A single apparel tile on the public storefront (`/shop`). This is the
@@ -11,7 +12,15 @@ import { referencedListingColors } from "@/lib/apparel/referenced";
 export interface ApparelCard {
   id: string;
   title: string;
+  /** Optional — surfaced for the Discover hover card; omitted by most callers. */
+  description?: string | null;
   primaryImageUrl: string | null;
+  /**
+   * Optional ordered media (lifestyle photos then per-colour mockups, each with
+   * its render-time background) for the Discover navigable popout. Omitted by the
+   * plain storefront grid.
+   */
+  media?: { url: string; backgroundColor: string | null }[];
   retailPrice: number;
   colorCount: number;
 }
@@ -62,10 +71,26 @@ function toCard(listing: RawListing): ApparelCard {
     listing.referencedVariants.find((v) => v.mockupUrl)?.mockupUrl ??
     null;
 
+  // Ordered media for the Discover popout: lifestyle photos (primary first) then
+  // the per-colour mockups, each carrying its render-time background (US-MFTF-19.7).
+  // Uses the unwatermarked grid variant (same asset shown on the public tiles).
+  const mockupBackgrounds = (listing.mockupBackgrounds as Record<string, string> | null) ?? null;
+  const media = referencedListingCarousel({
+    lifestyle: [...listing.images]
+      .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary))
+      .map((i) => ({ displayUrl: i.gridUrl ?? i.thumbnailUrl ?? i.originalUrl, originalUrl: i.originalUrl })),
+    variants: listing.referencedVariants,
+  }).map((m) => ({
+    url: m.url,
+    backgroundColor: m.kind === "mockup" ? resolveMockupBackground(mockupBackgrounds, m.label) : null,
+  }));
+
   return {
     id: listing.id,
     title: listing.title,
+    description: listing.description,
     primaryImageUrl,
+    media,
     retailPrice: Number(listing.retailPrice),
     colorCount,
   };

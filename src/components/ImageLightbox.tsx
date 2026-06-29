@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import Image from "next/image";
+import Carousel, { type CarouselImage as CarouselFrameImage } from "@/components/Carousel";
 
 interface CarouselImage {
   url: string;
@@ -118,10 +118,6 @@ export default function ImageLightbox({
     return () => document.removeEventListener("keydown", handler);
   }, [open, closeLb, lbPrev, lbNext]);
 
-  // Inline carousel prev/next
-  const prev = () => setCurrent((c) => (c - 1 + sorted.length) % sorted.length);
-  const next = () => setCurrent((c) => (c + 1) % sorted.length);
-
   const openLightbox = (idx: number) => {
     setLbIndex(idx);
     setOpen(true);
@@ -187,6 +183,9 @@ export default function ImageLightbox({
 
   const lbImg = sorted[lbIndex];
   const lbSrc = lbImg.displayUrl ?? lbImg.url;
+
+  // Inline frames for the shared Carousel (display variant when available).
+  const frameImages: CarouselFrameImage[] = sorted.map((img) => ({ url: img.displayUrl ?? img.url }));
 
   // Controls are always visible on pointer devices; on touch they fade after idle
   const controlsCls = isTouch
@@ -276,74 +275,19 @@ export default function ImageLightbox({
 
   return (
     <>
-      {/* Inline carousel */}
-      <div className="space-y-3">
-        {/* Main image — outer div centres; inner div shrinks to image width so
-            no background bleeds around portrait/square images */}
-        <div className="flex justify-center">
-          <div className="relative">
-            <button
-              onClick={() => openLightbox(current)}
-              aria-label="Open image in fullscreen"
-              className="cursor-zoom-in block overflow-hidden rounded-2xl"
-            >
-              <Image
-                src={sorted[current].displayUrl ?? sorted[current].url}
-                alt={`${title} — image ${current + 1}`}
-                width={0}
-                height={0}
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="block w-auto h-auto max-w-full max-h-[60vh]"
-                priority={current === 0}
-              />
-            </button>
-            {sorted.length > 1 && (
-              <>
-                <button
-                  onClick={prev}
-                  aria-label="Previous image"
-                  className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow hover:bg-white transition-colors"
-                >
-                  ‹
-                </button>
-                <button
-                  onClick={next}
-                  aria-label="Next image"
-                  className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow hover:bg-white transition-colors"
-                >
-                  ›
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Thumbnail strip */}
-        {sorted.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {sorted.map((img, idx) => (
-              <button
-                key={img.url}
-                onClick={() => setCurrent(idx)}
-                aria-label={`View image ${idx + 1}`}
-                className={`shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${
-                  idx === current
-                    ? "border-stone-900"
-                    : "border-transparent hover:border-stone-400"
-                }`}
-              >
-                <Image
-                  src={img.url}
-                  alt={`${title} thumbnail ${idx + 1}`}
-                  width={72}
-                  height={56}
-                  className="h-14 w-[72px] object-cover"
-                />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Inline carousel — the shared Carousel (same as the apparel listing page).
+          Clicking the main image opens the fullscreen lightbox + magnifier below.
+          Keyboard nav is handed to the lightbox while it's open so they don't both
+          move. */}
+      <Carousel
+        images={frameImages}
+        title={title}
+        index={current}
+        onIndexChange={setCurrent}
+        onActivate={openLightbox}
+        activateLabel="Open image in fullscreen"
+        enableKeyboard={!open}
+      />
 
       {/* Lightbox portal — only after client mount */}
       {mounted && createPortal(lightboxOverlay, document.body)}

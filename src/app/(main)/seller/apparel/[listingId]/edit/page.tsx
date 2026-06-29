@@ -9,7 +9,8 @@ import EditApparelListingForm from "@/components/seller/EditApparelListingForm";
 import ApparelImageManager from "@/components/seller/ApparelImageManager";
 import EditReferencedListingForm from "@/components/seller/EditReferencedListingForm";
 import ListingStatusControls from "@/components/seller/ListingStatusControls";
-import { isPubliclyViewable } from "@/lib/seller/listing-status";
+import { isPubliclyViewable, canManageListing } from "@/lib/seller/listing-status";
+import { getPricingConfig } from "@/lib/pricing/config";
 // (ApparelImageManager is shared by both the designed and referenced edit views.)
 
 /**
@@ -40,13 +41,16 @@ export default async function EditApparelListingPage({
   const session = await auth();
   const user = session?.user as { id?: string; roles?: string[] } | undefined;
   if (!user?.id) redirect("/sign-in");
-  if (!user.roles?.includes("SELLER")) redirect("/");
+  // A SELLER (their own) or any ADMIN may reach the edit page; per-listing
+  // authorization is checked with canManageListing below.
+  if (!user.roles?.includes("SELLER") && !user.roles?.includes("ADMIN")) redirect("/");
 
   // Referenced (Teemill) listings use their own read + form; designed listings
   // fall through to the original path below.
   const referenced = await getReferencedListingForEdit(listingId);
   if (referenced) {
-    if (referenced.sellerId !== user.id) redirect("/seller/listings");
+    if (!canManageListing(user, referenced.sellerId)) redirect("/seller/listings");
+    const costThresholds = await getPricingConfig();
     return (
       <div className="mx-auto max-w-2xl px-6 py-12">
         <div className="mb-8 flex items-start justify-between gap-4">
@@ -70,6 +74,7 @@ export default async function EditApparelListingPage({
               ? referenced.snapshotFetchedAt.toISOString()
               : null,
           }}
+          costThresholds={costThresholds}
         />
 
         {/* Lifestyle-photo management — these lead the carousel above, ahead of
@@ -89,7 +94,7 @@ export default async function EditApparelListingPage({
 
   const listing = await getApparelListingForEdit(listingId);
   if (!listing) notFound();
-  if (listing.sellerId !== user.id) redirect("/seller/listings");
+  if (!canManageListing(user, listing.sellerId)) redirect("/seller/listings");
 
   const readOnly = listing.status === "SOLD";
 

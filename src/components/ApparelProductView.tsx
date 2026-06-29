@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ApparelDetail } from "@/lib/apparel/detail";
 import { localizedPrice, type DisplayCurrency } from "@/lib/tax/currency";
 import { addToCartAction } from "@/app/actions/cart";
+import Carousel from "@/components/Carousel";
 
 /**
  * Buyer-facing apparel product view: lifestyle/mockup carousel, colour picker,
@@ -35,9 +36,13 @@ export default function ApparelProductView({ detail, display }: { detail: Appare
   const defaultColorIndex = detail.colors.length > 0 ? 0 : null;
   const [colorIndex, setColorIndex] = useState<number | null>(defaultColorIndex);
   const [size, setSize] = useState<string | null>(null);
-  const [imageIndex, setImageIndex] = useState(() =>
-    defaultColorIndex !== null ? Math.max(mockupIndexForColor(defaultColorIndex), 0) : 0
-  );
+  // The carousel opens on the first media item (US-MFTF-19.1): with the
+  // lifestyle-then-mockups union that is the first lifestyle photo when one
+  // exists, else the first mockup. The first colour is still pre-selected
+  // (US-MFTF-16.2) but the initial slide no longer jumps to its mockup —
+  // selecting a colour does that. For a mockups-only listing the first mockup is
+  // index 0 and is the first colour's mockup, so both behaviours agree.
+  const [imageIndex, setImageIndex] = useState(0);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState(false);
@@ -45,8 +50,6 @@ export default function ApparelProductView({ detail, display }: { detail: Appare
 
   const { primary: price, secondary: priceSecondary } = localizedPrice(detail.retailPrice, display);
 
-  const hasImages = detail.images.length > 0;
-  const activeImage = hasImages ? detail.images[Math.min(imageIndex, detail.images.length - 1)] : null;
   const canAddToCart = colorIndex !== null && size !== null && !isPending;
 
   function selectColor(i: number) {
@@ -84,44 +87,15 @@ export default function ApparelProductView({ detail, display }: { detail: Appare
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <div className="grid gap-10 lg:grid-cols-2">
-        {/* Carousel */}
-        <div className="space-y-3">
-          <div className="overflow-hidden rounded-2xl bg-stone-100">
-            {activeImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={activeImage.url}
-                alt={`${detail.title} (${Math.min(imageIndex, detail.images.length - 1) + 1} of ${detail.images.length})`}
-                className="mx-auto max-h-[70vh] w-full object-contain"
-              />
-            ) : (
-              <div className="flex h-72 w-full items-center justify-center">
-                <span className="text-sm text-stone-400">No image</span>
-              </div>
-            )}
-          </div>
-
-          {detail.images.length > 1 && (
-            <div className="flex flex-wrap justify-center gap-2">
-              {detail.images.map((img, i) => (
-                <button
-                  type="button"
-                  key={img.url}
-                  onClick={() => setImageIndex(i)}
-                  aria-label={`View image ${i + 1}`}
-                  className={`overflow-hidden rounded-lg border-2 transition-colors ${
-                    i === Math.min(imageIndex, detail.images.length - 1)
-                      ? "border-stone-900"
-                      : "border-transparent hover:border-stone-400"
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.url} alt={`${detail.title} thumbnail ${i + 1}`} className="h-16 w-16 object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Carousel — shared component (src/components/Carousel.tsx). Controlled so
+            selecting a colour can jump to that colour's mockup; manual carousel
+            navigation just updates imageIndex and never changes colour/size. */}
+        <Carousel
+          title={detail.title}
+          images={detail.images.map((img) => ({ url: img.url, backgroundColor: img.backgroundColor }))}
+          index={imageIndex}
+          onIndexChange={setImageIndex}
+        />
 
         {/* Details + selection */}
         <div className="space-y-6">

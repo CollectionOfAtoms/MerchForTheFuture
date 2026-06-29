@@ -57,6 +57,28 @@ export function shouldShowOwnerUnlistedNotice(
   return status === "UNLISTED" && !!viewerId && viewerId === sellerId;
 }
 
+/**
+ * Whether the current viewer is the seller who owns the listing — used to surface
+ * the "Edit this listing" affordance on the public detail page (any status).
+ */
+export function isListingOwner(
+  viewerId: string | null | undefined,
+  sellerId: string,
+): boolean {
+  return !!viewerId && viewerId === sellerId;
+}
+
+/**
+ * Whether the current viewer may edit the listing — its owning seller, or any
+ * admin. Drives the "Edit this listing" affordance on the public detail pages.
+ */
+export function canManageListing(
+  viewer: { id?: string | null; roles?: string[] } | null | undefined,
+  sellerId: string,
+): boolean {
+  return isListingOwner(viewer?.id, sellerId) || !!viewer?.roles?.includes("ADMIN");
+}
+
 /** The public detail-page href for a listing (the buyer-facing product page). */
 export function publicListingHref(
   kind: ListingKind,
