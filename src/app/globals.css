@@ -129,6 +129,21 @@
     color: var(--text);
   }
 
+  /* Brand blues (cerulean / blue-slate / dark-cyan) read poorly as text on the
+     dark greys — especially on the dashboards. Brighten brand TEXT to cream
+     (primary) / muted-cream (secondary). Only text-* is remapped, so brand
+     backgrounds, borders, and buttons keep their hue. */
+  & :is(.text-cerulean, .text-blue-slate) {
+    color: var(--text);
+  }
+  & :is(.text-dark-cyan, .text-seagrass,
+        .text-blue-slate\/40, .text-blue-slate\/50, .text-blue-slate\/60) {
+    color: var(--muted);
+  }
+  & :is(.hover\:text-cerulean):hover {
+    color: var(--text);
+  }
+
   /* Neutral borders → the dark border token. */
   & :is(.border-gray-100, .border-gray-200, .border-gray-300,
         .border-stone-100, .border-stone-200, .border-stone-300, .border-stone-400, .border-stone-500, .border-stone-900,
