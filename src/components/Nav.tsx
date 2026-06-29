@@ -3,7 +3,6 @@ import { auth } from "@/auth";
 import MobileMenu from "@/components/MobileMenu";
 import NavDropdown from "@/components/NavDropdown";
 import CartBadge from "@/components/CartBadge";
-import ThemeToggle from "@/components/ThemeToggle";
 import { getCartCountForRequest } from "@/lib/cart/request";
 import { countSellerOriginalsToShip } from "@/lib/fulfillment/originals";
 import { countDropshipExceptions } from "@/lib/fulfillment/admin";
@@ -37,14 +36,13 @@ export default async function Nav() {
         {/* Desktop nav — Browse / Auctions / Prints always visible */}
         <nav className="hidden items-center gap-8 text-sm text-blue-slate dark:text-cream sm:flex">
           {sharedLinks.map((l) => (
-            <Link key={l.href} href={l.href} className="hover:text-cerulean dark:hover:text-white transition-colors">
+            <Link key={l.href} href={l.href} className="transition-colors hover:text-cerulean dark:hover:text-cream/80">
               {l.label}
             </Link>
           ))}
         </nav>
 
         <div className="flex items-center gap-3 text-sm">
-          <ThemeToggle />
           <CartBadge count={cartCount} />
           {user ? (
             <NavDropdown
@@ -57,7 +55,7 @@ export default async function Nav() {
             <>
               <Link
                 href="/sign-in"
-                className="hidden sm:block text-blue-slate dark:text-cream hover:text-cerulean dark:hover:text-white transition-colors"
+                className="hidden text-blue-slate transition-colors hover:text-cerulean dark:text-cream dark:hover:text-cream/80 sm:block"
               >
                 Sign in
               </Link>

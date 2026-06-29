@@ -80,18 +80,23 @@ function Section({ section }: { section: EpicSection }) {
 export default function TrackerSections({ sections }: { sections: EpicSection[] }) {
   return (
     <div className="space-y-4">
-      {/* Jump nav — keyboard-operable in-page links, derived from the data. */}
-      <nav aria-label="Sections" className="rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Jump to epic</p>
-        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          {sections.map((s) => (
-            <li key={s.anchor}>
-              <a href={`#${s.anchor}`} className="text-gray-600 hover:text-gray-900 hover:underline">
-                {s.epic} <span className="text-gray-400">({s.counts.passed}/{s.counts.total})</span>
+      {/* Contents — a Wikipedia-style table of contents: a titled box with a
+          numbered, multi-column list of epics, each linking to its section. */}
+      <nav aria-label="Sections" className="rounded-xl border border-gray-200 bg-gray-50 p-5 shadow-sm">
+        <p className="mb-3 border-b border-gray-200 pb-2 text-sm font-semibold text-gray-700">Contents</p>
+        <ol className="gap-x-8 sm:columns-2 lg:columns-3">
+          {sections.map((s, idx) => (
+            <li key={s.anchor} className="mb-1.5 flex break-inside-avoid items-baseline gap-2 text-sm">
+              <span className="w-6 shrink-0 text-right tabular-nums text-gray-400">{idx + 1}</span>
+              <a href={`#${s.anchor}`} className="min-w-0 flex-1 text-blue-700 hover:underline">
+                {s.epic}
               </a>
+              <span className="shrink-0 text-xs tabular-nums text-gray-400">
+                {s.counts.passed}/{s.counts.total}
+              </span>
             </li>
           ))}
-        </ul>
+        </ol>
       </nav>
 
       {sections.map((s) => <Section key={s.anchor} section={s} />)}
