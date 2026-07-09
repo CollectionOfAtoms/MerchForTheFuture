@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { mockupBackgroundStyle } from "@/lib/apparel/mockup-background";
 
 /** A white "<" / ">" chevron with a soft dark drop-shadow so the white stroke
  *  stays visible on any background (light, dark, or busy product imagery). */
@@ -118,14 +119,15 @@ export default function Carousel({
   return (
     <div className="space-y-3">
       <div
-        // Default frame is 5:4. Combined with object-contain + the transparent
-        // letterbox and overflow-hidden rounded corners, this gives the intended
-        // behaviour: a 5:4 photo fills the box so its corners are clipped to the
-        // rounding (corners revealed), while a square photo is pillarboxed and its
-        // rounding sits in the transparent side bars (corners not revealed). A
-        // mockup's seller-chosen background still fills the frame (US-MFTF-19.7).
-        className="relative mx-auto flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-2xl"
-        style={active?.backgroundColor ? { backgroundColor: active.backgroundColor } : undefined}
+        // Default frame is 4:5 (portrait). Combined with object-contain + the
+        // transparent letterbox and overflow-hidden rounded corners, this gives
+        // the intended behaviour: a 4:5 photo fills the box so its corners are
+        // clipped to the rounding (corners revealed), while a square photo is
+        // letterboxed and its rounding sits in the transparent bars (corners not
+        // revealed). A mockup's seller-chosen background still fills the frame
+        // (US-MFTF-19.7).
+        className="relative mx-auto flex aspect-[4/5] w-full items-center justify-center overflow-hidden rounded-2xl"
+        style={mockupBackgroundStyle(active?.backgroundColor)}
       >
         {active ? (
           onActivate ? (
@@ -198,7 +200,7 @@ export default function Carousel({
                 src={img.url}
                 alt={`${title} thumbnail ${i + 1}`}
                 className="h-16 w-16 object-cover"
-                style={img.backgroundColor ? { backgroundColor: img.backgroundColor } : undefined}
+                style={mockupBackgroundStyle(img.backgroundColor)}
               />
             </button>
           ))}
