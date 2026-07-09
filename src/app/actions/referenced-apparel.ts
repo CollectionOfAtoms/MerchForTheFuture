@@ -251,7 +251,13 @@ export async function setMockupBackgroundAction(
     data: { mockupBackgrounds: next },
   });
 
+  // Backgrounds show on the buyer detail page, the shop browse grid, and the
+  // Discover feed — revalidate all of them, not just the seller edit page, so a
+  // changed background is reflected everywhere (not just the first save).
   revalidatePath(editPath(listingId));
+  revalidatePath(`/shop/${listingId}`);
+  revalidatePath("/shop");
+  revalidatePath("/discover");
   return { success: true };
 }
 

@@ -56,6 +56,11 @@ export default function EditReferencedListingForm({
   const [resyncChanges, setResyncChanges] = useState<string[] | null>(null);
   const [resyncError, setResyncError] = useState<string | null>(null);
 
+  // Lifted so the top preview carousel and the picker share one source of truth —
+  // the picker updates this live (incl. the colour picker), so the preview reflects
+  // a change before it's persisted.
+  const [backgrounds, setBackgrounds] = useState<MockupBackgrounds>(listing.mockupBackgrounds ?? {});
+
   function handleResync() {
     setResyncError(null);
     setResyncChanges(null);
@@ -74,7 +79,7 @@ export default function EditReferencedListingForm({
         <ReferencedImageCarousel
           images={listing.carouselImages}
           title={listing.title}
-          backgrounds={listing.mockupBackgrounds}
+          backgrounds={backgrounds}
         />
       </div>
 
@@ -154,7 +159,8 @@ export default function EditReferencedListingForm({
           mockups={listing.carouselImages
             .filter((img) => img.kind === "mockup" && img.label)
             .map((img) => ({ colorName: img.label as string, url: img.url }))}
-          backgrounds={listing.mockupBackgrounds}
+          backgrounds={backgrounds}
+          onChange={setBackgrounds}
         />
       </div>
 
