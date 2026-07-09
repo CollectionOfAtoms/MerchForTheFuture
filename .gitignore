@@ -52,3 +52,5 @@ next-env.d.ts
 .env*.local
 
 certificates
+# claude code — local permission settings are per-machine
+.claude/settings.local.json
