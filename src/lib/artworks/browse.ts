@@ -24,6 +24,10 @@ export interface BrowseOptions {
 export interface ArtworkCard {
   id: string;
   title: string;
+  /** Optional — surfaced for the Discover hover card; omitted by most callers. */
+  description?: string | null;
+  /** Optional ordered images (primary first) for the Discover navigable popout. */
+  media?: { url: string; backgroundColor: string | null }[];
   medium: string | null;
   year: number | null;
   sellerId: string;
@@ -136,9 +140,17 @@ function toCard(raw: Awaited<ReturnType<typeof fetchRaw>>[number]): ArtworkCard 
 
   const primaryImage = raw.images.find((img) => img.isPrimary) ?? null;
 
+  // Ordered images (primary first) for the Discover popout; art has no per-image
+  // background, so backgroundColor is always null.
+  const media = [...raw.images]
+    .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary))
+    .map((img) => ({ url: img.url, backgroundColor: null }));
+
   return {
     id: raw.id,
     title: raw.title,
+    description: raw.description,
+    media,
     medium: raw.medium,
     year: raw.year,
     sellerId: raw.sellerId,

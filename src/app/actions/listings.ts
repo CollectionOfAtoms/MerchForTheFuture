@@ -16,15 +16,28 @@ import {
   invalidateFramingForArtwork,
 } from "@/lib/print/framing";
 import { generatePrintCrop, generateWatermarkedMockup } from "@/lib/artworks/variants";
+import { getActor, canManageListing, type Actor } from "@/lib/seller/authz";
 
 type ActionResult = { error: string } | { success: true } | undefined;
 
+/** Creating a listing requires a SELLER (the new listing's owner). */
 async function requireSeller() {
   const session = await auth();
   const user = session?.user as { id?: string; roles?: string[] } | undefined;
   if (!user?.id) redirect("/sign-in");
   if (!user.roles?.includes("SELLER")) redirect("/");
   return user.id;
+}
+
+/**
+ * Managing an existing listing requires a SELLER or an ADMIN; per-listing
+ * authorization is then checked with canManageListing (owner seller, or any admin).
+ */
+async function requireManager(): Promise<Actor> {
+  const actor = await getActor();
+  if (!actor) redirect("/sign-in");
+  if (!actor.roles.includes("SELLER") && !actor.roles.includes("ADMIN")) redirect("/");
+  return actor;
 }
 
 export async function createListingAction(
@@ -127,14 +140,14 @@ export async function updateListingAction(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  const sellerId = await requireSeller();
+  const actor = await requireManager();
 
   const listing = await prisma.originalListing.findUnique({
     where: { id: listingId },
     include: { artwork: true, auction: true },
   });
 
-  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+  if (!listing || !canManageListing(actor, listing.artwork.sellerId)) return { error: "Listing not found." };
 
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string)?.trim();
@@ -180,14 +193,14 @@ export async function updateListingAction(
 }
 
 export async function toggleListingStatusAction(listingId: string): Promise<ActionResult> {
-  const sellerId = await requireSeller();
+  const actor = await requireManager();
 
   const listing = await prisma.originalListing.findUnique({
     where: { id: listingId },
     include: { artwork: true, auction: { select: { bidCount: true } } },
   });
 
-  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+  if (!listing || !canManageListing(actor, listing.artwork.sellerId)) return { error: "Listing not found." };
   if (listing.status === "SOLD") return { error: "A sold listing cannot change status." };
   if (listing.auction && (listing.auction.bidCount ?? 0) > 0) return { error: "An auction with bids cannot change status." };
 
@@ -221,7 +234,7 @@ export async function setListingStatusAction(
   listingId: string,
   status: SettableListingStatus,
 ): Promise<ActionResult> {
-  const sellerId = await requireSeller();
+  const actor = await requireManager();
   if (!SETTABLE_LISTING_STATUSES.includes(status)) return { error: "Invalid status." };
 
   const listing = await prisma.originalListing.findUnique({
@@ -229,7 +242,7 @@ export async function setListingStatusAction(
     include: { artwork: true, auction: { select: { bidCount: true } } },
   });
 
-  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+  if (!listing || !canManageListing(actor, listing.artwork.sellerId)) return { error: "Listing not found." };
   if (listing.status === "SOLD") return { error: "A sold listing cannot change status." };
   if (listing.auction && (listing.auction.bidCount ?? 0) > 0) return { error: "An auction with bids cannot change status." };
 
@@ -250,7 +263,7 @@ export async function setListingStatusAction(
 }
 
 export async function deleteListingAction(listingId: string): Promise<ActionResult> {
-  const sellerId = await requireSeller();
+  const actor = await requireManager();
 
   const listing = await prisma.originalListing.findUnique({
     where: { id: listingId },
@@ -260,7 +273,7 @@ export async function deleteListingAction(listingId: string): Promise<ActionResu
     },
   });
 
-  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Not found." };
+  if (!listing || !canManageListing(actor, listing.artwork.sellerId)) return { error: "Not found." };
   if (listing.status === "SOLD") return { error: "Cannot delete a sold listing." };
   if (listing.auction && (listing.auction.bidCount ?? 0) > 0) return { error: "Cannot delete an auction with active bids." };
 
@@ -286,14 +299,14 @@ export async function updatePrintConfigAction(
   listingId: string,
   formData: FormData
 ): Promise<ActionResult> {
-  const sellerId = await requireSeller();
+  const actor = await requireManager();
 
   const listing = await prisma.originalListing.findUnique({
     where: { id: listingId },
     include: { artwork: true },
   });
 
-  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+  if (!listing || !canManageListing(actor, listing.artwork.sellerId)) return { error: "Listing not found." };
 
   const enable = formData.get("availableForPrint") === "true";
 
@@ -357,13 +370,13 @@ export async function setCanvasWrapAction(
   aspectRatio: string,
   wrap: string,
 ): Promise<ActionResult> {
-  const sellerId = await requireSeller();
+  const actor = await requireManager();
 
   const listing = await prisma.originalListing.findUnique({
     where: { id: listingId },
     include: { artwork: true },
   });
-  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+  if (!listing || !canManageListing(actor, listing.artwork.sellerId)) return { error: "Listing not found." };
 
   if (!isSelectableWrap(wrap)) return { error: "Invalid wrap selection." };
 
@@ -396,13 +409,13 @@ export async function setSizeMockupAction(
   sizeSku: string,
   mockupUrl: string,
 ): Promise<ActionResult> {
-  const sellerId = await requireSeller();
+  const actor = await requireManager();
 
   const listing = await prisma.originalListing.findUnique({
     where: { id: listingId },
     include: { artwork: true },
   });
-  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+  if (!listing || !canManageListing(actor, listing.artwork.sellerId)) return { error: "Listing not found." };
 
   if (!mockupUrl || !/^https?:\/\//.test(mockupUrl)) return { error: "A valid mockup image URL is required." };
 
@@ -431,13 +444,13 @@ export async function setSizeMockupAction(
 
 /** Remove a size's buyer mockup (US-MFTF-PF.6); the PF.4 gate then blocks ACTIVE until re-supplied. */
 export async function removeSizeMockupAction(listingId: string, sizeSku: string): Promise<ActionResult> {
-  const sellerId = await requireSeller();
+  const actor = await requireManager();
 
   const listing = await prisma.originalListing.findUnique({
     where: { id: listingId },
     include: { artwork: true },
   });
-  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+  if (!listing || !canManageListing(actor, listing.artwork.sellerId)) return { error: "Listing not found." };
 
   await removeSizeMockup(listing.artworkId, sizeSku);
 
@@ -458,13 +471,13 @@ export async function confirmFramingAction(
   aspectRatio: string,
   rect: { x: number; y: number; w: number; h: number },
 ): Promise<ActionResult> {
-  const sellerId = await requireSeller();
+  const actor = await requireManager();
 
   const listing = await prisma.originalListing.findUnique({
     where: { id: listingId },
     include: { artwork: true },
   });
-  if (!listing || listing.artwork.sellerId !== sellerId) return { error: "Listing not found." };
+  if (!listing || !canManageListing(actor, listing.artwork.sellerId)) return { error: "Listing not found." };
 
   const source = listing.printSourceImageUrl;
   if (!source) return { error: "Set a print source image before framing." };

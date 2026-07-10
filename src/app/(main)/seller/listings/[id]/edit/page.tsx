@@ -9,6 +9,7 @@ import SizeMockupUploader, { type MockupSize } from "@/components/SizeMockupUplo
 import ListingStatusControls from "@/components/seller/ListingStatusControls";
 import { getPrintCatalog, parseArtworkDimensions, type CatalogProduct } from "@/lib/print/listing";
 import { getFramingForArtwork, getMockupsForArtwork, getPrintReadiness, offeredAspects, offeredSizes } from "@/lib/print/framing";
+import { canManageListing } from "@/lib/seller/listing-status";
 import printCostsJson from "@/lib/print/costs.json";
 
 export default async function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,7 +18,9 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
   const session = await auth();
   const user = session?.user as { id?: string; roles?: string[] } | undefined;
   if (!user?.id) redirect("/sign-in");
-  if (!user.roles?.includes("SELLER")) redirect("/");
+  // A SELLER (their own) or any ADMIN may reach the edit page; per-listing
+  // authorization is checked with canManageListing below.
+  if (!user.roles?.includes("SELLER") && !user.roles?.includes("ADMIN")) redirect("/");
 
   const listing = await prisma.originalListing.findUnique({
     where: { id },
@@ -27,7 +30,7 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
     },
   });
 
-  if (!listing || listing.artwork.sellerId !== user.id) notFound();
+  if (!listing || !canManageListing(user, listing.artwork.sellerId)) notFound();
 
   const catalog: CatalogProduct[] = getPrintCatalog();
   const artworkDimensions = parseArtworkDimensions(listing.artwork.dimensions);

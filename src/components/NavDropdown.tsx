@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOutAction } from "@/app/actions/auth";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface NavDropdownProps {
   user: { name?: string | null; email?: string | null } | null;
@@ -95,7 +96,7 @@ export default function NavDropdown({ user, roles, fulfillmentCount = 0, excepti
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 text-sm text-blue-slate hover:text-cerulean transition-colors max-w-[160px]"
+        className="flex items-center gap-1 text-sm text-blue-slate transition-colors hover:text-cerulean dark:text-cream dark:hover:text-cream/80 max-w-[160px]"
       >
         <span className="truncate">{label}</span>
         {/* Chevron-down — pointer-events:none prevents the SVG's transform
@@ -207,6 +208,9 @@ export default function NavDropdown({ user, roles, fulfillmentCount = 0, excepti
           <MenuItem href={settingsHref} active={isActive(settingsHref)}>
             Settings
           </MenuItem>
+
+          {/* Dark-mode toggle lives here as a switch (US-MFTF-19.4). */}
+          <ThemeToggle className="w-full px-4 py-2 text-sm text-blue-slate transition-colors hover:bg-tuscan-sun/5" />
 
           <div className="my-1 border-t border-tuscan-sun/20" role="separator" />
 

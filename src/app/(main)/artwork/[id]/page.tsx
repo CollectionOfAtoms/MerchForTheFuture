@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { getArtworkDetail } from "@/lib/artworks/detail";
 import ImageLightbox from "@/components/ImageLightbox";
 import OwnerUnlistedNotice from "@/components/seller/OwnerUnlistedNotice";
+import OwnerEditButton from "@/components/seller/OwnerEditButton";
+import { canManageListing } from "@/lib/seller/listing-status";
 import AuctionCountdown from "./AuctionCountdown";
 import PlaceBidForm from "@/components/PlaceBidForm";
 import PrintOptionsSelector from "@/components/PrintOptionsSelector";
@@ -41,6 +42,8 @@ export default async function ArtworkDetailPage({ params }: PageProps) {
   const isAuction = orig?.saleType === "AUCTION";
   const isFixedPrice = orig?.saleType === "FIXED_PRICE";
   const isSeller = !!sessionUser?.id && sessionUser.id === artwork.sellerId;
+  const editHref = orig ? `/seller/listings/${orig.listingId}/edit` : null;
+  const canEdit = !!orig && canManageListing(sessionUser, artwork.sellerId);
 
   // Seller-uploaded per-size buyer mockups (US-MFTF-PF.7); the listing's primary image
   // is the defensive fallback when a size somehow lacks one.
@@ -55,6 +58,7 @@ export default async function ArtworkDetailPage({ params }: PageProps) {
 
   return (
     <>
+      {canEdit && editHref && <OwnerEditButton editHref={editHref} />}
       {orig && (
         <OwnerUnlistedNotice
           sellerId={artwork.sellerId}
@@ -72,17 +76,7 @@ export default async function ArtworkDetailPage({ params }: PageProps) {
         {/* Right: artwork details */}
         <div className="space-y-6">
           <div>
-            <div className="flex items-start justify-between gap-4">
-              <h1 className="text-2xl font-semibold text-stone-900">{artwork.title}</h1>
-              {isSeller && orig && (
-                <Link
-                  href={`/seller/listings/${orig.listingId}/edit`}
-                  className="shrink-0 rounded-full border border-stone-200 px-4 py-1.5 text-xs font-medium text-stone-600 hover:border-stone-400 hover:text-stone-900 transition-colors"
-                >
-                  Edit listing
-                </Link>
-              )}
-            </div>
+            <h1 className="text-2xl font-semibold text-stone-900">{artwork.title}</h1>
             {artwork.artist && (
               <p className="mt-1 text-sm text-stone-500">by {artwork.artist}</p>
             )}

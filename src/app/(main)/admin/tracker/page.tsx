@@ -1,17 +1,9 @@
 import { readFile } from "fs/promises";
 import path from "path";
-
-interface Story {
-  id: string;
-  epic: string;
-  title: string;
-  status: "Not Started" | "Test Written" | "In Progress" | "Passed" | "Complete" | "Deferred" | "Dropped" | "Tests Passing — pending live confirmation";
-  testWrittenDate: string | null;
-  testWrittenCommit: string | null;
-  testPassedDate: string | null;
-  testPassedCommit: string | null;
-  notes: string | null;
-}
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { groupStoriesByEpic, type TrackerStory } from "@/lib/tracker/group";
+import TrackerSections from "@/components/admin/TrackerSections";
 
 interface Commit {
   hash: string;
@@ -23,44 +15,8 @@ interface Commit {
 }
 
 interface TrackerData {
-  stories: Story[];
+  stories: TrackerStory[];
   commits: Commit[];
-}
-
-const STATUS_CONFIG = {
-  "Not Started": { label: "Not Started", bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400" },
-  "Test Written": { label: "Test Written", bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-400" },
-  "In Progress": { label: "In Progress", bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-400" },
-  "Passed": { label: "Passed", bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
-  "Complete": { label: "Complete", bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
-  "Deferred": { label: "Deferred", bg: "bg-sky-50", text: "text-sky-600", dot: "bg-sky-300" },
-  "Dropped": { label: "Dropped", bg: "bg-red-50", text: "text-red-400", dot: "bg-red-300" },
-  "Tests Passing — pending live confirmation": { label: "Tests passing · live-confirm pending", bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-400" },
-} as const;
-
-function groupByEpic(stories: Story[]): Record<string, Story[]> {
-  return stories.reduce<Record<string, Story[]>>((acc, story) => {
-    acc[story.epic] = acc[story.epic] ?? [];
-    acc[story.epic].push(story);
-    return acc;
-  }, {});
-}
-
-function epicProgress(stories: Story[]) {
-  const passed = stories.filter((s) => s.status === "Passed").length;
-  const written = stories.filter((s) => s.status === "Test Written").length;
-  const total = stories.length;
-  return { passed, written, total };
-}
-
-function StatusBadge({ status }: { status: Story["status"] }) {
-  const cfg = STATUS_CONFIG[status] ?? { label: status, bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400" };
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.bg} ${cfg.text}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-      {cfg.label}
-    </span>
-  );
 }
 
 function ProgressBar({ passed, written, total }: { passed: number; written: number; total: number }) {
@@ -77,12 +33,19 @@ function ProgressBar({ passed, written, total }: { passed: number; written: numb
 }
 
 export default async function TrackerPage() {
+  // Admin-gated to match the sibling admin pages (US-MFTF-19.2 — the page was
+  // previously ungated).
+  const session = await auth();
+  const user = session?.user as { id?: string; roles?: string[] } | undefined;
+  if (!user?.id) redirect("/sign-in");
+  if (!user.roles?.includes("ADMIN")) redirect("/");
+
   const filePath = path.join(process.cwd(), "spec", "project-tracker.json");
   const raw = await readFile(filePath, "utf-8");
   const data: TrackerData = JSON.parse(raw);
 
-  const byEpic = groupByEpic(data.stories);
-  const totalPassed = data.stories.filter((s) => s.status === "Passed").length;
+  const sections = groupStoriesByEpic(data.stories);
+  const totalPassed = data.stories.filter((s) => s.status === "Passed" || s.status === "Complete").length;
   const totalWritten = data.stories.filter((s) => s.status === "Test Written").length;
   const totalStories = data.stories.length;
 
@@ -94,11 +57,11 @@ export default async function TrackerPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Project Tracker</h1>
-            <p className="mt-1 text-sm text-gray-500">Art Auction Marketplace — development progress</p>
+            <p className="mt-1 text-sm text-gray-500">Merch for the Future — development progress</p>
           </div>
           <nav className="flex items-center gap-3 text-sm">
-            <a href="/admin/users" className="text-gray-500 hover:text-gray-900 transition-colors">Users</a>
-            <a href="/admin/fulfillment" className="text-gray-500 hover:text-gray-900 transition-colors">Fulfillment</a>
+            <a href="/admin/users" className="text-gray-500 transition-colors hover:text-gray-900">Users</a>
+            <a href="/admin/fulfillment" className="text-gray-500 transition-colors hover:text-gray-900">Fulfillment</a>
           </nav>
         </div>
 
@@ -106,9 +69,7 @@ export default async function TrackerPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">Overall completion</span>
-            <span className="text-sm text-gray-500">
-              {totalPassed} / {totalStories} stories passed
-            </span>
+            <span className="text-sm text-gray-500">{totalPassed} / {totalStories} stories passed</span>
           </div>
           <ProgressBar passed={totalPassed} written={totalWritten} total={totalStories} />
           <div className="mt-3 flex gap-4 text-xs text-gray-500">
@@ -118,40 +79,8 @@ export default async function TrackerPage() {
           </div>
         </div>
 
-        {/* Epics */}
-        <div className="space-y-4">
-          {Object.entries(byEpic).map(([epicName, stories]) => {
-            const { passed, written, total } = epicProgress(stories);
-            return (
-              <div key={epicName} className="rounded-xl border border-gray-200 bg-white shadow-sm">
-                {/* Epic header */}
-                <div className="border-b border-gray-100 px-6 py-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-gray-800">{epicName}</h2>
-                    <span className="text-xs text-gray-400">{passed}/{total}</span>
-                  </div>
-                  <ProgressBar passed={passed} written={written} total={total} />
-                </div>
-
-                {/* Stories table */}
-                <div className="divide-y divide-gray-50">
-                  {stories.map((story) => (
-                    <div key={story.id} className="flex items-start gap-4 px-6 py-3">
-                      <span className="w-14 shrink-0 text-xs font-mono text-gray-400 pt-0.5">{story.id}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-800">{story.title}</p>
-                        {story.notes && (
-                          <p className="mt-0.5 text-xs text-gray-400">{story.notes}</p>
-                        )}
-                      </div>
-                      <StatusBadge status={story.status} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* Navigable, collapsible per-epic sections (US-MFTF-19.2) */}
+        <TrackerSections sections={sections} />
 
         {/* Commit log */}
         {data.commits.length > 0 && (
@@ -166,8 +95,8 @@ export default async function TrackerPage() {
                 const affected: string[] = commit.storiesAffected ?? [];
                 return (
                   <div key={hash + i} className="flex items-start gap-4 px-6 py-3">
-                    <span className="w-14 shrink-0 font-mono text-xs text-gray-400 pt-0.5">{hash}</span>
-                    <div className="flex-1 min-w-0">
+                    <span className="w-14 shrink-0 pt-0.5 font-mono text-xs text-gray-400">{hash}</span>
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm text-gray-800">{message}</p>
                       <p className="mt-0.5 text-xs text-gray-400">
                         {commit.date}
