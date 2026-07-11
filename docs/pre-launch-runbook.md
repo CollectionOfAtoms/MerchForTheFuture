@@ -100,6 +100,7 @@ stay in `.env.local` and Preview.
 | `AUCTION_PAYMENT_WINDOW_HOURS` | Default 48 |
 | `DROPSHIPPING_DEBUG` | **Never in prod** — logs raw provider payloads |
 | `TEEMILL_API_BASE_URL`, `TEEMILL_SITE_URL`, `TEEMILL_PROJECT`, `TEEMILL_CONTACT_*` | Defaults are correct; overrides only |
+| `PRINTFUL_API_KEY`, `PRINTFUL_WEBHOOK_SECRET`, `PRINTFUL_STORE_ID`, `PRINTFUL_API_BASE_URL` | **Not launch-required** — Printful (Epic MFTF-18) is in discovery. Promote to the required table once the integration ships. See docs/printful-api-notes.md |
 
 Dead vars removed from `.env.local.example`: `TAXJAR_API_KEY`/Avalara (TaxJar scaffolding
 deleted in Epic 5), `STRIPE_CONNECT_CLIENT_ID` (single-seller, no Connect),
