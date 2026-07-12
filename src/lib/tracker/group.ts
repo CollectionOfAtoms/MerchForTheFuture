@@ -52,6 +52,56 @@ function countStatus(stories: TrackerStory[]): EpicCounts {
   return { passed, notStarted, deferred, total: stories.length };
 }
 
+export interface TrackerSummary {
+  totalPassed: number;
+  totalWritten: number;
+  totalStories: number;
+}
+
+/**
+ * Overall completion counts across a story list. Computed on the MERGED
+ * active+archive list (US-MFTF-23.1) so "Overall completion" reflects true
+ * project-wide state, not just the open stories in the active tracker.
+ */
+export function summarizeStories(stories: TrackerStory[]): TrackerSummary {
+  let totalPassed = 0;
+  let totalWritten = 0;
+  for (const s of stories) {
+    if (s.status === "Passed" || s.status === "Complete") totalPassed += 1;
+    else if (s.status === "Test Written") totalWritten += 1;
+  }
+  return { totalPassed, totalWritten, totalStories: stories.length };
+}
+
+/**
+ * Merge the active tracker's stories with the archive's into one list (US-MFTF-23.1).
+ *
+ * After the 2026-07-11 tracker split, active (Not Started/Deferred/pending) and
+ * archived (Passed/Dropped) stories for the same epic live in two files. This
+ * concatenates them into a single array **grouped by epic** so that
+ * `groupStoriesByEpic` produces one section per epic (not two disjoint blocks):
+ * epics keep their first-appearance order across the combined stream, and each
+ * epic's stories are emitted contiguously (its active stories, then its archived
+ * ones). Inputs are not mutated.
+ */
+export function mergeTrackerStories(
+  active: TrackerStory[],
+  archive: TrackerStory[],
+): TrackerStory[] {
+  const order: string[] = [];
+  const byEpic = new Map<string, TrackerStory[]>();
+  for (const s of [...active, ...archive]) {
+    const bucket = byEpic.get(s.epic);
+    if (bucket) {
+      bucket.push(s);
+    } else {
+      byEpic.set(s.epic, [s]);
+      order.push(s.epic);
+    }
+  }
+  return order.flatMap((epic) => byEpic.get(epic)!);
+}
+
 /**
  * Group stories into per-epic sections in first-appearance order. Epics are
  * derived entirely from the data — there is no hardcoded epic list, so new epics

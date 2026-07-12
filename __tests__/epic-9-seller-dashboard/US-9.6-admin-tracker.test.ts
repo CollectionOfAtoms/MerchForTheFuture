@@ -3,22 +3,30 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 // The admin tracker page at /admin/tracker reads spec/project-tracker.json
-// and renders per-epic progress bars + story status badges.
-// These tests verify the data source is well-formed and contains the expected structure.
+// (active) AND spec/project-tracker-archive.json (Passed/Dropped) and renders
+// per-epic progress bars + story status badges over the MERGED set (US-MFTF-23.1).
+// These tests verify the merged data source is well-formed and contains the
+// expected structure. Post the 2026-07-11 split, historically-Passed epics (e.g.
+// Epic 9) live in the archive file, so we read both — matching what the page does.
 
-const trackerPath = join(process.cwd(), "spec/project-tracker.json");
-const tracker = JSON.parse(readFileSync(trackerPath, "utf-8")) as {
-  stories: Array<{
-    id: string;
-    epic: string;
-    title: string;
-    status: string;
-    testWrittenDate: string | null;
-    testWrittenCommit: string | null;
-    testPassedDate: string | null;
-    testPassedCommit: string | null;
-    notes: string;
-  }>;
+type Story = {
+  id: string;
+  epic: string;
+  title: string;
+  status: string;
+  testWrittenDate: string | null;
+  testWrittenCommit: string | null;
+  testPassedDate: string | null;
+  testPassedCommit: string | null;
+  notes: string;
+};
+
+function readStories(file: string): Story[] {
+  return (JSON.parse(readFileSync(join(process.cwd(), file), "utf-8")) as { stories: Story[] }).stories;
+}
+
+const tracker = {
+  stories: [...readStories("spec/project-tracker.json"), ...readStories("spec/project-tracker-archive.json")],
 };
 
 const VALID_STATUSES = new Set(["Not Started", "Test Written", "In Progress", "Passed", "Complete", "Deferred", "Dropped", "Blocked", "Tests Passing — pending live confirmation"]);
