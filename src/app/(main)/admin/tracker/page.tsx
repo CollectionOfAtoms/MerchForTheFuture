@@ -1,23 +1,7 @@
-import { readFile } from "fs/promises";
-import path from "path";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { groupStoriesByEpic, type TrackerStory } from "@/lib/tracker/group";
+import { loadTrackerData } from "@/lib/tracker/load";
 import TrackerSections from "@/components/admin/TrackerSections";
-
-interface Commit {
-  hash: string;
-  date: string;
-  author: string;
-  storiesAffected: string[];
-  message: string;
-  trackerUpdated: boolean;
-}
-
-interface TrackerData {
-  stories: TrackerStory[];
-  commits: Commit[];
-}
 
 function ProgressBar({ passed, written, total }: { passed: number; written: number; total: number }) {
   const passedPct = (passed / total) * 100;
@@ -40,18 +24,26 @@ export default async function TrackerPage() {
   if (!user?.id) redirect("/sign-in");
   if (!user.roles?.includes("ADMIN")) redirect("/");
 
-  const filePath = path.join(process.cwd(), "spec", "project-tracker.json");
-  const raw = await readFile(filePath, "utf-8");
-  const data: TrackerData = JSON.parse(raw);
-
-  const sections = groupStoriesByEpic(data.stories);
-  const totalPassed = data.stories.filter((s) => s.status === "Passed" || s.status === "Complete").length;
-  const totalWritten = data.stories.filter((s) => s.status === "Test Written").length;
-  const totalStories = data.stories.length;
+  // US-MFTF-23.1 — merge the active tracker with the archive so completion
+  // reflects true project-wide state, not just the open stories. Falls back to
+  // active-only (with a visible banner) if the archive can't be read.
+  const { sections, totalPassed, totalWritten, totalStories, commits, archiveError } =
+    await loadTrackerData();
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="mx-auto max-w-4xl space-y-8">
+
+        {/* Archive-unavailable fallback warning (US-MFTF-23.1) */}
+        {archiveError && (
+          <div
+            role="alert"
+            className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          >
+            Archive tracker unavailable — showing active stories only. Overall and per-epic
+            totals will be incomplete.
+          </div>
+        )}
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
@@ -83,13 +75,13 @@ export default async function TrackerPage() {
         <TrackerSections sections={sections} />
 
         {/* Commit log */}
-        {data.commits.length > 0 && (
+        {commits.length > 0 && (
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-100 px-6 py-4">
               <h2 className="text-sm font-semibold text-gray-800">Commit Log</h2>
             </div>
             <div className="divide-y divide-gray-50">
-              {[...data.commits].reverse().map((commit, i) => {
+              {[...commits].reverse().map((commit, i) => {
                 const hash = commit.hash ?? (commit as { sha?: string }).sha ?? "—";
                 const message = commit.message ?? (commit as { description?: string }).description ?? "";
                 const affected: string[] = commit.storiesAffected ?? [];

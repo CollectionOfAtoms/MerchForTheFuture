@@ -5,11 +5,11 @@
     "archiveStoryCount": 177
   },
   "summary": {
-    "totalActive": 34,
-    "totalArchived": 177,
-    "totalAllTime": 210,
+    "totalActive": 33,
+    "totalArchived": 178,
+    "totalAllTime": 211,
     "byStatus": {
-      "Not Started": 24,
+      "Not Started": 23,
       "Deferred": 8,
       "Tests Passing \u2014 pending live confirmation": 2
     }
@@ -97,17 +97,6 @@
     ]
   },
   "stories": [
-    {
-      "id": "US-MFTF-23.1",
-      "epic": "Epic MFTF-23: Admin Tracker Archive Merge",
-      "title": "Admin Tracker Page Reads Both Active and Archive Trackers",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": null
-    },
     {
       "id": "US-4.3",
       "epic": "Epic 4: Payments",

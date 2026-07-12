@@ -14,6 +14,17 @@
   },
   "stories": [
     {
+      "id": "US-MFTF-23.1",
+      "epic": "Epic MFTF-23: Admin Tracker Archive Merge",
+      "title": "Admin Tracker Page Reads Both Active and Archive Trackers",
+      "status": "Passed",
+      "testWrittenDate": "2026-07-11",
+      "testWrittenCommit": "pending",
+      "testPassedDate": "2026-07-11",
+      "testPassedCommit": "pending",
+      "notes": "After the 2026-07-11 tracker split, /admin/tracker (src/app/(main)/admin/tracker/page.tsx) read only project-tracker.json (33 active stories) and so regressed to '~0 passed' with historically-completed epics showing 0/0. Fix (read-side only, no data-model change): new loadTrackerData(baseDir) (src/lib/tracker/load.ts) reads BOTH project-tracker.json and project-tracker-archive.json, merges their stories via new pure helpers mergeTrackerStories() + summarizeStories() (src/lib/tracker/group.ts) grouping by epic so each epic renders as one section (not two disjoint blocks), computes overall + per-epic counts from the merged list, and takes commits from the active file only (archive has no commits field). Archive read is best-effort: missing/malformed archive -> archiveError flag -> visible role='alert' warning banner, active-only fallback, never crashes. Live-verified via scripts/tsx: merged view = 174 passed / 211 total, 47 epic sections, 33 fully-passed epics (was 0/33 pre-fix). group.ts/TrackerSections.tsx status handling unchanged (already handle Passed/Dropped). Tests: __tests__/mftf-23-admin-tracker/US-MFTF-23.1-tracker-archive-merge.test.ts (node: merge/summary/loader incl. real-file totals + missing/malformed fallback) and US-MFTF-23.1-tracker-page-merge.test.tsx (jsdom: page renders merged badges, warning banner on archiveError, admin gate). Existing US-MFTF-19.2 tracker tests still pass (75/75)."
+    },
+    {
       "id": "BUG-16",
       "epic": "Infrastructure",
       "title": "Designed product type can be created with a SKU that is not in Prodigi's catalog",
