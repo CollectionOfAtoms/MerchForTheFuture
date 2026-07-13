@@ -5,11 +5,11 @@
     "archiveStoryCount": 177
   },
   "summary": {
-    "totalActive": 33,
-    "totalArchived": 178,
+    "totalActive": 32,
+    "totalArchived": 179,
     "totalAllTime": 211,
     "byStatus": {
-      "Not Started": 23,
+      "Not Started": 22,
       "Deferred": 8,
       "Tests Passing \u2014 pending live confirmation": 2
     }
@@ -305,16 +305,6 @@
       "testPassedDate": null,
       "testPassedCommit": null,
       "notes": "Human task (with a small code component). Remove or disable the under-construction route guard added in CHORE-15. Confirm the homepage and /shop are publicly accessible. This is the final step \u2014 all other US-MFTF-10.x items should be complete before this one. The gate is one line (src/app/page.tsx redirect to /coming-soon); the prepared-but-NOT-applied change + destination options (redirect /discover vs. render Discover at /) are documented in docs/pre-launch-runbook.md \u2014 awaiting both founders' go-ahead."
-    },
-    {
-      "id": "US-MFTF-17.1",
-      "epic": "Epic MFTF-17: Printify Integration",
-      "title": "Printify API Discovery Spike",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
     },
     {
       "id": "US-MFTF-17.2",
