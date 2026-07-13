@@ -14,6 +14,17 @@
   },
   "stories": [
     {
+      "id": "US-MFTF-17.1",
+      "epic": "Epic MFTF-17: Printify Integration",
+      "title": "Printify API Discovery Spike",
+      "status": "Passed",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": "2026-07-12",
+      "testPassedCommit": "pending",
+      "notes": "Discovery-spike chore (no automated test — deliverable is a decision doc, same convention as CHORE-17 Teemill spike). Deliverable: docs/printify-api-notes.md, LIVE-VERIFIED 2026-07-12 against the founder's PRINTIFY_API_KEY via read-only probe scripts/probe-printify-catalog.ts (catalog reads + shipping-COST CALCULATION only — no order created/sent-to-production; Printify has no sandbox, so nothing was fulfilled). RECOMMENDATION: DESIGNED (upload a design onto a blueprint+print_provider variant, like Prodigi/Printful; no external-product-reference model), so US-MFTF-17.2 follows the MFTF-4/5 designed pattern, not MFTF-13. Verified live: Bearer auth + shop-scoping (1 shop, id 28204676, 'disconnected'/API-managed); 600/min rate limit with X-RateLimit-* headers; 1690 blueprints; a blueprint is offered by MANY print providers (9 for blueprint 5), each with own variants/pricing/shipping -> curated catalog must pin a (blueprint_id, print_provider_id) pair (primary schema implication); variant shape {id, options{color,size names only, NO hex}, placeholders{print-area px}, decoration_methods:[dtg]}; POD (no per-variant stock field, BUG-13 lesson); USD in integer cents; shipping-cost CALC endpoint (POST /orders/shipping.json) quotes without creating an order. Material-standard gate: Printify exposes NO structured fabric composition (only marketing description) -> manual founder curation only, no BUG-16-style auto-guard (differs from Printful). Order-submission/response, live status vocabulary, webhook payloads + signature header, colour hex, and PRINTING-event mapping remain UNVERIFIED by design -> deferred to US-MFTF-17.3 (founder live order; no test order placed at spike time per founder direction). Full findings + 9 open UNVERIFIED items enumerated in docs/printify-api-notes.md."
+    },
+    {
       "id": "US-MFTF-23.1",
       "epic": "Epic MFTF-23: Admin Tracker Archive Merge",
       "title": "Admin Tracker Page Reads Both Active and Archive Trackers",
