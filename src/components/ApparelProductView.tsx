@@ -39,7 +39,21 @@ export default function ApparelProductView({
   const mockupIndexForColor = (i: number) =>
     detail.images.findIndex((img) => img.colorName === detail.colors[i]?.name);
 
-  const defaultColorIndex = detail.colors.length > 0 ? 0 : null;
+  // Live out-of-stock combos (US-MFTF-17.4): greyed out and unselectable. Empty for
+  // non-Printify listings, so behaviour there is unchanged.
+  const unavailableSet = new Set(
+    (detail.unavailable ?? []).map((u) => `${u.color}|${u.size}`),
+  );
+  const isComboUnavailable = (colorName: string, size: string) =>
+    unavailableSet.has(`${colorName}|${size}`);
+  const isColorSoldOut = (colorName: string) =>
+    detail.sizes.length > 0 && detail.sizes.every((s) => isComboUnavailable(colorName, s));
+
+  // Pre-select the first colour that still has stock (US-MFTF-16.2, refined for 17.4):
+  // never default to a fully-out-of-stock colour.
+  const firstAvailableColorIndex = detail.colors.findIndex((c) => !isColorSoldOut(c.name));
+  const defaultColorIndex =
+    firstAvailableColorIndex >= 0 ? firstAvailableColorIndex : detail.colors.length > 0 ? 0 : null;
   const [colorIndex, setColorIndex] = useState<number | null>(
     defaultColorIndex,
   );
@@ -71,10 +85,22 @@ export default function ApparelProductView({
     display,
   );
 
-  const canAddToCart = colorIndex !== null && size !== null && !isPending;
+  const selectedColorName =
+    colorIndex !== null ? detail.colors[colorIndex]?.name ?? null : null;
+  const canAddToCart =
+    colorIndex !== null &&
+    size !== null &&
+    !isPending &&
+    !(selectedColorName !== null && isComboUnavailable(selectedColorName, size));
 
   function selectColor(i: number) {
+    const name = detail.colors[i]?.name;
+    // A fully out-of-stock colour is not selectable (US-MFTF-17.4).
+    if (name && isColorSoldOut(name)) return;
     setColorIndex(i);
+    // If the currently-chosen size is out of stock in the new colour, clear it so
+    // the buyer can't hold an unavailable combo.
+    if (name && size !== null && isComboUnavailable(name, size)) setSize(null);
     // If a per-colour mockup exists for this colour (referenced listings carry
     // one image per colour), jump the carousel to it. Lifestyle-photo listings
     // have no colour-tagged images, so the carousel stays put. Manual carousel
@@ -162,16 +188,20 @@ export default function ApparelProductView({
             <div className="flex flex-wrap justify-end gap-2">
               {detail.colors.map((color, i) => {
                 const selected = colorIndex === i;
+                const soldOut = isColorSoldOut(color.name);
                 return (
                   <button
                     type="button"
                     key={`${color.name}-${i}`}
                     onClick={() => selectColor(i)}
+                    disabled={soldOut}
                     aria-pressed={selected}
                     aria-label={color.name}
-                    title={color.name}
+                    title={soldOut ? `${color.name} — out of stock` : color.name}
                     className={`h-9 w-9 overflow-hidden rounded-full border-2 transition-transform ${
-                      selected
+                      soldOut
+                        ? "cursor-not-allowed border-stone-200 opacity-40 grayscale"
+                        : selected
                         ? "border-stone-900 ring-2 ring-stone-900/30"
                         : "border-stone-200 hover:scale-105"
                     }`}
@@ -208,14 +238,21 @@ export default function ApparelProductView({
             <div className="flex flex-wrap justify-end gap-2">
               {detail.sizes.map((s) => {
                 const selected = size === s;
+                // Out of stock for the currently-selected colour (US-MFTF-17.4).
+                const soldOut =
+                  selectedColorName !== null && isComboUnavailable(selectedColorName, s);
                 return (
                   <button
                     type="button"
                     key={s}
                     onClick={() => setSize(s)}
+                    disabled={soldOut}
                     aria-pressed={selected}
+                    title={soldOut ? `Size ${s} — out of stock` : undefined}
                     className={`min-w-[3rem] rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                      selected
+                      soldOut
+                        ? "cursor-not-allowed border-stone-200 text-stone-300 line-through"
+                        : selected
                         ? "border-stone-900 bg-stone-900 text-white"
                         : "border-stone-200 text-stone-700 hover:border-stone-400"
                     }`}

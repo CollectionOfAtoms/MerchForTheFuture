@@ -8,6 +8,7 @@ import {
 import { getApparelSizesForBlank, normalizeSizes } from "@/lib/apparel/sizes";
 import { colorNameToHex } from "@/lib/apparel/color-hex";
 import { resolveMockupBackground } from "@/lib/apparel/mockup-background";
+import { getPrintifyAvailability, variantKey } from "@/lib/apparel/printify-availability";
 
 /**
  * A swatch in the buyer-facing colour picker, normalized across sourcing modes:
@@ -46,6 +47,14 @@ export interface ApparelDetail {
   images: ApparelDetailImage[];
   colors: ApparelDetailColor[];
   sizes: string[];
+  /**
+   * Out-of-stock `(colour,size)` combos, live-checked (US-MFTF-17.4). Populated only
+   * for DESIGNED Printify listings; empty for every other listing (Prodigi/Teemill
+   * are unaffected). The buyer view greys these out and checkout drops them. Fail-open:
+   * an empty list means "everything available", including when the read failed — a
+   * provider hiccup never hides stock. Carries no provider identity (buyer-opacity).
+   */
+  unavailable?: { color: string; size: string }[];
 }
 
 const detailInclude = {
@@ -138,15 +147,49 @@ export async function getApparelListingDetail(listingId: string): Promise<Appare
   // (a seller's pre-launch preview). ARCHIVED/SOLD/missing render a 404.
   if (!listing || (listing.status !== "ACTIVE" && listing.status !== "UNLISTED")) return null;
 
+  const colors = toColors(listing);
+  const sizes = toSizes(listing);
+
   return {
     id: listing.id,
     title: listing.title,
     description: listing.description,
     retailPrice: Number(listing.retailPrice),
     images: toImages(listing),
-    colors: toColors(listing),
-    sizes: toSizes(listing),
+    colors,
+    sizes,
+    unavailable: await computeUnavailable(listing, colors, sizes),
   };
+}
+
+/**
+ * Live out-of-stock `(colour,size)` combos for a DESIGNED Printify listing
+ * (US-MFTF-17.4): the displayed colours×sizes minus what Printify reports orderable
+ * now. Empty for any non-Printify listing (no live call) and fail-open when the read
+ * returns null. Never exposes a provider name or variant id.
+ */
+async function computeUnavailable(
+  listing: RawDetail,
+  colors: ApparelDetailColor[],
+  sizes: string[],
+): Promise<{ color: string; size: string }[]> {
+  const pt = listing.productType;
+  if (
+    pt?.fulfillmentProvider !== "PRINTIFY" ||
+    pt.printifyBlueprintId == null ||
+    pt.printifyPrintProviderId == null
+  ) {
+    return [];
+  }
+  const orderable = await getPrintifyAvailability(pt.printifyBlueprintId, pt.printifyPrintProviderId);
+  if (!orderable) return []; // fail-open — could not determine; treat all as available
+  const out: { color: string; size: string }[] = [];
+  for (const c of colors) {
+    for (const s of sizes) {
+      if (!orderable.has(variantKey(c.name, s))) out.push({ color: c.name, size: s });
+    }
+  }
+  return out;
 }
 
 /**

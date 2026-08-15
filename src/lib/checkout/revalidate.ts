@@ -106,6 +106,15 @@ export async function revalidateCheckout(cartId: string): Promise<RevalidationRe
         toDelete.push(item.id);
         continue;
       }
+      // Live out-of-stock re-check (US-MFTF-17.4). `detail.unavailable` is the live
+      // Printify availability read (empty for other providers, and fail-open on any
+      // error), so a variant that sold out while sitting in the cart is dropped here
+      // rather than failing after payment.
+      if ((detail.unavailable ?? []).some((u) => u.color === colorId && u.size === sizeLabel)) {
+        removed.push({ title, reason: `${title} in ${colorId} / ${sizeLabel} is out of stock.` });
+        toDelete.push(item.id);
+        continue;
+      }
 
       const isReferenced = listing.referencedVariants.length > 0;
       let quoteItem;

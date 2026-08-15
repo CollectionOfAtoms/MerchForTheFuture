@@ -77,3 +77,52 @@ _Tracked as a chore, not a TDD user story. Output is a decision document, not sh
 **TDD Notes:**
 - Not unit-testable in the conventional sense — this is a manual founder-executed verification story, tracked in the tracker like other stories but without an automated test file
 - Document the live order's provider order ID and outcome in `/docs/printify-api-notes.md` under a "Live Confirmation" section, following the precedent set by the Teemill live-verification notes
+
+---
+
+### US-MFTF-17.4 — Live Printify Variant Availability (product page + checkout)
+
+_Added 2026-08-15 after a live-catalog finding during US-MFTF-17.2: Printify's
+`variants.json` **hides out-of-stock variants** unless `?show-out-of-stock=1` is passed
+(verified — blueprint 1580 "Women's Baby Tee" / provider 99: 4 default vs 16 full variants).
+The variant object carries no availability field, so a variant is "orderable now" iff it appears
+in the DEFAULT (no-flag) list. US-MFTF-17.2 now caches the **full** range; this story surfaces
+live per-variant availability to the buyer so an out-of-stock colour/size is never purchasable —
+mirroring the Teemill `isOrderable` live re-check already in `revalidate.ts`, extended with a
+product-page presentation._
+
+**As a** buyer,
+**I want** out-of-stock colour/size options greyed out on the product page and re-checked at
+checkout,
+**so that** I never add or pay for a Printify variant that can't actually be fulfilled — including
+the case where an item sat in my cart for days and sold out in the meantime.
+
+**Acceptance Criteria:**
+- [ ] A live availability read (`getPrintifyAvailability(blueprintId, printProviderId)` — the
+      DEFAULT, no-flag `variants.json`, returning the set of currently-orderable `(colour,size)`
+      combos) is added; the cached full range minus this set is the "unavailable" set.
+- [ ] `ApparelDetail` gains an availability signal (e.g. an `unavailable: {color,size}[]` list),
+      defaulted to empty for non-Printify listings so Prodigi/Teemill rendering is unchanged;
+      populated only for DESIGNED Printify listings via the live read at detail-build time.
+- [ ] On the product page, a `(colour,size)` in the unavailable set is **greyed out and not
+      selectable**; a colour whose every size is unavailable is greyed out entirely; selecting a
+      colour clears a now-unavailable selected size; "Add to cart" cannot be triggered for an
+      unavailable combo.
+- [ ] At checkout, `revalidateCheckout` re-checks Printify availability for each Printify cart
+      item and removes any now-unavailable item with a clear "no longer available" message —
+      identical treatment to the existing Teemill `isOrderable` drop.
+- [ ] **Fail-open**, matching the Teemill precedent: if the Printify availability read fails or
+      times out, fall back to treating the cached variants as available (never block browsing or
+      checkout on a provider hiccup). The catalog itself stays complete because US-MFTF-17.2
+      caches with `?show-out-of-stock=1`.
+- [ ] Buyer-opacity preserved: no Printify name/blueprint/variant id in any buyer-facing payload.
+
+**TDD Notes:**
+- Test files: `__tests__/mftf-17-printify/US-MFTF-17.4-availability-detail.test.ts` (projection:
+  unavailable set computed from the MSW default-vs-full split; fail-open on API error),
+  `US-MFTF-17.4-availability-checkout.test.ts` (revalidate drops an unavailable Printify item,
+  keeps available ones, fail-open), and a jsdom `US-MFTF-17.4-availability-view.test.tsx`
+  (greyed-out options are disabled + unselectable; a fully-OOS colour is disabled).
+- MSW already models the split (`show-out-of-stock=1` → full; default → in-stock subset) in
+  `__tests__/mocks/handlers.ts`.
+- Gated to DESIGNED Printify listings; the referenced/Prodigi paths keep their current behaviour.
