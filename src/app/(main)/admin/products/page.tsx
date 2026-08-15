@@ -39,9 +39,11 @@ export async function AdminProductsPage() {
   const teemillApiMap = needsApiFallback ? await fetchTeemillApiImageMap() : {};
 
   function resolveThumbnail(pt: typeof products[number]): string | null {
+    // Printify types have no per-colour images and no single SKU — their thumbnail is
+    // the first captured blueprint stock image (US-MFTF-17.6).
+    if (pt.fulfillmentProvider === "PRINTIFY") return pt.firstStockImageUrl ?? null;
     if (pt.fulfillmentProvider === "PRODIGI") return pt.blankImageUrl ?? null;
-    // Printify designed types have no single SKU (providerSkuBase is null); only
-    // Teemill's referenced map is keyed by it.
+    // Teemill's referenced colour-image map is keyed by the SKU.
     return pt.firstColorImageUrl ?? (pt.providerSkuBase ? teemillApiMap[pt.providerSkuBase] : null) ?? null;
   }
 

@@ -10,6 +10,7 @@ process.env.PRINTIFY_API_KEY = "test_key";
 
 const { syncDesignedProductTypeFromPrintify } = await import("@/lib/apparel/sync-printify");
 const { getActiveProductTypesForListing, toStockImages } = await import("@/lib/apparel/listings");
+const { getAdminProductCatalog } = await import("@/lib/admin/product-catalog");
 
 async function seedPrintifyType() {
   return prisma.productType.create({
@@ -46,6 +47,16 @@ describe("US-MFTF-17.6 — Printify sync captures stock images", () => {
     const option = options.find((o) => o.id === pt.id);
     expect(option).toBeTruthy();
     expect(option!.stockImages.length).toBeGreaterThan(0);
+  });
+
+  it("exposes the first stock image as the admin catalog-list thumbnail", async () => {
+    const pt = await seedPrintifyType();
+    await syncDesignedProductTypeFromPrintify(pt.id);
+
+    const catalog = await getAdminProductCatalog();
+    const item = catalog.find((c) => c.id === pt.id);
+    expect(item).toBeTruthy();
+    expect(item!.firstStockImageUrl).toMatch(/^https:\/\/images\.printify\.com\//);
   });
 
   it("toStockImages tolerates null/garbage and returns string URLs only", () => {

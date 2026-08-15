@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { toStockImages } from "@/lib/apparel/listings";
 
 export async function getAdminProductCatalog() {
   const types = await prisma.productType.findMany({
@@ -25,6 +26,9 @@ export async function getAdminProductCatalog() {
     // First stored color image URL — used as the catalog list thumbnail
     // without needing an extra API call.
     firstColorImageUrl: pt.colors.find((c) => c.colorImageUrl)?.colorImageUrl ?? null,
+    // First captured stock image — the catalog thumbnail for DESIGNED types with no
+    // per-colour images (Printify; US-MFTF-17.6).
+    firstStockImageUrl: toStockImages(pt.stockImageUrls)[0] ?? null,
     createdAt: pt.createdAt,
     updatedAt: pt.updatedAt,
   }));
