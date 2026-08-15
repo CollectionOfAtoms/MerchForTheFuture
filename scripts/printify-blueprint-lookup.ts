@@ -67,6 +67,21 @@ interface Variant {
   options?: { color?: string; size?: string };
 }
 
+interface ProviderLocation {
+  city?: string;
+  region?: string;
+  country?: string;
+}
+
+/** Fetch a print provider's location (city/region/country) — a separate endpoint
+ *  from the blueprint's provider list, which carries only id/title. */
+async function fetchProviderLocation(providerId: number): Promise<string> {
+  const r = await pf<{ location?: ProviderLocation }>(`/catalog/print_providers/${providerId}.json`);
+  const loc = r.body?.location;
+  if (!loc) return "location unknown";
+  return [loc.city, loc.region, loc.country].filter(Boolean).join(", ") || "location unknown";
+}
+
 /** Group variants by colour, listing each colour's size -> variant_id map. */
 function groupByColour(variants: Variant[]): Map<string, Array<{ size: string; id: number }>> {
   const byColour = new Map<string, Array<{ size: string; id: number }>>();
@@ -119,15 +134,18 @@ async function main() {
     // show-out-of-stock=1 is REQUIRED to see the full colour/size range — the
     // default endpoint hides anything not currently in stock at this provider
     // (e.g. blueprint 1580/provider 99: 4 default vs 16 full variants).
-    const variants = await pf<{ variants?: Variant[] }>(
-      `/catalog/blueprints/${blueprintId}/print_providers/${p.id}/variants.json?show-out-of-stock=1`,
-    );
+    const [variants, location] = await Promise.all([
+      pf<{ variants?: Variant[] }>(
+        `/catalog/blueprints/${blueprintId}/print_providers/${p.id}/variants.json?show-out-of-stock=1`,
+      ),
+      fetchProviderLocation(p.id),
+    ]);
     const vList = (variants.body?.variants ?? []).filter((v) => typeof v.id === "number");
     const byColour = groupByColour(vList);
     const sizes = [...new Set(vList.map((v) => v.options?.size).filter(Boolean))];
 
     console.log(
-      `\n  ── print_provider_id ${p.id}: ${p.title} — ${vList.length} variants, ${byColour.size} colours, ${sizes.length} sizes`,
+      `\n  ── print_provider_id ${p.id}: ${p.title}  [${location}] — ${vList.length} variants, ${byColour.size} colours, ${sizes.length} sizes`,
     );
     console.log(`     → curate this style as: blueprint_id=${blueprintId}, print_provider_id=${p.id}`);
 
