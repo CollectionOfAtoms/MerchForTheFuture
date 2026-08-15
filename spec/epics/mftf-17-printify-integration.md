@@ -126,3 +126,42 @@ the case where an item sat in my cart for days and sold out in the meantime.
 - MSW already models the split (`show-out-of-stock=1` → full; default → in-stock subset) in
   `__tests__/mocks/handlers.ts`.
 - Gated to DESIGNED Printify listings; the referenced/Prodigi paths keep their current behaviour.
+
+---
+
+### US-MFTF-17.5 — Admin Printify Curation by URL + Stock-Image Preview
+
+_Added 2026-08-15. The admin "New product type" form originally required typing the raw
+`printifyBlueprintId` + `printifyPrintProviderId` — but those ids are not shown on Printify's
+public catalog pages (only the blueprint id is, embedded in the product URL). This story lets the
+admin paste the catalog URL and previews the product, mirroring the Teemill referenced-listing
+"paste a link → resolve → preview" flow (US-MFTF-13.3)._
+
+**As an** admin curating the catalog,
+**I want** to paste a Printify product URL and see the product's stock images before I add it,
+**so that** I can curate the right blueprint + print provider without hunting for API ids by hand.
+
+**Acceptance Criteria:**
+- [ ] The Printify branch of the admin product-type form accepts a **Printify catalog URL** (e.g.
+      `https://printify.com/app/products/1580/...`) or a bare blueprint id; the blueprint id is
+      parsed from the URL (`/products/{id}`).
+- [ ] A "Look up" action (`resolvePrintifyUrlAction`, admin-guarded, read-only) resolves the URL
+      to the blueprint's title/brand + its **stock catalog images** + the **print providers** that
+      offer it, and the form renders the stock images and a provider picker.
+- [ ] Because a URL carries only the blueprint id and a blueprint has many print providers, the
+      admin **selects the print provider** from the resolved list; the chosen provider id + the
+      resolved blueprint id are what the create action persists (existing US-MFTF-17.2 validation
+      + sync unchanged).
+- [ ] Clear errors for an unrecognisable link, an unknown blueprint, or a blueprint with no
+      providers; a non-admin is rejected.
+- [ ] The material-standard gate is unchanged (manual founder curation; the API exposes no fabric
+      composition) — the preview is a convenience, not an auto-approval.
+
+**TDD Notes:**
+- Test files: `__tests__/mftf-17-printify/US-MFTF-17.5-resolve-printify-url.test.ts` (action:
+  URL/id parsing, blueprint+providers resolution, error + auth paths, MSW) and a jsdom
+  `US-MFTF-17.5-url-lookup-form.test.tsx` (form shows the URL field, renders stock images, and
+  populates the provider picker after look-up).
+- MSW gains `GET /catalog/blueprints/:id.json` + `.../print_providers.json` handlers.
+- Live-verified shapes (blueprint 1580 returns 7 stock images; providers 99/217), so this reaches
+  Passed via MSW and does not depend on US-MFTF-17.3.

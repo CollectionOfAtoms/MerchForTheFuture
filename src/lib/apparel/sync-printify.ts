@@ -71,6 +71,62 @@ export async function printifyBlueprintProviderExists(
   return (data.variants ?? []).some((v) => typeof v.id === "number");
 }
 
+/**
+ * Read a Printify blueprint id from an admin's pasted input: a bare id, or a
+ * printify.com product URL like `.../app/products/1580/generic-brand/womens-baby-tee`
+ * (US-MFTF-17.5). Returns null when no id can be found. NOTE: the URL carries only the
+ * blueprint id — the print provider is chosen separately (many providers per blueprint).
+ */
+export function parsePrintifyBlueprintId(input: string): number | null {
+  const t = (input ?? "").trim();
+  if (/^\d+$/.test(t)) return Number(t);
+  const m = t.match(/\/products\/(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+
+export interface PrintifyBlueprintPreview {
+  blueprintId: number;
+  title: string;
+  brand: string | null;
+  model: string | null;
+  /** Blueprint stock/catalog images (from images.printify.com). */
+  images: string[];
+  /** Print providers offering this blueprint; the admin pins one (US-MFTF-17.2). */
+  providers: { id: number; title: string }[];
+}
+
+/**
+ * Fetch a blueprint's detail (title/brand/model + stock images) and the list of print
+ * providers offering it, for the admin curation preview (US-MFTF-17.5). Read-only
+ * catalog GETs. Returns null when the blueprint is not found.
+ */
+export async function fetchPrintifyBlueprintPreview(
+  blueprintId: number,
+): Promise<PrintifyBlueprintPreview | null> {
+  const [detailRes, provRes] = await Promise.all([
+    printifyGet(`/catalog/blueprints/${blueprintId}.json`),
+    printifyGet(`/catalog/blueprints/${blueprintId}/print_providers.json`),
+  ]);
+  if (!detailRes.ok) return null;
+  const d = (await detailRes.json()) as {
+    title?: string;
+    brand?: string;
+    model?: string;
+    images?: string[];
+  };
+  const providersRaw = provRes.ok ? ((await provRes.json()) as Array<{ id?: number; title?: string }>) : [];
+  return {
+    blueprintId,
+    title: d.title ?? `Blueprint ${blueprintId}`,
+    brand: d.brand ?? null,
+    model: d.model ?? null,
+    images: (d.images ?? []).filter((s): s is string => typeof s === "string"),
+    providers: providersRaw
+      .filter((p): p is { id: number; title: string } => typeof p.id === "number")
+      .map((p) => ({ id: p.id, title: p.title ?? `Provider ${p.id}` })),
+  };
+}
+
 export type SyncOneResult =
   | { ok: true; sizes: string[]; colors: string[]; variants: number }
   | { ok: false; reason: string };

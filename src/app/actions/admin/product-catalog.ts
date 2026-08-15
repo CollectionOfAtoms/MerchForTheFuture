@@ -7,6 +7,9 @@ import { syncDesignedProductTypeFromProdigi, prodigiProductExists } from "@/lib/
 import {
   syncDesignedProductTypeFromPrintify,
   printifyBlueprintProviderExists,
+  parsePrintifyBlueprintId,
+  fetchPrintifyBlueprintPreview,
+  type PrintifyBlueprintPreview,
 } from "@/lib/apparel/sync-printify";
 
 type ActionResult = { id: string } | { error: string };
@@ -59,6 +62,32 @@ async function validatePrintifyPair(blueprintId: number, printProviderId: number
     return null;
   } catch {
     return "Could not reach Printify to verify the blueprint/provider pair. Please try again.";
+  }
+}
+
+// ─── resolvePrintifyUrlAction ─────────────────────────────────────────────────
+// Admin curation helper (US-MFTF-17.5): turn a pasted Printify catalog URL (or a
+// bare blueprint id) into the blueprint id + its stock images + the print providers
+// that offer it, so the admin can preview the product and pick a provider. Read-only.
+
+export type PrintifyResolveResult = { preview: PrintifyBlueprintPreview } | { error: string };
+
+export async function resolvePrintifyUrlAction(input: string): Promise<PrintifyResolveResult> {
+  if (!(await requireAdmin())) return { error: "Unauthorized" };
+
+  const blueprintId = parsePrintifyBlueprintId(input);
+  if (blueprintId == null) {
+    return { error: "Could not read a Printify product id from that link. Paste a printify.com product URL (e.g. .../products/1580/...) or a blueprint id." };
+  }
+  try {
+    const preview = await fetchPrintifyBlueprintPreview(blueprintId);
+    if (!preview) return { error: `No Printify blueprint found for id ${blueprintId}. Check the link and try again.` };
+    if (preview.providers.length === 0) {
+      return { error: `Blueprint ${blueprintId} (${preview.title}) has no print providers available.` };
+    }
+    return { preview };
+  } catch {
+    return { error: "Could not reach Printify to look up that product. Please try again." };
   }
 }
 

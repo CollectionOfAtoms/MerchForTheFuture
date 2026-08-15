@@ -222,6 +222,27 @@ const teemillHandlers = [
 // override these per-case with server.use() to assert exact bodies / error paths.
 const PRINTIFY_BASE = "https://api.printify.com/v1";
 const printifyHandlers = [
+  // Blueprint detail — stock/catalog images + brand/model (US-MFTF-17.5 admin lookup).
+  http.get(`${PRINTIFY_BASE}/catalog/blueprints/:id.json`, ({ params }) =>
+    HttpResponse.json({
+      id: Number(params.id),
+      title: "Women's Baby Tee",
+      brand: "Generic brand",
+      model: "",
+      images: [
+        "https://images.printify.com/mock-baby-tee-1",
+        "https://images.printify.com/mock-baby-tee-2",
+        "https://images.printify.com/mock-baby-tee-3",
+      ],
+    }),
+  ),
+  // Print providers offering a blueprint (US-MFTF-17.5 admin lookup).
+  http.get(`${PRINTIFY_BASE}/catalog/blueprints/:id/print_providers.json`, () =>
+    HttpResponse.json([
+      { id: 99, title: "Printify Choice" },
+      { id: 217, title: "Fulfill Engine" },
+    ]),
+  ),
   // Curated (blueprint, print_provider) variants. Printify hides out-of-stock
   // variants unless `show-out-of-stock=1` is passed, so the fixture mirrors that:
   // the full range (4) with the flag, a currently-in-stock SUBSET (3 — Black/M is

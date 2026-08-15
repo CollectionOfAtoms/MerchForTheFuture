@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import {
+  resolvePrintifyUrlAction,
+} from "@/app/actions/admin/product-catalog";
+import type { PrintifyBlueprintPreview } from "@/lib/apparel/sync-printify";
 
 interface Defaults {
   name?: string;
@@ -19,6 +23,27 @@ export default function ProductTypeForm({ defaults }: { defaults?: Defaults } = 
   const [provider, setProvider] = useState(
     defaults?.fulfillmentProvider ?? "PRODIGI"
   );
+
+  // Printify curation-by-URL (US-MFTF-17.5): paste a catalog link → look up the
+  // blueprint's stock images + the print providers offering it, then pick one. The
+  // pasted URL carries only the blueprint id; the provider is chosen from the preview.
+  const [printifyUrl, setPrintifyUrl] = useState("");
+  const [resolving, startResolve] = useTransition();
+  const [resolveError, setResolveError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<PrintifyBlueprintPreview | null>(null);
+
+  function handlePrintifyLookup() {
+    setResolveError(null);
+    startResolve(async () => {
+      const res = await resolvePrintifyUrlAction(printifyUrl);
+      if ("error" in res) {
+        setPreview(null);
+        setResolveError(res.error);
+      } else {
+        setPreview(res.preview);
+      }
+    });
+  }
 
   return (
     <>
@@ -51,10 +76,11 @@ export default function ProductTypeForm({ defaults }: { defaults?: Defaults } = 
 
       {/* Fulfillment provider — Teemill first */}
       <div>
-        <label className="block text-sm font-medium text-stone-700 mb-1">
+        <label htmlFor="fulfillmentProvider" className="block text-sm font-medium text-stone-700 mb-1">
           Fulfillment provider <span className="text-red-500">*</span>
         </label>
         <select
+          id="fulfillmentProvider"
           name="fulfillmentProvider"
           value={provider}
           onChange={(e) => setProvider(e.target.value)}
@@ -113,10 +139,10 @@ export default function ProductTypeForm({ defaults }: { defaults?: Defaults } = 
         </div>
       )}
 
-      {/* Printify blueprint + print-provider pair (Printify-backed designed types).
-          Printify is a print-on-demand marketplace: one blueprint is offered by many
-          print providers, each with its own variants/pricing — so a curated style
-          pins the (blueprint, print provider) PAIR (US-MFTF-17.2). */}
+      {/* Printify curation by URL (US-MFTF-17.5). Paste a printify.com catalog link;
+          we look up the blueprint's stock images + the print providers offering it
+          (a blueprint has many, each with its own variants/pricing), then pin the
+          (blueprint, print provider) PAIR. Sizes/colours/variants sync from it on save. */}
       {provider === "PRINTIFY" && (
         <div
           data-testid="printify-catalog-fields"
@@ -124,39 +150,87 @@ export default function ProductTypeForm({ defaults }: { defaults?: Defaults } = 
         >
           <p className="font-semibold text-stone-800">Curated Printify style</p>
           <p className="text-stone-500">
-            Pin the exact <strong className="text-stone-700">blueprint</strong> and{" "}
-            <strong className="text-stone-700">print provider</strong> ids from the
-            Printify catalog. Sizes, colours and orderable variants are synced from
-            this pair on save.
+            Paste the product&apos;s Printify catalog link (from{" "}
+            <strong className="text-stone-700">printify.com/app/products/…</strong>).
+            Confirm the material standard on Printify before curating — the API can&apos;t
+            verify fabric composition.
           </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">
-                Blueprint id <span className="text-red-500">*</span>
-              </label>
+
+          <div>
+            <label htmlFor="printifyUrl" className="block text-xs font-medium text-stone-600 mb-1">
+              Printify product URL <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
               <input
-                name="printifyBlueprintId"
-                type="number"
-                min={1}
-                defaultValue={defaults?.printifyBlueprintId}
-                placeholder="e.g. 5"
+                id="printifyUrl"
+                type="text"
+                value={printifyUrl}
+                onChange={(e) => setPrintifyUrl(e.target.value)}
+                placeholder="https://printify.com/app/products/1580/…"
                 className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
               />
+              <button
+                type="button"
+                onClick={handlePrintifyLookup}
+                disabled={resolving || !printifyUrl.trim()}
+                className="shrink-0 rounded-full border border-stone-300 px-5 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+              >
+                {resolving ? "Looking up…" : "Look up"}
+              </button>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">
-                Print provider id <span className="text-red-500">*</span>
-              </label>
-              <input
-                name="printifyPrintProviderId"
-                type="number"
-                min={1}
-                defaultValue={defaults?.printifyPrintProviderId}
-                placeholder="e.g. 41"
-                className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
-              />
-            </div>
+            {resolveError && <p className="mt-2 text-sm text-red-600">{resolveError}</p>}
           </div>
+
+          {preview && (
+            <div className="space-y-3 rounded-xl border border-stone-200 bg-white p-4">
+              <p className="text-sm font-semibold text-stone-900">
+                {preview.title}
+                {preview.brand ? <span className="ml-2 font-normal text-stone-400">{preview.brand}{preview.model ? ` · ${preview.model}` : ""}</span> : null}
+              </p>
+
+              {/* Stock images / mockups from the Printify catalog. */}
+              {preview.images.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {preview.images.map((src) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={src}
+                      src={src}
+                      alt={`${preview.title} stock image`}
+                      className="h-20 w-20 rounded-lg border border-stone-200 object-cover"
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Provider picker — the blueprint id comes from the URL; the admin
+                  chooses which print provider fulfils it. Both submit to the create
+                  action (blueprint id hidden, provider id from the select). */}
+              <input type="hidden" name="printifyBlueprintId" value={preview.blueprintId} />
+              <div>
+                <label htmlFor="printifyPrintProviderId" className="block text-xs font-medium text-stone-600 mb-1">
+                  Print provider <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="printifyPrintProviderId"
+                  name="printifyPrintProviderId"
+                  defaultValue={preview.providers[0]?.id}
+                  key={preview.blueprintId}
+                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
+                >
+                  {preview.providers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title} (id {p.id})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-stone-400">
+                  Blueprint {preview.blueprintId}. Colours, sizes and orderable variants
+                  sync from this blueprint + provider on save.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

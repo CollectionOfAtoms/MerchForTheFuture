@@ -2038,6 +2038,17 @@
         "testPassedDate": "2026-08-15",
         "testPassedCommit": "a57305e",
         "notes": "Added 2026-08-15 after a US-MFTF-17.2 live-catalog finding: Printify's variants.json HIDES out-of-stock variants unless ?show-out-of-stock=1 (verified \u2014 blueprint 1580 Women's Baby Tee / provider 99: 4 default vs 16 full), and the variant object carries no availability field, so 'orderable now' = appears in the default (no-flag) list. US-MFTF-17.2 caches the FULL range; this surfaces live availability so an OOS colour/size is never purchasable. getPrintifyAvailability (src/lib/apparel/printify-availability.ts) reads the default list; getApparelListingDetail computes ApparelDetail.unavailable for DESIGNED Printify listings only (empty for Prodigi/Teemill, buyer-opaque). ApparelProductView greys out + disables OOS sizes for the selected colour, disables a fully-OOS colour, and never defaults to a fully-OOS colour; revalidateCheckout drops a now-OOS Printify cart item (reusing detail.unavailable \u2014 one read, both surfaces). FAIL-OPEN throughout (a failed read => treat as available), mirroring the Teemill isOrderable fallback. 9 tests across US-MFTF-17.4-availability-{detail,checkout,view} green vs MSW; the 50-file detail/checkout/storefront regression set (340 tests) stays green. Reaches Passed via MSW because the availability-read shape is already live-verified (2026-08-15) \u2014 does NOT depend on US-MFTF-17.3. Also added scripts/printify-blueprint-lookup.ts (product URL -> blueprint/provider/variant ids for curation)."
+      },
+    {
+        "id": "US-MFTF-17.5",
+        "epic": "Epic MFTF-17: Printify Integration",
+        "title": "Admin Printify Curation by URL + Stock-Image Preview",
+        "status": "Passed",
+        "testWrittenDate": "2026-08-15",
+        "testWrittenCommit": "PENDING",
+        "testPassedDate": "2026-08-15",
+        "testPassedCommit": "PENDING",
+        "notes": "Added 2026-08-15. The admin 'New product type' form's Printify branch now takes a pasted Printify catalog URL (e.g. printify.com/app/products/1580/...) instead of raw ids \u2014 those ids aren't on Printify's public pages, only the blueprint id is (in the URL). resolvePrintifyUrlAction (admin-guarded, read-only) parses the blueprint id (parsePrintifyBlueprintId) and fetchPrintifyBlueprintPreview returns title/brand + the blueprint's STOCK IMAGES + the print providers offering it; ProductTypeForm renders the stock images and a provider <select> (a blueprint has many providers \u2014 the URL can't specify one, so the admin picks). Submits the resolved blueprintId (hidden) + chosen printifyPrintProviderId to the unchanged US-MFTF-17.2 create action (pair still validated + synced on save). Mirrors the Teemill referenced 'paste link \u2192 resolve \u2192 preview' flow (US-MFTF-13.3). MSW gained GET /catalog/blueprints/:id.json + .../print_providers.json. 8 tests (resolve-printify-url action + url-lookup-form jsdom) green; ProductTypeForm now importing a server action required adding a vi.mock to the US-MFTF-16.1 pure-render test (same pattern the referenced form's tests use). Live-verified shapes (blueprint 1580 \u2192 7 stock images, providers 99 Printify Choice / 217 Fulfill Engine), so Passed via MSW \u2014 does NOT depend on US-MFTF-17.3. scripts/printify-blueprint-lookup.ts remains the CLI equivalent for ad-hoc id lookup."
       }
   ]
 }
