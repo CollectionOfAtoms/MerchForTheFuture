@@ -165,3 +165,43 @@ admin paste the catalog URL and previews the product, mirroring the Teemill refe
 - MSW gains `GET /catalog/blueprints/:id.json` + `.../print_providers.json` handlers.
 - Live-verified shapes (blueprint 1580 returns 7 stock images; providers 99/217), so this reaches
   Passed via MSW and does not depend on US-MFTF-17.3.
+
+---
+
+### US-MFTF-17.6 — Designed Stock Images for Sellers (+ admin edit-page provider fix)
+
+_Added 2026-08-15. Two related fixes to the Printify admin/seller surfaces._
+
+**BUG-17 (bundled here):** the admin product-type **edit** page (`/admin/products/[id]`) and
+`SyncProductButton` were written Teemill-vs-else(Prodigi), so a **Printify** product type showed
+the "Prodigi" tag, the Prodigi blank-uploader hero, and a "Sync from Prodigi" button that called
+the Prodigi sync. Fixed to be provider-aware: correct "Printify" tag, blueprint/provider subtitle,
+and a "Sync from Printify" button wired to `syncProductTypeFromPrintifyAction`.
+
+**As a** seller designing a product,
+**I want** to see the product's stock images while I design,
+**so that** I know what garment/colour I'm putting my artwork onto.
+
+**Acceptance Criteria:**
+- [ ] When a DESIGNED Printify product type is synced, the blueprint's stock images are captured
+      onto the product type (`ProductType.stockImageUrls`, a JSON string[]); best-effort — a failed
+      image fetch never fails the sync or wipes existing images.
+- [ ] The seller listing-creation flow shows the selected product type's stock images as design
+      reference (empty/hidden when none captured); buyer-facing pages are untouched (no provider
+      identity leaks).
+- [ ] The admin edit page renders the captured stock images as the hero for a Printify product
+      type (replacing the Prodigi blank-uploader) and is provider-aware everywhere (tag, subtitle,
+      sync button + label, empty-state copy).
+- [ ] Storage note: the stable `images.printify.com/{hash}` catalog URLs are stored (not re-hosted
+      to Blob); re-hosting is a possible follow-up if self-hosting is later required.
+
+**TDD Notes:**
+- `ProductType.stockImageUrls Json?` (db push both DBs). `fetchPrintifyBlueprintImages` +
+  capture in the sync; `toStockImages` normaliser + `stockImages` on the
+  `getActiveProductTypesForListing` projection.
+- Test files: `US-MFTF-17.6-stock-images.test.ts` (sync captures images; projection exposes them),
+  `US-MFTF-17.6-sync-button.test.tsx` (provider-aware label + action), and
+  `US-MFTF-17.6-seller-reference.test.tsx` (form renders the reference images).
+- Live-verified image shape (blueprint 1580 → 7 stock images), so Passed via MSW; no dependency
+  on US-MFTF-17.3. Generalises to any DESIGNED provider that later populates `stockImageUrls`
+  (Prodigi image capture is a possible follow-up).

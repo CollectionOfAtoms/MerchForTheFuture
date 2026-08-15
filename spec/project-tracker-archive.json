@@ -2049,6 +2049,28 @@
         "testPassedDate": "2026-08-15",
         "testPassedCommit": "c145c16",
         "notes": "Added 2026-08-15. The admin 'New product type' form's Printify branch now takes a pasted Printify catalog URL (e.g. printify.com/app/products/1580/...) instead of raw ids \u2014 those ids aren't on Printify's public pages, only the blueprint id is (in the URL). resolvePrintifyUrlAction (admin-guarded, read-only) parses the blueprint id (parsePrintifyBlueprintId) and fetchPrintifyBlueprintPreview returns title/brand + the blueprint's STOCK IMAGES + the print providers offering it; ProductTypeForm renders the stock images and a provider <select> (a blueprint has many providers \u2014 the URL can't specify one, so the admin picks). Submits the resolved blueprintId (hidden) + chosen printifyPrintProviderId to the unchanged US-MFTF-17.2 create action (pair still validated + synced on save). Mirrors the Teemill referenced 'paste link \u2192 resolve \u2192 preview' flow (US-MFTF-13.3). MSW gained GET /catalog/blueprints/:id.json + .../print_providers.json. 8 tests (resolve-printify-url action + url-lookup-form jsdom) green; ProductTypeForm now importing a server action required adding a vi.mock to the US-MFTF-16.1 pure-render test (same pattern the referenced form's tests use). Live-verified shapes (blueprint 1580 \u2192 7 stock images, providers 99 Printify Choice / 217 Fulfill Engine), so Passed via MSW \u2014 does NOT depend on US-MFTF-17.3. scripts/printify-blueprint-lookup.ts remains the CLI equivalent for ad-hoc id lookup. FOLLOW-UP (2026-08-15): the provider picker now shows each engine's LOCATION (fetchPrintifyProviderLocation via /catalog/print_providers/{id} - e.g. Fulfill Engine=Monroe NC, Printify Choice=Miami FL) and lists Printify Choice (Printify's auto-router) FIRST when available (default-selected). The lookup script prints locations too."
+      },
+    {
+        "id": "BUG-17",
+        "epic": "Epic MFTF-17: Printify Integration",
+        "title": "Admin edit page mislabels a Printify product type as Prodigi",
+        "status": "Passed",
+        "testWrittenDate": "2026-08-15",
+        "testWrittenCommit": "PENDING",
+        "testPassedDate": "2026-08-15",
+        "testPassedCommit": "PENDING",
+        "notes": "The /admin/products/[id] edit page + SyncProductButton were Teemill-vs-else(Prodigi), so a PRINTIFY product type showed a 'Prodigi' tag, the Prodigi blank-uploader hero, and a 'Sync from Prodigi' button calling the Prodigi sync. Fixed provider-aware: correct 'Printify' tag, blueprint/provider subtitle, 'Sync from Printify' wired to syncProductTypeFromPrintifyAction (SyncProductButton gained a provider prop), and provider-aware empty-state copy. Bundled with US-MFTF-17.6 (same edit-page surface). Covered by US-MFTF-17.6-sync-button.test.tsx (provider label + action)."
+      },
+    {
+        "id": "US-MFTF-17.6",
+        "epic": "Epic MFTF-17: Printify Integration",
+        "title": "Designed Stock Images for Sellers (+ edit-page provider fix)",
+        "status": "Passed",
+        "testWrittenDate": "2026-08-15",
+        "testWrittenCommit": "PENDING",
+        "testPassedDate": "2026-08-15",
+        "testPassedCommit": "PENDING",
+        "notes": "Capture a DESIGNED Printify blueprint's stock images at sync (fetchPrintifyBlueprintImages, best-effort - never fails the sync or wipes existing) onto ProductType.stockImageUrls (Json string[]; db push both DBs). Shown to sellers as design reference on the listing-creation form (getActiveProductTypesForListing gains stockImages via toStockImages; NewApparelListingForm renders them under the product-type selector) and as the admin edit-page hero for a Printify product type (replacing the Prodigi blank-uploader). Buyer-opaque. STORAGE: the stable images.printify.com/{hash} catalog URLs are stored, NOT re-hosted to Blob (a possible follow-up if self-hosting is required). 7 tests across US-MFTF-17.6-{stock-images,sync-button,seller-reference} green; mftf-4/5/16 + printify suites green (the mftf-6.1 browse pagination failure is the known remote-DB flaky, untouched by this change). Live image shape verified (blueprint 1580 -> 7 images), so Passed via MSW; no dependency on US-MFTF-17.3. Generalises to any DESIGNED provider that later populates stockImageUrls (Prodigi capture is a follow-up)."
       }
   ]
 }

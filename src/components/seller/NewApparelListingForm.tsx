@@ -182,6 +182,29 @@ export default function NewApparelListingForm({
           </select>
         </div>
 
+        {/* Product reference images (US-MFTF-17.6): the blank's stock photos, so the
+            seller can see what they're designing onto. Empty for product types with no
+            captured imagery. */}
+        {selected && selected.stockImages.length > 0 && (
+          <div data-testid="product-reference-images">
+            <p className={LABEL}>Product reference</p>
+            <div className="flex flex-wrap gap-2">
+              {selected.stockImages.map((src: string) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={src}
+                  src={src}
+                  alt={`${selected.name} reference`}
+                  className="h-20 w-20 rounded-lg border border-stone-200 bg-stone-100 object-cover"
+                />
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-stone-400">
+              How this product looks — design onto it below.
+            </p>
+          </div>
+        )}
+
         <div>
           <label htmlFor="title" className={LABEL}>
             Title <span className="text-red-400">*</span>

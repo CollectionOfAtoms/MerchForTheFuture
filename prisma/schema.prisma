@@ -548,6 +548,11 @@ model ProductType {
   isActive            Boolean                @default(true)
   /// Admin-uploaded product blank photo (used for Prodigi products; Teemill products use API-sourced images)
   blankImageUrl       String?
+  /// Provider stock/catalog images for a DESIGNED product type, captured at sync
+  /// (Printify blueprint images today). Shown to sellers as design reference on the
+  /// listing-creation flow, and as the admin edit-page hero (US-MFTF-17.6). JSON
+  /// array of image URLs; null/empty when none captured.
+  stockImageUrls      Json?
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
 

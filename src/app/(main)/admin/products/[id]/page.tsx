@@ -5,6 +5,7 @@ import { updateProductTypeAction } from "@/app/actions/admin/product-catalog";
 import BlankImageUploader from "@/components/admin/BlankImageUploader";
 import SyncProductButton from "@/components/admin/SyncProductButton";
 import { colorNameToHex } from "@/lib/apparel/color-hex";
+import { toStockImages } from "@/lib/apparel/listings";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -44,6 +45,11 @@ export default async function EditProductTypePage({ params }: Props) {
   if (!pt) notFound();
 
   const isTeemill = pt.fulfillmentProvider === "TEEMILL";
+  const isPrintify = pt.fulfillmentProvider === "PRINTIFY";
+  const providerLabel = isTeemill ? "T-Mill" : isPrintify ? "Printify" : "Prodigi";
+  // Provider stock/catalog images captured at sync (Printify today) — the edit-page
+  // hero for a Printify product type (US-MFTF-17.6).
+  const stockImages = toStockImages(pt.stockImageUrls);
 
   // For Teemill: fetch catalog so we can supplement any colors missing a stored imageUrl
   let teemillApiColors: Record<string, string> = {};
@@ -80,7 +86,11 @@ export default async function EditProductTypePage({ params }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-stone-900">{pt.name}</h1>
-          <p className="mt-1 text-sm text-stone-400 font-mono">{pt.providerSkuBase}</p>
+          <p className="mt-1 text-sm text-stone-400 font-mono">
+            {isPrintify
+              ? `blueprint ${pt.printifyBlueprintId ?? "?"} · provider ${pt.printifyPrintProviderId ?? "?"}`
+              : pt.providerSkuBase}
+          </p>
         </div>
         <a href="/admin/products" className="text-sm text-stone-500 hover:text-stone-800">
           ← Back to catalog
@@ -89,7 +99,8 @@ export default async function EditProductTypePage({ params }: Props) {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.4fr]">
 
-        {/* Left: hero image (read-only for Teemill; uploadable for Prodigi) */}
+        {/* Left: hero image — Teemill (API image, read-only), Printify (captured stock
+            images, read-only), Prodigi (admin-uploaded blank). */}
         <div className="space-y-4">
           {isTeemill ? (
             heroImageUrl ? (
@@ -100,6 +111,25 @@ export default async function EditProductTypePage({ params }: Props) {
             ) : (
               <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 aspect-square flex items-center justify-center text-sm text-stone-400">
                 No image available
+              </div>
+            )
+          ) : isPrintify ? (
+            /* Printify — stock images captured from the blueprint (US-MFTF-17.6). */
+            stockImages.length > 0 ? (
+              <div data-testid="printify-stock-images" className="grid grid-cols-2 gap-2">
+                {stockImages.map((src) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={src}
+                    src={src}
+                    alt={`${pt.name} stock image`}
+                    className="aspect-square w-full rounded-xl border border-stone-200 bg-stone-100 object-cover"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 aspect-square flex items-center justify-center px-4 text-center text-sm text-stone-400">
+                No stock images yet — click “Sync from Printify”.
               </div>
             )
           ) : (
@@ -119,13 +149,18 @@ export default async function EditProductTypePage({ params }: Props) {
               {pt.isActive ? "Active" : "Inactive"}
             </span>
             <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-cerulean/10 text-cerulean ring-1 ring-cerulean/20">
-              {isTeemill ? "T-Mill" : "Prodigi"}
+              {providerLabel}
             </span>
           </div>
 
           {isTeemill && (
             <p className="text-xs text-stone-400">
               Image sourced from the T-Mill product catalog.
+            </p>
+          )}
+          {isPrintify && (
+            <p className="text-xs text-stone-400">
+              Stock images captured from the Printify catalog.
             </p>
           )}
         </div>
@@ -212,7 +247,12 @@ export default async function EditProductTypePage({ params }: Props) {
                 <span className="text-xs text-stone-400">
                   {pt.colors.length} available · all offered to sellers
                 </span>
-                {!isTeemill && <SyncProductButton productTypeId={pt.id} />}
+                {!isTeemill && (
+                  <SyncProductButton
+                    productTypeId={pt.id}
+                    provider={isPrintify ? "PRINTIFY" : "PRODIGI"}
+                  />
+                )}
               </div>
             </div>
 
@@ -220,7 +260,7 @@ export default async function EditProductTypePage({ params }: Props) {
               <p className="text-sm text-stone-400">
                 {isTeemill
                   ? "No colors synced."
-                  : "No colors synced yet. Click “Sync from Prodigi” to pull sizes and colours from the provider."}
+                  : `No colors synced yet. Click “Sync from ${providerLabel}” to pull sizes and colours from the provider.`}
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">

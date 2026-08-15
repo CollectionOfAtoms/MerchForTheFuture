@@ -164,6 +164,21 @@ export async function fetchPrintifyBlueprintPreview(
   };
 }
 
+/**
+ * Fetch a blueprint's stock/catalog image URLs (US-MFTF-17.6). Best-effort — returns
+ * [] on any failure so a sync never fails just because imagery couldn't be captured.
+ */
+export async function fetchPrintifyBlueprintImages(blueprintId: number): Promise<string[]> {
+  try {
+    const res = await printifyGet(`/catalog/blueprints/${blueprintId}.json`);
+    if (!res.ok) return [];
+    const data = (await res.json()) as { images?: string[] };
+    return (data.images ?? []).filter((s): s is string => typeof s === "string");
+  } catch {
+    return [];
+  }
+}
+
 export type SyncOneResult =
   | { ok: true; sizes: string[]; colors: string[]; variants: number }
   | { ok: false; reason: string };
@@ -231,6 +246,17 @@ async function syncOneType(type: {
       },
       create: { productTypeId: type.id, colorName, sizeLabel, printifyVariantId: v.id! },
       update: { printifyVariantId: v.id! },
+    });
+  }
+
+  // Capture the blueprint's stock images so sellers see design reference + the admin
+  // edit-page hero renders them (US-MFTF-17.6). Best-effort: only overwrite when we
+  // actually fetched some, so a transient image-fetch failure never wipes them.
+  const stockImages = await fetchPrintifyBlueprintImages(type.printifyBlueprintId);
+  if (stockImages.length > 0) {
+    await prisma.productType.update({
+      where: { id: type.id },
+      data: { stockImageUrls: stockImages },
     });
   }
 
