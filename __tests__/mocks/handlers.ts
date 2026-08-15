@@ -284,10 +284,6 @@ const printifyHandlers = [
   http.post(`${PRINTIFY_BASE}/shops/:shop/orders/shipping.json`, () =>
     HttpResponse.json({ standard: 1959, express: 2959 }),
   ),
-  // Design upload — returns the image id referenced in the order's print_areas.
-  http.post(`${PRINTIFY_BASE}/uploads/images.json`, () =>
-    HttpResponse.json({ id: "img-mock", file_name: "design.png" }),
-  ),
   // Order create (step 1) — NOT produced until send-to-production.
   http.post(`${PRINTIFY_BASE}/shops/:shop/orders.json`, () =>
     HttpResponse.json({ id: "printify-order-mock", status: "pending" }),

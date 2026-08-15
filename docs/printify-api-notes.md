@@ -129,10 +129,20 @@ qualifying blueprint+provider styles by hand (done 2026-07-11 — "specific styl
 
 ---
 
-## Orders — create → **send-to-production** (the safety valve)  // UNVERIFIED live
+## Orders — create → **send-to-production** (the safety valve)  // partially live 2026-08-15
 
-**Not exercised in this spike** (no sandbox; we do not place a test order until US-MFTF-17.3).
-Documented from the API + confirmed-safe design:
+> **LIVE FINDING (2026-08-15):** a real checkout order-create surfaced the correct DESIGNED
+> line-item shape. **`print_areas` on the ORDER endpoint is an OBJECT keyed by print position**
+> (`front`/`back`), whose value is the **design URL** (Printify fetches + auto-centres it):
+> `line_items[].print_areas = { "front": "https://…/design.png" }`. The product-creation shape we
+> first shipped — `[{ variant_ids, placeholders:[{ position, images:[{ id,x,y,scale,angle }] }] }]` —
+> is **WRONG for orders** and 400s `code 8150 "The src/x/y/scale/angle field is required"`. A
+> positioned form also exists (`{ front: [{ src, x, y, scale, angle }] }`) — that's what a future
+> placement tool (US-MFTF-17.7) would emit. Fixed in `printify.ts:createProviderOrder`. Still
+> // UNVERIFIED: whether `src`/the URL form is preferred over an uploaded-image id, and the
+> create-order **response** shape — a real order that reaches production (US-MFTF-17.3) confirms both.
+
+**Not fully exercised in the spike** (no sandbox). Documented from the API + confirmed-safe design:
 
 1. **`POST /shops/{shop_id}/orders.json`** creates an order. On a Manual/API ("disconnected")
    shop, a created order is **not automatically produced** — it must be explicitly pushed.

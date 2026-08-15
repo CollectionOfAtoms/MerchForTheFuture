@@ -31,9 +31,6 @@ interface PrintifyGetOrderResponse {
   status?: string;
   shipments?: Array<{ carrier?: string; number?: string }>;
 }
-interface PrintifyUploadResponse {
-  id?: string;
-}
 /** Printify quotes shipping as { [method]: integerCents } (USD). */
 type PrintifyShippingResponse = Record<string, number>;
 
@@ -121,42 +118,25 @@ export class PrintifyFulfillmentProvider extends FulfillmentProvider {
   // ── fulfill() steps — two-step: create then send-to-production ──────────────
 
   protected async createProviderOrder(job: FulfillmentJob): Promise<FulfillmentOrderResult> {
-    // Upload each item's design asset first; Printify references the returned image
-    // id in the order's print_areas (submitted with no watermark, per the Prodigi/
-    // MFTF-5 design-file path).
-    const lineItems = await Promise.all(
-      job.items.map(async (item) => {
-        let imageId: string | undefined;
-        if (item.sourceImageUrl) {
-          const up = await printifyPost("/uploads/images.json", {
-            file_name: `design-${item.printifyVariantId ?? "asset"}.png`,
-            url: item.sourceImageUrl,
-          });
-          if (!up.ok) throw await printifyError(up, "design upload (POST /uploads/images.json)");
-          imageId = ((await up.json()) as PrintifyUploadResponse).id;
-        }
-        const position = item.printArea ?? "front";
-        return {
-          blueprint_id: item.printifyBlueprintId,
-          print_provider_id: item.printifyPrintProviderId,
-          variant_id: item.printifyVariantId,
-          quantity: item.quantity,
-          print_areas: imageId
-            ? [
-                {
-                  variant_ids: item.printifyVariantId ? [item.printifyVariantId] : [],
-                  placeholders: [
-                    {
-                      position,
-                      images: [{ id: imageId, x: 0.5, y: 0.5, scale: 1, angle: 0 }],
-                    },
-                  ],
-                },
-              ]
-            : [],
-        };
-      }),
-    );
+    // Printify's ORDER print_areas is an OBJECT keyed by print position (front/back);
+    // the value is the design URL, which Printify fetches and auto-positions/centres.
+    // (The product-creation shape — {variant_ids, placeholders, images:[{id,…}]} — is
+    // WRONG for the order endpoint: it 400s "The src/x/y/scale/angle field is required",
+    // observed live 2026-08-15.) The simple URL form matches the current auto-centre
+    // behaviour; the positioned array form ({[pos]: [{src,x,y,scale,angle}]}) is what a
+    // future placement tool (US-MFTF-17.7) would emit. Submitted with no watermark, per
+    // the Prodigi/MFTF-5 design-file path. // UNVERIFIED that the URL form is preferred
+    // over an uploaded-image id — confirm at US-MFTF-17.3 (founder live order).
+    const lineItems = job.items.map((item) => {
+      const position = item.printArea ?? "front";
+      return {
+        blueprint_id: item.printifyBlueprintId,
+        print_provider_id: item.printifyPrintProviderId,
+        variant_id: item.printifyVariantId,
+        quantity: item.quantity,
+        ...(item.sourceImageUrl ? { print_areas: { [position]: item.sourceImageUrl } } : {}),
+      };
+    });
 
     const resp = await printifyPost(await this.shopPath("/orders.json"), {
       label: `MFTF ${new Date().toISOString()}`,

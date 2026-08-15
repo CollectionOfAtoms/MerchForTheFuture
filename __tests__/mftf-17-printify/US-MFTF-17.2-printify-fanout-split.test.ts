@@ -80,7 +80,6 @@ async function seedCartOrder(buyerId: string, sellerId: string) {
 function stubPrintifyOrders() {
   let orderBody: { line_items?: Array<Record<string, unknown>> } | null = null;
   server.use(
-    http.post("https://api.printify.com/v1/uploads/images.json", () => HttpResponse.json({ id: "img-1" })),
     http.post("https://api.printify.com/v1/shops/:shop/orders.json", async ({ request }) => {
       orderBody = (await request.json()) as typeof orderBody;
       return HttpResponse.json({ id: "printify-order-1", status: "pending" });
@@ -126,12 +125,12 @@ describe("US-MFTF-17.2 — Printify fan-out split", () => {
 
     const line = cap.get()!.line_items![0];
     expect(line).toMatchObject({ blueprint_id: 5, print_provider_id: 41, variant_id: 17402, quantity: 1 });
-    expect(JSON.stringify(line)).toContain("img-1"); // uploaded design reaches the print area
+    // The design URL reaches the order's print area, keyed by position.
+    expect(line.print_areas).toEqual({ front: "https://blob/printify-design.png" });
   });
 
   it("isolates failure: a Printify order 500 fails only its shipment; Prodigi still CONFIRMED", async () => {
     server.use(
-      http.post("https://api.printify.com/v1/uploads/images.json", () => HttpResponse.json({ id: "img-1" })),
       http.post("https://api.printify.com/v1/shops/:shop/orders.json", () =>
         HttpResponse.json({ message: "boom" }, { status: 500 }),
       ),

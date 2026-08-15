@@ -136,10 +136,6 @@ describe("US-MFTF-17.2 — PrintifyFulfillmentProvider (DESIGNED)", () => {
       const calls: string[] = [];
       let orderBody: { line_items?: unknown[]; address_to?: unknown } | null = null;
       server.use(
-        http.post("https://api.printify.com/v1/uploads/images.json", async () => {
-          calls.push("upload");
-          return HttpResponse.json({ id: "img-mock-1", file_name: "design.png" });
-        }),
         http.post("https://api.printify.com/v1/shops/:shop/orders.json", async ({ request }) => {
           calls.push("create");
           orderBody = (await request.json()) as typeof orderBody;
@@ -156,7 +152,7 @@ describe("US-MFTF-17.2 — PrintifyFulfillmentProvider (DESIGNED)", () => {
       return { calls, get: () => orderBody };
     }
 
-    it("uploads the design, creates the order, THEN sends it to production, in order", async () => {
+    it("creates the order, THEN sends it to production, in order", async () => {
       const cap = captureOrderCalls();
       const result = await new PrintifyFulfillmentProvider().fulfill(JOB);
       expect(result.externalOrderId).toBe("printify-order-1");
@@ -166,7 +162,7 @@ describe("US-MFTF-17.2 — PrintifyFulfillmentProvider (DESIGNED)", () => {
       expect(cap.calls.indexOf("create")).toBeLessThan(cap.calls.indexOf("send-to-production"));
     });
 
-    it("submits blueprint + print-provider + variant ids and the uploaded design", async () => {
+    it("submits blueprint + print-provider + variant ids and the design in print_areas by position", async () => {
       const cap = captureOrderCalls();
       await new PrintifyFulfillmentProvider().fulfill(JOB);
       const line = (cap.get()!.line_items as Array<Record<string, unknown>>)[0];
@@ -176,15 +172,12 @@ describe("US-MFTF-17.2 — PrintifyFulfillmentProvider (DESIGNED)", () => {
         variant_id: 17391,
         quantity: 1,
       });
-      // The uploaded image id must reach the order's print area.
-      expect(JSON.stringify(line)).toContain("img-mock-1");
+      // print_areas is an OBJECT keyed by position; the value is the design URL.
+      expect(line.print_areas).toEqual({ front: "https://blob.example.com/design.png" });
     });
 
     it("throws when order creation fails, so the fan-out marks the shipment FAILED", async () => {
       server.use(
-        http.post("https://api.printify.com/v1/uploads/images.json", () =>
-          HttpResponse.json({ id: "img-mock-1" }),
-        ),
         http.post("https://api.printify.com/v1/shops/:shop/orders.json", () =>
           HttpResponse.json({ message: "boom" }, { status: 500 }),
         ),
