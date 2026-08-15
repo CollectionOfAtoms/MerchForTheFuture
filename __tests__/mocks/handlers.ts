@@ -214,6 +214,94 @@ const teemillHandlers = [
   ),
 ];
 
+// ─── Printify API handlers (US-MFTF-17.2) ────────────────────────────────────
+// Base: https://api.printify.com/v1 — DESIGNED provider, two-step orders (create →
+// send-to-production), shop-scoped endpoints. Catalog + shipping-calc shapes
+// verified live 2026-07-12 (docs/printify-api-notes.md); order/status shapes are
+// // UNVERIFIED and resolve at US-MFTF-17.3. No live Printify calls in tests. Tests
+// override these per-case with server.use() to assert exact bodies / error paths.
+const PRINTIFY_BASE = "https://api.printify.com/v1";
+const printifyHandlers = [
+  // Account shops — used to resolve the shop id when PRINTIFY_SHOP_ID is unset
+  // (US-MFTF-17.2 shop-id-resolution fix, so shop-scoped calls don't 404 on /shops//…).
+  http.get(`${PRINTIFY_BASE}/shops.json`, () =>
+    HttpResponse.json([{ id: 28204676, title: "My new store", sales_channel: "disconnected" }]),
+  ),
+  // Blueprint detail — stock/catalog images + brand/model (US-MFTF-17.5 admin lookup).
+  http.get(`${PRINTIFY_BASE}/catalog/blueprints/:id.json`, ({ params }) =>
+    HttpResponse.json({
+      id: Number(params.id),
+      title: "Women's Baby Tee",
+      brand: "Generic brand",
+      model: "",
+      images: [
+        "https://images.printify.com/mock-baby-tee-1",
+        "https://images.printify.com/mock-baby-tee-2",
+        "https://images.printify.com/mock-baby-tee-3",
+      ],
+    }),
+  ),
+  // Print providers offering a blueprint (US-MFTF-17.5 admin lookup). Returned with
+  // Printify Choice NOT first, so the "Printify Choice first" sort is exercised by code.
+  http.get(`${PRINTIFY_BASE}/catalog/blueprints/:id/print_providers.json`, () =>
+    HttpResponse.json([
+      { id: 217, title: "Fulfill Engine", decoration_methods: ["dtf"] },
+      { id: 99, title: "Printify Choice", decoration_methods: ["dtf"] },
+    ]),
+  ),
+  // Single print-provider detail — carries the location (a separate endpoint from
+  // the blueprint's provider list). Location varies by id so ordering/labels can be
+  // asserted (US-MFTF-17.5 location display).
+  http.get(`${PRINTIFY_BASE}/catalog/print_providers/:id.json`, ({ params }) => {
+    const byId: Record<string, { city: string; region: string; country: string; title: string }> = {
+      "99": { city: "Miami", region: "FL", country: "US", title: "Printify Choice" },
+      "217": { city: "Monroe", region: "NC", country: "US", title: "Fulfill Engine" },
+    };
+    const loc = byId[String(params.id)] ?? { city: "Somewhere", region: "TX", country: "US", title: `Provider ${params.id}` };
+    return HttpResponse.json({
+      id: Number(params.id),
+      title: loc.title,
+      location: { city: loc.city, region: loc.region, country: loc.country },
+    });
+  }),
+  // Curated (blueprint, print_provider) variants. Printify hides out-of-stock
+  // variants unless `show-out-of-stock=1` is passed, so the fixture mirrors that:
+  // the full range (4) with the flag, a currently-in-stock SUBSET (3 — Black/M is
+  // "out of stock") without it. Catalog sync uses the flag; the availability probe
+  // (US-MFTF-17.4) uses the default to detect what's orderable now.
+  http.get(`${PRINTIFY_BASE}/catalog/blueprints/:bp/print_providers/:pp/variants.json`, ({ request }) => {
+    const full = [
+      { id: 17391, title: "Heather Grey / S", options: { color: "Heather Grey", size: "S" } },
+      { id: 17392, title: "Heather Grey / M", options: { color: "Heather Grey", size: "M" } },
+      { id: 17401, title: "Black / S", options: { color: "Black", size: "S" } },
+      { id: 17402, title: "Black / M", options: { color: "Black", size: "M" } },
+    ];
+    const showOOS = new URL(request.url).searchParams.get("show-out-of-stock") === "1";
+    const body = showOOS ? full : full.filter((v) => v.id !== 17402); // Black/M OOS by default
+    return HttpResponse.json({ variants: body });
+  }),
+  // Shipping calc (creates no order) — USD integer cents.
+  http.post(`${PRINTIFY_BASE}/shops/:shop/orders/shipping.json`, () =>
+    HttpResponse.json({ standard: 1959, express: 2959 }),
+  ),
+  // Design upload — returns the image id referenced in the order's print_areas.
+  http.post(`${PRINTIFY_BASE}/uploads/images.json`, () =>
+    HttpResponse.json({ id: "img-mock", file_name: "design.png" }),
+  ),
+  // Order create (step 1) — NOT produced until send-to-production.
+  http.post(`${PRINTIFY_BASE}/shops/:shop/orders.json`, () =>
+    HttpResponse.json({ id: "printify-order-mock", status: "pending" }),
+  ),
+  // Send to production (step 2, the safety valve).
+  http.post(`${PRINTIFY_BASE}/shops/:shop/orders/:id/send-to-production.json`, ({ params }) =>
+    HttpResponse.json({ id: params.id, status: "in-production" }),
+  ),
+  // Order status polling. // UNVERIFIED status vocabulary + tracking field paths.
+  http.get(`${PRINTIFY_BASE}/shops/:shop/orders/:id.json`, ({ params }) =>
+    HttpResponse.json({ id: params.id, status: "in-production", shipments: [] }),
+  ),
+];
+
 export const handlers = [
   ...stripeHandlers,
   ...prodigiHandlers,
@@ -221,4 +309,5 @@ export const handlers = [
   ...currencyHandlers,
   ...emailHandlers,
   ...teemillHandlers,
+  ...printifyHandlers,
 ];

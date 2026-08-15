@@ -83,6 +83,9 @@ stay in `.env.local` and Preview.
 | `TEEMILL_API_KEY` | live key from teemill.com/api | raw key in `Authorization`, **no `Bearer`**; the `?project=` param is auto-derived from the key's JWT `sub` (`TEEMILL_PROJECT` env var only as an override) |
 | `PRODIGI_API_KEY` | live (non-`test_`) key | |
 | `PRODIGI_API_BASE_URL` | **UNSET** | the app defaults to the live endpoint; this var exists only to point dev/preview at the sandbox. Setting it in prod is the classic footgun |
+| `PRINTIFY_API_KEY` | live Personal Access Token (Bearer) | Printify has **no sandbox** — this is the real account. Required only once a Printify-backed product type is live (Epic MFTF-17) |
+| `PRINTIFY_SHOP_ID` | prod shop id (`GET /v1/shops.json`) | pins the shop; orders/webhooks are shop-scoped |
+| `PRINTIFY_WEBHOOK_SECRET` | webhook signing secret | HMAC-SHA256 over the raw body; register the webhook at `https://<prod domain>/api/webhooks/printify`. Status detection ships on polling until the live signature header + payloads are confirmed (US-MFTF-17.3) |
 | `MAILERSEND_API_KEY` | live key | confirm the MailerSend account is off trial limits (the unique-recipient cap, see CHORE-14 #MS42225) before launch |
 | `EMAIL_FROM` | `noreply@<verified sending domain>` | domain must be verified in MailerSend |
 | `DROPSHIPPING_CONTACT_EMAIL` | a real, monitored address on a domain you own | Teemill forwards this as the order contact — it must be deliverable |
@@ -100,6 +103,7 @@ stay in `.env.local` and Preview.
 | `AUCTION_PAYMENT_WINDOW_HOURS` | Default 48 |
 | `DROPSHIPPING_DEBUG` | **Never in prod** — logs raw provider payloads |
 | `TEEMILL_API_BASE_URL`, `TEEMILL_SITE_URL`, `TEEMILL_PROJECT`, `TEEMILL_CONTACT_*` | Defaults are correct; overrides only |
+| `PRINTIFY_API_BASE_URL` | Default (`https://api.printify.com/v1`) is correct; override only |
 | `PRINTFUL_API_KEY`, `PRINTFUL_WEBHOOK_SECRET`, `PRINTFUL_STORE_ID`, `PRINTFUL_API_BASE_URL` | **Not launch-required** — Printful (Epic MFTF-18) is in discovery. Promote to the required table once the integration ships. See docs/printful-api-notes.md |
 
 Dead vars removed from `.env.local.example`: `TAXJAR_API_KEY`/Avalara (TaxJar scaffolding

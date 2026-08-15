@@ -41,7 +41,11 @@ const foInclude = {
           designImageUrl: true,
           productType: {
             select: {
+              fulfillmentProvider: true,
               providerSkuBase: true,
+              printifyBlueprintId: true,
+              printifyPrintProviderId: true,
+              printifyVariants: { select: { colorName: true, sizeLabel: true, printifyVariantId: true } },
               sizes: { select: { sizeLabel: true, providerSizeCode: true } },
               colors: { select: { colorName: true, providerColorCode: true } },
             },
@@ -85,9 +89,25 @@ async function toQuoteItem(item: LoadedFulfillmentOrder["items"][number]): Promi
       // Referenced (Teemill) — order by the cached variantRef.
       return { variantRef: variant.variantRef, quantity: item.quantity };
     }
+    const pt = listing?.productType;
+    if (pt?.fulfillmentProvider === "PRINTIFY") {
+      // Designed (Printify) — the order line is a (blueprint, print_provider,
+      // variant) triple + the clean design on "front". The exact variant id is
+      // resolved from the cached (colour,size)→variantId map (US-MFTF-17.2).
+      const combo = pt.printifyVariants.find(
+        (v) => v.colorName === sel.colorId && v.sizeLabel === sel.sizeLabel,
+      );
+      return {
+        printifyBlueprintId: pt.printifyBlueprintId ?? undefined,
+        printifyPrintProviderId: pt.printifyPrintProviderId ?? undefined,
+        printifyVariantId: combo?.printifyVariantId,
+        quantity: item.quantity,
+        printArea: "front",
+        sourceImageUrl: listing?.designImageUrl ?? undefined,
+      };
+    }
     // Designed (Prodigi) — blank SKU + size/colour in raw provider spelling + the
     // clean design printed on the "front" area. Without these Prodigi 400s the order.
-    const pt = listing?.productType;
     const rawColor = pt?.colors.find((c) => c.colorName === sel.colorId)?.providerColorCode ?? sel.colorId ?? "";
     const rawSize =
       pt?.sizes.find((s) => canonicalSizeLabel(s.sizeLabel) === sel.sizeLabel)?.providerSizeCode ??

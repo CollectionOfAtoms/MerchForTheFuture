@@ -528,6 +528,7 @@ model Transaction {
 enum FulfillmentProviderType {
   TEEMILL
   PRODIGI
+  PRINTIFY
 }
 
 model ProductType {
@@ -535,18 +536,53 @@ model ProductType {
   name                String                 @unique
   description         String?
   fulfillmentProvider FulfillmentProviderType
-  providerSkuBase     String
+  /// The single Prodigi catalog SKU for a DESIGNED Prodigi product type. Null for
+  /// Printify, whose orderable identity is a (blueprint, print_provider, variant)
+  /// triple, not one SKU (US-MFTF-17.2) — see printifyBlueprintId below.
+  providerSkuBase     String?
+  /// Printify curation pins a specific (blueprint_id, print_provider_id) pair: one
+  /// blueprint is offered by many print providers, each with its own variants,
+  /// pricing and print quality (US-MFTF-17.2). Both null for non-Printify types.
+  printifyBlueprintId     Int?
+  printifyPrintProviderId Int?
   isActive            Boolean                @default(true)
   /// Admin-uploaded product blank photo (used for Prodigi products; Teemill products use API-sourced images)
   blankImageUrl       String?
+  /// Provider stock/catalog images for a DESIGNED product type, captured at sync
+  /// (Printify blueprint images today). Shown to sellers as design reference on the
+  /// listing-creation flow, and as the admin edit-page hero (US-MFTF-17.6). JSON
+  /// array of image URLs; null/empty when none captured.
+  stockImageUrls      Json?
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
 
   colors          ProductTypeColor[]
   sizes           ProductTypeSizeOption[]
+  printifyVariants ProductTypePrintifyVariant[]
   apparelListings ApparelListing[]
 
   @@index([isActive])
+}
+
+/// The per-(colour,size) → Printify orderable variant-id map for a DESIGNED Printify
+/// product type (US-MFTF-17.2). Unlike Prodigi (SKU + attributes resolve the variant
+/// provider-side), a Printify order line needs the exact integer variant_id, which is
+/// keyed by the colour+size combination. Populated by the Printify catalog sync; the
+/// fan-out resolves the buyer's (colourName, canonical sizeLabel) selection against it.
+model ProductTypePrintifyVariant {
+  id                String @id @default(cuid())
+  productTypeId     String
+  /// Matches ProductTypeColor.colorName (the buyer selection's colorId).
+  colorName         String
+  /// Canonical size label (matches ProductTypeSizeOption.sizeLabel / the selection).
+  sizeLabel         String
+  /// Printify's orderable variant id used in order + shipping line items.
+  printifyVariantId Int
+
+  productType ProductType @relation(fields: [productTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([productTypeId, colorName, sizeLabel])
+  @@index([productTypeId])
 }
 
 model ProductTypeColor {

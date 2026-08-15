@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
+// ProductTypeForm imports the Printify URL-lookup server action (US-MFTF-17.5);
+// mock it so this pure-component render doesn't pull in next-auth/next-server.
+vi.mock("@/app/actions/admin/product-catalog", () => ({ resolvePrintifyUrlAction: vi.fn() }));
 import ProductTypeForm from "@/components/admin/ProductTypeForm";
 
 // US-MFTF-16.1 — the designed-mode provider picker is Prodigi-only; Teemill is

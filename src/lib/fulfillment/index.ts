@@ -12,10 +12,12 @@ export type {
 export { FulfillmentProvider, FULFILLMENT_STATUSES } from './types';
 export { ProdigiFulfillmentProvider } from './providers/prodigi';
 export { TeemillFulfillmentProvider } from './providers/teemill';
+export { PrintifyFulfillmentProvider } from './providers/printify';
 export { createFulfillmentOrder } from './createOrder';
 
 import { ProdigiFulfillmentProvider } from './providers/prodigi';
 import { TeemillFulfillmentProvider } from './providers/teemill';
+import { PrintifyFulfillmentProvider } from './providers/printify';
 import { FulfillmentProvider } from './types';
 
 export function getFulfillmentProvider(listingType: string): FulfillmentProvider {
@@ -39,6 +41,8 @@ export function getProviderByKey(providerKey: string): FulfillmentProvider {
       return new TeemillFulfillmentProvider();
     case 'prodigi':
       return new ProdigiFulfillmentProvider();
+    case 'printify':
+      return new PrintifyFulfillmentProvider();
     default:
       throw new Error(`Unknown fulfillment provider key: ${providerKey}`);
   }

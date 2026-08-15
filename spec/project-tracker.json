@@ -2,16 +2,16 @@
   "_meta": {
     "description": "Active tracker \u2014 Not Started, Deferred, and pending-live-confirmation stories only. This is the file coding and handoff sessions should read for current project state. Passed and Dropped stories (177 as of the 2026-07-11 split) live in project-tracker-archive.json \u2014 read that file only for historical audits, not for day-to-day implementation work. See /spec/README.md for the full protocol.",
     "archiveFile": "project-tracker-archive.json",
-    "archiveStoryCount": 177
+    "archiveStoryCount": 181
   },
   "summary": {
-    "totalActive": 32,
-    "totalArchived": 179,
-    "totalAllTime": 211,
+    "totalActive": 33,
+    "totalArchived": 183,
+    "totalAllTime": 216,
     "byStatus": {
-      "Not Started": 22,
-      "Deferred": 8,
-      "Tests Passing \u2014 pending live confirmation": 2
+      "Not Started": 21,
+      "Deferred": 9,
+      "Tests Passing \u2014 pending live confirmation": 3
     }
   },
   "epicOrder": {
@@ -310,11 +310,12 @@
       "id": "US-MFTF-17.2",
       "epic": "Epic MFTF-17: Printify Integration",
       "title": "Printify Provider Integration",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null
+      "status": "Tests Passing — pending live confirmation",
+      "testWrittenDate": "2026-08-15",
+      "testWrittenCommit": "2c5a548",
+      "testPassedDate": "2026-08-15",
+      "testPassedCommit": "2c5a548",
+      "notes": "DESIGNED-mode Printify integration per the US-MFTF-17.1 spike (docs/printify-api-notes.md). Tests written first and confirmed RED before implementation: __tests__/mftf-17-printify/US-MFTF-17.2-printify-provider.test.ts (provider contract, two-step create→send-to-production, USD cents→dollars quote, status/webhook mapping, HMAC signature, @ts-expect-error incomplete-subclass), US-MFTF-17.2-printify-designed-catalog.test.ts (curated (blueprint,print_provider) sync of colours/sizes/combo→variantId map + admin create/update PRINTIFY validation), US-MFTF-17.2-printify-fanout-split.test.ts (multi-provider split, order-line correctness, failure isolation, buyer-opacity). All 25 green vs MSW; the 40-file fulfillment/checkout/catalog regression set (336 tests) stays green. Implementation: PrintifyFulfillmentProvider (src/lib/fulfillment/providers/printify.ts) + printify/client.ts; getProviderByKey 'printify'; ProductTypePrintifyVariant combo table + printifyBlueprintId/printifyPrintProviderId on ProductType (providerSkuBase made nullable); sync-printify.ts; fanout.ts + revalidate.ts Printify branches; api/webhooks/printify/route.ts (HMAC-SHA256, marked // UNVERIFIED header, polling is primary); admin ProductTypeForm + product-catalog actions; MSW printifyHandlers; env vars in .env.local.example + runbook. HELD at 'Tests Passing — pending live confirmation' (not Passed): status vocabulary, create-order response, send-to-production requirement, and webhook signature header are // UNVERIFIED with no Printify sandbox — they resolve at US-MFTF-17.3 (founder live order), which gates Passed. FOLLOW-UP (2026-08-15): catalog sync corrected to pass ?show-out-of-stock=1 — the default variants.json hides out-of-stock variants (blueprint 1580/provider 99: 4 default vs 16 full), so without it the cached catalog was incomplete/volatile (docs/printify-api-notes.md stock-semantics corrected; scripts/printify-blueprint-lookup.ts added to resolve a product URL → blueprint/provider/variant ids). Live per-variant orderability (product-page grey-out + checkout re-check) is scoped as US-MFTF-17.4. FIX (2026-08-15): buyer checkout hit 'Printify shipping quote (POST /orders/shipping.json) failed (404)' because PRINTIFY_SHOP_ID was unset in .env.local, so shop-scoped calls built a malformed /shops//orders/... path. The client now resolves the shop id (resolvePrintifyShopId): PRINTIFY_SHOP_ID if set, else GET /shops.json once (cached), throwing a clear error if the account has no shop; shopPath is now async. Live-verified: shop 28204676 resolved, shipping calc → 200 {standard:475}. Setting PRINTIFY_SHOP_ID=28204676 still avoids the extra call."
     },
     {
       "id": "US-MFTF-17.3",
@@ -326,6 +327,17 @@
       "testPassedDate": null,
       "testPassedCommit": null
     },
+    {
+        "id": "US-MFTF-17.7",
+        "epic": "Epic MFTF-17: Printify Integration",
+        "title": "Seller Apparel Design/Placement Tool (EMERGING — NEEDS SCOPING)",
+        "status": "Deferred",
+        "testWrittenDate": null,
+        "testWrittenCommit": null,
+        "testPassedDate": null,
+        "testPassedCommit": null,
+        "notes": "EMERGING NEED, NOT YET SCOPED — requires a dedicated scoping (tdd-spec-session) before any implementation; Deferred (not 'Not Started') so a coding session does not pick it up as ready work. PROBLEM: a seller uploads one design file (ApparelListing.designImageUrl) but has NO control over how it lays out on the garment. At order time PrintifyFulfillmentProvider.createProviderOrder hardcodes the placement to dead-centre, full-scale, front only (print_areas placeholder x:0.5,y:0.5,scale:1,angle:0); Prodigi apparel similarly auto-fills. No size/position/rotation/front-vs-back control. FEASIBILITY (high): (1) Printify's print_areas API already takes x/y/scale/angle per position (front/back) — a placement tool's exact output; (2) each variant's API data carries the print-area pixel dims (e.g. Baby Tee front 2419x2761) but sync-printify does NOT currently store the placeholders — capturing them is the one missing data piece; (3) strong in-repo precedent to reuse: the MFTF-PF print framing/crop tool (FramingTool.tsx, PrintFramingPanel.tsx, PrintFraming model, src/lib/print/framing.ts + crop-geometry.ts). SHAPE: capture print-area dims at sync -> seller placement tool (drag/scale/rotate design within the front/back print area, mirroring FramingTool) -> persist {position,x,y,scale,angle} per listing -> send at order time instead of the hardcoded centre (~5-line provider change) -> live preview. KEY DECISIONS FOR THE SCOPING SESSION: (a) full freeform drag/scale/rotate vs simpler centre/fill/fit + size-slider presets; (b) front-only vs front+back; (c) preview via our own composite (design over the stock image) vs Printify's mockup generator (create a DRAFT product, pull Printify's photorealistic mockups — best preview, least render work, extra product-create call). RECOMMENDED first step before scoping: prototype the Printify mockup call for one blueprint to judge preview quality (drives the composite-vs-Printify-mockup decision). Raised by the founder 2026-08-15."
+      },
     {
       "id": "US-MFTF-18.1",
       "epic": "Epic MFTF-18: Printful Integration",
@@ -936,7 +948,7 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-07-11T00:00:00.000Z",
+  "lastUpdated": "2026-08-15T19:04:21.000Z",
   "statusLegend": {
     "Not Started": "No test written yet.",
     "Test Written": "Failing test committed; implementation not yet passing.",

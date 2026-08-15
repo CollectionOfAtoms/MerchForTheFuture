@@ -77,3 +77,168 @@ _Tracked as a chore, not a TDD user story. Output is a decision document, not sh
 **TDD Notes:**
 - Not unit-testable in the conventional sense — this is a manual founder-executed verification story, tracked in the tracker like other stories but without an automated test file
 - Document the live order's provider order ID and outcome in `/docs/printify-api-notes.md` under a "Live Confirmation" section, following the precedent set by the Teemill live-verification notes
+
+---
+
+### US-MFTF-17.4 — Live Printify Variant Availability (product page + checkout)
+
+_Added 2026-08-15 after a live-catalog finding during US-MFTF-17.2: Printify's
+`variants.json` **hides out-of-stock variants** unless `?show-out-of-stock=1` is passed
+(verified — blueprint 1580 "Women's Baby Tee" / provider 99: 4 default vs 16 full variants).
+The variant object carries no availability field, so a variant is "orderable now" iff it appears
+in the DEFAULT (no-flag) list. US-MFTF-17.2 now caches the **full** range; this story surfaces
+live per-variant availability to the buyer so an out-of-stock colour/size is never purchasable —
+mirroring the Teemill `isOrderable` live re-check already in `revalidate.ts`, extended with a
+product-page presentation._
+
+**As a** buyer,
+**I want** out-of-stock colour/size options greyed out on the product page and re-checked at
+checkout,
+**so that** I never add or pay for a Printify variant that can't actually be fulfilled — including
+the case where an item sat in my cart for days and sold out in the meantime.
+
+**Acceptance Criteria:**
+- [ ] A live availability read (`getPrintifyAvailability(blueprintId, printProviderId)` — the
+      DEFAULT, no-flag `variants.json`, returning the set of currently-orderable `(colour,size)`
+      combos) is added; the cached full range minus this set is the "unavailable" set.
+- [ ] `ApparelDetail` gains an availability signal (e.g. an `unavailable: {color,size}[]` list),
+      defaulted to empty for non-Printify listings so Prodigi/Teemill rendering is unchanged;
+      populated only for DESIGNED Printify listings via the live read at detail-build time.
+- [ ] On the product page, a `(colour,size)` in the unavailable set is **greyed out and not
+      selectable**; a colour whose every size is unavailable is greyed out entirely; selecting a
+      colour clears a now-unavailable selected size; "Add to cart" cannot be triggered for an
+      unavailable combo.
+- [ ] At checkout, `revalidateCheckout` re-checks Printify availability for each Printify cart
+      item and removes any now-unavailable item with a clear "no longer available" message —
+      identical treatment to the existing Teemill `isOrderable` drop.
+- [ ] **Fail-open**, matching the Teemill precedent: if the Printify availability read fails or
+      times out, fall back to treating the cached variants as available (never block browsing or
+      checkout on a provider hiccup). The catalog itself stays complete because US-MFTF-17.2
+      caches with `?show-out-of-stock=1`.
+- [ ] Buyer-opacity preserved: no Printify name/blueprint/variant id in any buyer-facing payload.
+
+**TDD Notes:**
+- Test files: `__tests__/mftf-17-printify/US-MFTF-17.4-availability-detail.test.ts` (projection:
+  unavailable set computed from the MSW default-vs-full split; fail-open on API error),
+  `US-MFTF-17.4-availability-checkout.test.ts` (revalidate drops an unavailable Printify item,
+  keeps available ones, fail-open), and a jsdom `US-MFTF-17.4-availability-view.test.tsx`
+  (greyed-out options are disabled + unselectable; a fully-OOS colour is disabled).
+- MSW already models the split (`show-out-of-stock=1` → full; default → in-stock subset) in
+  `__tests__/mocks/handlers.ts`.
+- Gated to DESIGNED Printify listings; the referenced/Prodigi paths keep their current behaviour.
+
+---
+
+### US-MFTF-17.5 — Admin Printify Curation by URL + Stock-Image Preview
+
+_Added 2026-08-15. The admin "New product type" form originally required typing the raw
+`printifyBlueprintId` + `printifyPrintProviderId` — but those ids are not shown on Printify's
+public catalog pages (only the blueprint id is, embedded in the product URL). This story lets the
+admin paste the catalog URL and previews the product, mirroring the Teemill referenced-listing
+"paste a link → resolve → preview" flow (US-MFTF-13.3)._
+
+**As an** admin curating the catalog,
+**I want** to paste a Printify product URL and see the product's stock images before I add it,
+**so that** I can curate the right blueprint + print provider without hunting for API ids by hand.
+
+**Acceptance Criteria:**
+- [ ] The Printify branch of the admin product-type form accepts a **Printify catalog URL** (e.g.
+      `https://printify.com/app/products/1580/...`) or a bare blueprint id; the blueprint id is
+      parsed from the URL (`/products/{id}`).
+- [ ] A "Look up" action (`resolvePrintifyUrlAction`, admin-guarded, read-only) resolves the URL
+      to the blueprint's title/brand + its **stock catalog images** + the **print providers** that
+      offer it, and the form renders the stock images and a provider picker.
+- [ ] Because a URL carries only the blueprint id and a blueprint has many print providers, the
+      admin **selects the print provider** from the resolved list; the chosen provider id + the
+      resolved blueprint id are what the create action persists (existing US-MFTF-17.2 validation
+      + sync unchanged).
+- [ ] Clear errors for an unrecognisable link, an unknown blueprint, or a blueprint with no
+      providers; a non-admin is rejected.
+- [ ] The material-standard gate is unchanged (manual founder curation; the API exposes no fabric
+      composition) — the preview is a convenience, not an auto-approval.
+
+**TDD Notes:**
+- Test files: `__tests__/mftf-17-printify/US-MFTF-17.5-resolve-printify-url.test.ts` (action:
+  URL/id parsing, blueprint+providers resolution, error + auth paths, MSW) and a jsdom
+  `US-MFTF-17.5-url-lookup-form.test.tsx` (form shows the URL field, renders stock images, and
+  populates the provider picker after look-up).
+- MSW gains `GET /catalog/blueprints/:id.json` + `.../print_providers.json` handlers.
+- Live-verified shapes (blueprint 1580 returns 7 stock images; providers 99/217), so this reaches
+  Passed via MSW and does not depend on US-MFTF-17.3.
+
+---
+
+### US-MFTF-17.6 — Designed Stock Images for Sellers (+ admin edit-page provider fix)
+
+_Added 2026-08-15. Two related fixes to the Printify admin/seller surfaces._
+
+**BUG-17 (bundled here):** the admin product-type **edit** page (`/admin/products/[id]`) and
+`SyncProductButton` were written Teemill-vs-else(Prodigi), so a **Printify** product type showed
+the "Prodigi" tag, the Prodigi blank-uploader hero, and a "Sync from Prodigi" button that called
+the Prodigi sync. Fixed to be provider-aware: correct "Printify" tag, blueprint/provider subtitle,
+and a "Sync from Printify" button wired to `syncProductTypeFromPrintifyAction`.
+
+**As a** seller designing a product,
+**I want** to see the product's stock images while I design,
+**so that** I know what garment/colour I'm putting my artwork onto.
+
+**Acceptance Criteria:**
+- [ ] When a DESIGNED Printify product type is synced, the blueprint's stock images are captured
+      onto the product type (`ProductType.stockImageUrls`, a JSON string[]); best-effort — a failed
+      image fetch never fails the sync or wipes existing images.
+- [ ] The seller listing-creation flow shows the selected product type's stock images as design
+      reference (empty/hidden when none captured); buyer-facing pages are untouched (no provider
+      identity leaks).
+- [ ] The admin edit page renders the captured stock images as the hero for a Printify product
+      type (replacing the Prodigi blank-uploader) and is provider-aware everywhere (tag, subtitle,
+      sync button + label, empty-state copy).
+- [ ] Storage note: the stable `images.printify.com/{hash}` catalog URLs are stored (not re-hosted
+      to Blob); re-hosting is a possible follow-up if self-hosting is later required.
+
+**TDD Notes:**
+- `ProductType.stockImageUrls Json?` (db push both DBs). `fetchPrintifyBlueprintImages` +
+  capture in the sync; `toStockImages` normaliser + `stockImages` on the
+  `getActiveProductTypesForListing` projection.
+- Test files: `US-MFTF-17.6-stock-images.test.ts` (sync captures images; projection exposes them),
+  `US-MFTF-17.6-sync-button.test.tsx` (provider-aware label + action), and
+  `US-MFTF-17.6-seller-reference.test.tsx` (form renders the reference images).
+- Live-verified image shape (blueprint 1580 → 7 stock images), so Passed via MSW; no dependency
+  on US-MFTF-17.3. Generalises to any DESIGNED provider that later populates `stockImageUrls`
+  (Prodigi image capture is a possible follow-up).
+
+---
+
+### US-MFTF-17.7 — Seller Apparel Design/Placement Tool _(EMERGING — NEEDS SCOPING)_
+
+**Status: Deferred / not yet scoped.** This is a placeholder recording an emerging need, raised by
+the founder 2026-08-15. It is **not** ready for implementation — it must go through a dedicated
+scoping session (`tdd-spec-session`) to produce real acceptance criteria first. Marked `Deferred`
+(not `Not Started`) in the tracker so a coding session does not pick it up as ready work.
+
+**The gap:** a seller uploads one design file (`ApparelListing.designImageUrl`) but has no control
+over how it sits on the garment. At order time `PrintifyFulfillmentProvider.createProviderOrder`
+hardcodes the placement to dead-centre, full-scale, **front only**
+(`print_areas` placeholder `x:0.5, y:0.5, scale:1, angle:0`); Prodigi apparel similarly auto-fills.
+No size/position/rotation/front-vs-back control — the analog of the print **framing** tool
+(Epic MFTF-PF) does not exist for apparel.
+
+**Why it's feasible (context for the scoping session):**
+- Printify's `print_areas` API already takes `x/y/scale/angle` per position (front/back) — exactly a
+  placement tool's output; we currently send only the centred defaults.
+- Each variant's API data carries the print-area pixel dimensions (e.g. Baby Tee front 2419×2761),
+  but `sync-printify` does **not** store the `placeholders` today — capturing them is the one
+  missing data piece.
+- Strong in-repo precedent to reuse: the MFTF-PF print framing/crop tool — `FramingTool.tsx`,
+  `PrintFramingPanel.tsx`, the `PrintFraming` model, `src/lib/print/framing.ts` + `crop-geometry.ts`.
+
+**Likely shape (to be confirmed when scoped):** capture print-area dims at sync → a seller placement
+tool (drag/scale/rotate the design within the front/back print area, mirroring `FramingTool`) →
+persist `{position, x, y, scale, angle}` per listing → send at order time instead of the hardcoded
+centre (~5-line provider change) → a live preview.
+
+**Key decisions for the scoping session:** (a) full freeform drag/scale/rotate vs. simpler
+centre/fill/fit + size-slider presets; (b) front-only vs. front+back; (c) preview via our own
+composite (design over the stock image) vs. Printify's mockup generator (create a **draft** product,
+pull Printify's photorealistic mockups — best preview, least render work, extra product-create call).
+Recommended pre-scoping spike: prototype the Printify mockup call for one blueprint to judge preview
+quality, which drives decision (c).

@@ -34,6 +34,8 @@ export async function getActiveProductTypesForListing() {
     id: pt.id,
     name: pt.name,
     description: pt.description,
+    // Provider stock/catalog images shown to the seller as design reference (US-MFTF-17.6).
+    stockImages: toStockImages(pt.stockImageUrls),
     colors: pt.colors.map((c) => ({
       id: c.id,
       colorName: c.colorName,
@@ -41,6 +43,11 @@ export async function getActiveProductTypesForListing() {
     })),
     sizes: pt.sizes.map((s) => ({ id: s.id, sizeLabel: s.sizeLabel, sortOrder: s.sortOrder })),
   }));
+}
+
+/** Normalise the ProductType.stockImageUrls JSON column to a string[] of URLs. */
+export function toStockImages(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.filter((s): s is string => typeof s === "string") : [];
 }
 
 export type ApparelProductTypeOption = Awaited<
