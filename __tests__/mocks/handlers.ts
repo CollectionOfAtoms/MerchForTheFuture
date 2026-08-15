@@ -222,17 +222,22 @@ const teemillHandlers = [
 // override these per-case with server.use() to assert exact bodies / error paths.
 const PRINTIFY_BASE = "https://api.printify.com/v1";
 const printifyHandlers = [
-  // Curated (blueprint, print_provider) variants — default fixture (2 colours × 2 sizes).
-  http.get(`${PRINTIFY_BASE}/catalog/blueprints/:bp/print_providers/:pp/variants.json`, () =>
-    HttpResponse.json({
-      variants: [
-        { id: 17391, title: "Heather Grey / S", options: { color: "Heather Grey", size: "S" } },
-        { id: 17392, title: "Heather Grey / M", options: { color: "Heather Grey", size: "M" } },
-        { id: 17401, title: "Black / S", options: { color: "Black", size: "S" } },
-        { id: 17402, title: "Black / M", options: { color: "Black", size: "M" } },
-      ],
-    }),
-  ),
+  // Curated (blueprint, print_provider) variants. Printify hides out-of-stock
+  // variants unless `show-out-of-stock=1` is passed, so the fixture mirrors that:
+  // the full range (4) with the flag, a currently-in-stock SUBSET (3 — Black/M is
+  // "out of stock") without it. Catalog sync uses the flag; the availability probe
+  // (US-MFTF-17.4) uses the default to detect what's orderable now.
+  http.get(`${PRINTIFY_BASE}/catalog/blueprints/:bp/print_providers/:pp/variants.json`, ({ request }) => {
+    const full = [
+      { id: 17391, title: "Heather Grey / S", options: { color: "Heather Grey", size: "S" } },
+      { id: 17392, title: "Heather Grey / M", options: { color: "Heather Grey", size: "M" } },
+      { id: 17401, title: "Black / S", options: { color: "Black", size: "S" } },
+      { id: 17402, title: "Black / M", options: { color: "Black", size: "M" } },
+    ];
+    const showOOS = new URL(request.url).searchParams.get("show-out-of-stock") === "1";
+    const body = showOOS ? full : full.filter((v) => v.id !== 17402); // Black/M OOS by default
+    return HttpResponse.json({ variants: body });
+  }),
   // Shipping calc (creates no order) — USD integer cents.
   http.post(`${PRINTIFY_BASE}/shops/:shop/orders/shipping.json`, () =>
     HttpResponse.json({ standard: 1959, express: 2959 }),

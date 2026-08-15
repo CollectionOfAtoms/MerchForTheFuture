@@ -29,22 +29,28 @@ const { auth } = await import("@/auth");
 const VARIANTS_URL =
   "https://api.printify.com/v1/catalog/blueprints/:bp/print_providers/:pp/variants.json";
 
-/** The curated (blueprint 5, provider 41) offers 2 colours × 2 sizes = 4 variants. */
+/**
+ * The curated (blueprint 5, provider 41) offers 2 colours × 2 sizes = 4 variants —
+ * but only when `show-out-of-stock=1` is passed. WITHOUT the flag the endpoint
+ * returns just the currently-in-stock subset (here: only Heather Grey). The sync
+ * MUST pass the flag to cache the complete catalog, so returning the subset when it
+ * doesn't makes the "caches all 4" assertions fail unless the flag is used.
+ */
 function stubCuratedVariants() {
+  const full = [
+    { id: 17391, title: "Heather Grey / S", options: { color: "Heather Grey", size: "S" } },
+    { id: 17392, title: "Heather Grey / M", options: { color: "Heather Grey", size: "M" } },
+    { id: 17401, title: "Black / S", options: { color: "Black", size: "S" } },
+    { id: 17402, title: "Black / M", options: { color: "Black", size: "M" } },
+  ];
   server.use(
-    http.get(VARIANTS_URL, ({ params }) => {
+    http.get(VARIANTS_URL, ({ params, request }) => {
       // Only the curated pair returns variants; anything else is an empty catalog.
-      if (params.bp === "5" && params.pp === "41") {
-        return HttpResponse.json({
-          variants: [
-            { id: 17391, title: "Heather Grey / S", options: { color: "Heather Grey", size: "S" } },
-            { id: 17392, title: "Heather Grey / M", options: { color: "Heather Grey", size: "M" } },
-            { id: 17401, title: "Black / S", options: { color: "Black", size: "S" } },
-            { id: 17402, title: "Black / M", options: { color: "Black", size: "M" } },
-          ],
-        });
-      }
-      return HttpResponse.json({ variants: [] });
+      if (params.bp !== "5" || params.pp !== "41") return HttpResponse.json({ variants: [] });
+      const showOOS = new URL(request.url).searchParams.get("show-out-of-stock") === "1";
+      return HttpResponse.json({
+        variants: showOOS ? full : full.filter((v) => v.options.color === "Heather Grey"),
+      });
     }),
   );
 }

@@ -30,8 +30,13 @@ export async function fetchPrintifyCuratedVariants(
   blueprintId: number,
   printProviderId: number,
 ): Promise<PrintifyVariant[]> {
+  // show-out-of-stock=1 is REQUIRED: the default endpoint returns ONLY variants
+  // currently in stock at this provider, so the cached catalog would be incomplete
+  // and would change on every sync (verified live 2026-08-15: blueprint 1580 /
+  // provider 99 returns 4 default vs 16 full). We cache the full colour/size range
+  // here; live orderability is re-checked separately (US-MFTF-17.4).
   const res = await printifyGet(
-    `/catalog/blueprints/${blueprintId}/print_providers/${printProviderId}/variants.json`,
+    `/catalog/blueprints/${blueprintId}/print_providers/${printProviderId}/variants.json?show-out-of-stock=1`,
   );
   if (!res.ok) {
     console.error(
@@ -55,8 +60,11 @@ export async function printifyBlueprintProviderExists(
   blueprintId: number,
   printProviderId: number,
 ): Promise<boolean> {
+  // show-out-of-stock=1: a pair with variants that are all momentarily out of stock
+  // is still a valid, curatable pair — the default endpoint could wrongly report it
+  // as empty (see fetchPrintifyCuratedVariants).
   const res = await printifyGet(
-    `/catalog/blueprints/${blueprintId}/print_providers/${printProviderId}/variants.json`,
+    `/catalog/blueprints/${blueprintId}/print_providers/${printProviderId}/variants.json?show-out-of-stock=1`,
   );
   if (!res.ok) return false;
   const data = (await res.json()) as { variants?: PrintifyVariant[] };

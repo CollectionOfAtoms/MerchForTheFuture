@@ -98,11 +98,17 @@ the global 600/min headers are confirmed, so catalog sync can be budgeted from
   on any other endpoint — treat as name-only.
 - `placeholders` give the **print-area pixel dimensions** per position/decoration — this is what
   the design-file submission targets (front/back DTG, 2419×2761 for this variant).
-- **Stock semantics (BUG-13 lesson):** variants carry **no stock/quantity field** — Printify is
-  **print-on-demand**, orderability is at the `(blueprint, provider)` level, not warehouse stock.
-  Do **not** model per-variant stock. // UNVERIFIED whether a provider-level availability/enabled
-  flag should gate exposure (a provider can stop offering a blueprint) — check the
-  print-provider detail during 17.2.
+- **Stock semantics (BUG-13 lesson) — CORRECTED 2026-08-15:** the earlier spike claim ("no
+  per-variant stock; don't model it") was drawn from the DEFAULT `variants.json`, which
+  **silently hides out-of-stock variants**. Passing **`?show-out-of-stock=1`** returns the full
+  set, so availability **is** per-variant after all (this was Open Q#8). Verified live: blueprint
+  1580 (Women's Baby Tee) / provider 99 returns **4** variants by default (Light Pink, Sand × L,
+  XL) vs **16** with the flag (Black, Light Pink, Sand, White × S, M, L, XL). The variant object
+  itself still carries no availability field — a variant is "orderable now" iff it appears in the
+  DEFAULT (no-flag) list. **Consequence:** catalog sync must use `?show-out-of-stock=1` to cache
+  the complete, stable colour/size range (US-MFTF-17.2 fix), and live orderability is detected by
+  diffing against the default list on the product page + at checkout (US-MFTF-17.4), mirroring the
+  Teemill `isOrderable` re-check. See `scripts/printify-blueprint-lookup.ts`.
 
 ---
 
