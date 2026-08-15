@@ -5,12 +5,12 @@
     "archiveStoryCount": 181
   },
   "summary": {
-    "totalActive": 32,
+    "totalActive": 33,
     "totalArchived": 183,
-    "totalAllTime": 215,
+    "totalAllTime": 216,
     "byStatus": {
       "Not Started": 21,
-      "Deferred": 8,
+      "Deferred": 9,
       "Tests Passing \u2014 pending live confirmation": 3
     }
   },
@@ -327,6 +327,17 @@
       "testPassedDate": null,
       "testPassedCommit": null
     },
+    {
+        "id": "US-MFTF-17.7",
+        "epic": "Epic MFTF-17: Printify Integration",
+        "title": "Seller Apparel Design/Placement Tool (EMERGING — NEEDS SCOPING)",
+        "status": "Deferred",
+        "testWrittenDate": null,
+        "testWrittenCommit": null,
+        "testPassedDate": null,
+        "testPassedCommit": null,
+        "notes": "EMERGING NEED, NOT YET SCOPED — requires a dedicated scoping (tdd-spec-session) before any implementation; Deferred (not 'Not Started') so a coding session does not pick it up as ready work. PROBLEM: a seller uploads one design file (ApparelListing.designImageUrl) but has NO control over how it lays out on the garment. At order time PrintifyFulfillmentProvider.createProviderOrder hardcodes the placement to dead-centre, full-scale, front only (print_areas placeholder x:0.5,y:0.5,scale:1,angle:0); Prodigi apparel similarly auto-fills. No size/position/rotation/front-vs-back control. FEASIBILITY (high): (1) Printify's print_areas API already takes x/y/scale/angle per position (front/back) — a placement tool's exact output; (2) each variant's API data carries the print-area pixel dims (e.g. Baby Tee front 2419x2761) but sync-printify does NOT currently store the placeholders — capturing them is the one missing data piece; (3) strong in-repo precedent to reuse: the MFTF-PF print framing/crop tool (FramingTool.tsx, PrintFramingPanel.tsx, PrintFraming model, src/lib/print/framing.ts + crop-geometry.ts). SHAPE: capture print-area dims at sync -> seller placement tool (drag/scale/rotate design within the front/back print area, mirroring FramingTool) -> persist {position,x,y,scale,angle} per listing -> send at order time instead of the hardcoded centre (~5-line provider change) -> live preview. KEY DECISIONS FOR THE SCOPING SESSION: (a) full freeform drag/scale/rotate vs simpler centre/fill/fit + size-slider presets; (b) front-only vs front+back; (c) preview via our own composite (design over the stock image) vs Printify's mockup generator (create a DRAFT product, pull Printify's photorealistic mockups — best preview, least render work, extra product-create call). RECOMMENDED first step before scoping: prototype the Printify mockup call for one blueprint to judge preview quality (drives the composite-vs-Printify-mockup decision). Raised by the founder 2026-08-15."
+      },
     {
       "id": "US-MFTF-18.1",
       "epic": "Epic MFTF-18: Printful Integration",
@@ -937,7 +948,7 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-08-15T18:25:27.000Z",
+  "lastUpdated": "2026-08-15T18:40:20.000Z",
   "statusLegend": {
     "Not Started": "No test written yet.",
     "Test Written": "Failing test committed; implementation not yet passing.",

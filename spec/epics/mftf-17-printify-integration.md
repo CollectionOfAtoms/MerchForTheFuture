@@ -205,3 +205,40 @@ and a "Sync from Printify" button wired to `syncProductTypeFromPrintifyAction`.
 - Live-verified image shape (blueprint 1580 → 7 stock images), so Passed via MSW; no dependency
   on US-MFTF-17.3. Generalises to any DESIGNED provider that later populates `stockImageUrls`
   (Prodigi image capture is a possible follow-up).
+
+---
+
+### US-MFTF-17.7 — Seller Apparel Design/Placement Tool _(EMERGING — NEEDS SCOPING)_
+
+**Status: Deferred / not yet scoped.** This is a placeholder recording an emerging need, raised by
+the founder 2026-08-15. It is **not** ready for implementation — it must go through a dedicated
+scoping session (`tdd-spec-session`) to produce real acceptance criteria first. Marked `Deferred`
+(not `Not Started`) in the tracker so a coding session does not pick it up as ready work.
+
+**The gap:** a seller uploads one design file (`ApparelListing.designImageUrl`) but has no control
+over how it sits on the garment. At order time `PrintifyFulfillmentProvider.createProviderOrder`
+hardcodes the placement to dead-centre, full-scale, **front only**
+(`print_areas` placeholder `x:0.5, y:0.5, scale:1, angle:0`); Prodigi apparel similarly auto-fills.
+No size/position/rotation/front-vs-back control — the analog of the print **framing** tool
+(Epic MFTF-PF) does not exist for apparel.
+
+**Why it's feasible (context for the scoping session):**
+- Printify's `print_areas` API already takes `x/y/scale/angle` per position (front/back) — exactly a
+  placement tool's output; we currently send only the centred defaults.
+- Each variant's API data carries the print-area pixel dimensions (e.g. Baby Tee front 2419×2761),
+  but `sync-printify` does **not** store the `placeholders` today — capturing them is the one
+  missing data piece.
+- Strong in-repo precedent to reuse: the MFTF-PF print framing/crop tool — `FramingTool.tsx`,
+  `PrintFramingPanel.tsx`, the `PrintFraming` model, `src/lib/print/framing.ts` + `crop-geometry.ts`.
+
+**Likely shape (to be confirmed when scoped):** capture print-area dims at sync → a seller placement
+tool (drag/scale/rotate the design within the front/back print area, mirroring `FramingTool`) →
+persist `{position, x, y, scale, angle}` per listing → send at order time instead of the hardcoded
+centre (~5-line provider change) → a live preview.
+
+**Key decisions for the scoping session:** (a) full freeform drag/scale/rotate vs. simpler
+centre/fill/fit + size-slider presets; (b) front-only vs. front+back; (c) preview via our own
+composite (design over the stock image) vs. Printify's mockup generator (create a **draft** product,
+pull Printify's photorealistic mockups — best preview, least render work, extra product-create call).
+Recommended pre-scoping spike: prototype the Printify mockup call for one blueprint to judge preview
+quality, which drives decision (c).
