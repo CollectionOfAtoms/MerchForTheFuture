@@ -84,6 +84,13 @@ export function parsePrintifyBlueprintId(input: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
+export interface PrintifyProviderOption {
+  id: number;
+  title: string;
+  /** "City, Region, Country" from the provider detail endpoint, or null if unknown. */
+  location: string | null;
+}
+
 export interface PrintifyBlueprintPreview {
   blueprintId: number;
   title: string;
@@ -91,14 +98,34 @@ export interface PrintifyBlueprintPreview {
   model: string | null;
   /** Blueprint stock/catalog images (from images.printify.com). */
   images: string[];
-  /** Print providers offering this blueprint; the admin pins one (US-MFTF-17.2). */
-  providers: { id: number; title: string }[];
+  /** Print providers offering this blueprint, Printify Choice first (US-MFTF-17.5). */
+  providers: PrintifyProviderOption[];
+}
+
+/** Printify Choice is Printify's own auto-routing option — surface it first. */
+function isPrintifyChoice(title: string): boolean {
+  return title.trim().toLowerCase() === "printify choice";
+}
+
+/** Fetch one print provider's location as "City, Region, Country" (null on failure). */
+async function fetchPrintifyProviderLocation(providerId: number): Promise<string | null> {
+  try {
+    const res = await printifyGet(`/catalog/print_providers/${providerId}.json`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { location?: { city?: string; region?: string; country?: string } };
+    const loc = data.location;
+    if (!loc) return null;
+    return [loc.city, loc.region, loc.country].filter(Boolean).join(", ") || null;
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Fetch a blueprint's detail (title/brand/model + stock images) and the list of print
- * providers offering it, for the admin curation preview (US-MFTF-17.5). Read-only
- * catalog GETs. Returns null when the blueprint is not found.
+ * providers offering it — each with its location — for the admin curation preview
+ * (US-MFTF-17.5). Printify Choice (Printify's auto-router) is sorted first when
+ * present. Read-only catalog GETs. Returns null when the blueprint is not found.
  */
 export async function fetchPrintifyBlueprintPreview(
   blueprintId: number,
@@ -115,15 +142,25 @@ export async function fetchPrintifyBlueprintPreview(
     images?: string[];
   };
   const providersRaw = provRes.ok ? ((await provRes.json()) as Array<{ id?: number; title?: string }>) : [];
+  const providers: PrintifyProviderOption[] = await Promise.all(
+    providersRaw
+      .filter((p): p is { id: number; title?: string } => typeof p.id === "number")
+      .map(async (p) => ({
+        id: p.id,
+        title: p.title ?? `Provider ${p.id}`,
+        location: await fetchPrintifyProviderLocation(p.id),
+      })),
+  );
+  // Printify Choice first; the rest keep the catalog's order.
+  providers.sort((a, b) => Number(isPrintifyChoice(b.title)) - Number(isPrintifyChoice(a.title)));
+
   return {
     blueprintId,
     title: d.title ?? `Blueprint ${blueprintId}`,
     brand: d.brand ?? null,
     model: d.model ?? null,
     images: (d.images ?? []).filter((s): s is string => typeof s === "string"),
-    providers: providersRaw
-      .filter((p): p is { id: number; title: string } => typeof p.id === "number")
-      .map((p) => ({ id: p.id, title: p.title ?? `Provider ${p.id}` })),
+    providers,
   };
 }
 

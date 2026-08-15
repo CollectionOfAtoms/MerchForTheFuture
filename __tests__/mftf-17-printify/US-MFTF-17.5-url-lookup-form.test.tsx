@@ -29,9 +29,10 @@ const PREVIEW = {
     brand: "Generic brand",
     model: "",
     images: ["https://images.printify.com/a", "https://images.printify.com/b"],
+    // Already ordered Printify-Choice-first by the action; each carries a location.
     providers: [
-      { id: 99, title: "Printify Choice" },
-      { id: 217, title: "Fulfill Engine" },
+      { id: 99, title: "Printify Choice", location: "Miami, FL, US" },
+      { id: 217, title: "Fulfill Engine", location: "Monroe, NC, US" },
     ],
   },
 };
@@ -58,12 +59,16 @@ describe("US-MFTF-17.5 — ProductTypeForm Printify URL lookup", () => {
       const imgs = container.querySelectorAll('img[src^="https://images.printify.com/"]');
       expect(imgs.length).toBe(2);
     });
-    // Provider picker is populated from the resolved providers.
-    expect(screen.getByRole("option", { name: /printify choice/i })).toBeTruthy();
-    expect(screen.getByRole("option", { name: /fulfill engine/i })).toBeTruthy();
-    // The resolved blueprint id is submitted (hidden), and the provider select submits its id.
+    // Provider picker is populated from the resolved providers, with each engine's
+    // location shown in its option label.
+    expect(screen.getByRole("option", { name: /printify choice.*miami/i })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /fulfill engine.*monroe/i })).toBeTruthy();
+    // Printify Choice (first in the resolved list) is the default selection.
+    const select = container.querySelector('select[name="printifyPrintProviderId"]') as HTMLSelectElement;
+    expect(select).toBeTruthy();
+    expect(select.value).toBe("99");
+    // The resolved blueprint id is submitted (hidden).
     expect((container.querySelector('[name="printifyBlueprintId"]') as HTMLInputElement).value).toBe("1580");
-    expect(container.querySelector('select[name="printifyPrintProviderId"]')).toBeTruthy();
   });
 
   it("surfaces a resolve error", async () => {

@@ -220,13 +220,16 @@ export default function ProductTypeForm({ defaults }: { defaults?: Defaults } = 
                 >
                   {preview.providers.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.title} (id {p.id})
+                      {p.title}
+                      {p.location ? ` — ${p.location}` : ""} (id {p.id})
                     </option>
                   ))}
                 </select>
                 <p className="mt-1 text-xs text-stone-400">
-                  Blueprint {preview.blueprintId}. Colours, sizes and orderable variants
-                  sync from this blueprint + provider on save.
+                  Blueprint {preview.blueprintId}. Locations show where each engine ships
+                  from; Printify Choice (Printify&apos;s auto-router) is listed first when
+                  available. Colours, sizes and orderable variants sync from this
+                  blueprint + provider on save.
                 </p>
               </div>
             </div>

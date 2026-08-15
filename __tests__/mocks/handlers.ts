@@ -236,13 +236,29 @@ const printifyHandlers = [
       ],
     }),
   ),
-  // Print providers offering a blueprint (US-MFTF-17.5 admin lookup).
+  // Print providers offering a blueprint (US-MFTF-17.5 admin lookup). Returned with
+  // Printify Choice NOT first, so the "Printify Choice first" sort is exercised by code.
   http.get(`${PRINTIFY_BASE}/catalog/blueprints/:id/print_providers.json`, () =>
     HttpResponse.json([
-      { id: 99, title: "Printify Choice" },
-      { id: 217, title: "Fulfill Engine" },
+      { id: 217, title: "Fulfill Engine", decoration_methods: ["dtf"] },
+      { id: 99, title: "Printify Choice", decoration_methods: ["dtf"] },
     ]),
   ),
+  // Single print-provider detail — carries the location (a separate endpoint from
+  // the blueprint's provider list). Location varies by id so ordering/labels can be
+  // asserted (US-MFTF-17.5 location display).
+  http.get(`${PRINTIFY_BASE}/catalog/print_providers/:id.json`, ({ params }) => {
+    const byId: Record<string, { city: string; region: string; country: string; title: string }> = {
+      "99": { city: "Miami", region: "FL", country: "US", title: "Printify Choice" },
+      "217": { city: "Monroe", region: "NC", country: "US", title: "Fulfill Engine" },
+    };
+    const loc = byId[String(params.id)] ?? { city: "Somewhere", region: "TX", country: "US", title: `Provider ${params.id}` };
+    return HttpResponse.json({
+      id: Number(params.id),
+      title: loc.title,
+      location: { city: loc.city, region: loc.region, country: loc.country },
+    });
+  }),
   // Curated (blueprint, print_provider) variants. Printify hides out-of-stock
   // variants unless `show-out-of-stock=1` is passed, so the fixture mirrors that:
   // the full range (4) with the flag, a currently-in-stock SUBSET (3 — Black/M is

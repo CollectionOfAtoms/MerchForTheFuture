@@ -32,7 +32,18 @@ describe("US-MFTF-17.5 — resolvePrintifyUrlAction", () => {
     expect(result.preview.blueprintId).toBe(1580);
     expect(result.preview.title).toBe("Women's Baby Tee");
     expect(result.preview.images.length).toBeGreaterThan(0);
-    expect(result.preview.providers).toContainEqual({ id: 99, title: "Printify Choice" });
+    const choice = result.preview.providers.find((p) => p.id === 99);
+    expect(choice?.title).toBe("Printify Choice");
+    // Each provider carries its location (from the per-provider detail endpoint).
+    expect(choice?.location).toMatch(/Miami/);
+    expect(result.preview.providers.find((p) => p.id === 217)?.location).toMatch(/Monroe/);
+  });
+
+  it("orders Printify Choice first when it is available (MSW returns it second)", async () => {
+    const result = await resolvePrintifyUrlAction("1580");
+    if (!("preview" in result)) throw new Error("expected preview");
+    expect(result.preview.providers[0].title).toBe("Printify Choice");
+    expect(result.preview.providers.map((p) => p.id)).toContain(217);
   });
 
   it("accepts a bare blueprint id too", async () => {
