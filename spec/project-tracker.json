@@ -312,9 +312,9 @@
       "title": "Printify Provider Integration",
       "status": "Tests Passing — pending live confirmation",
       "testWrittenDate": "2026-08-15",
-      "testWrittenCommit": "PENDING",
+      "testWrittenCommit": "2c5a548",
       "testPassedDate": "2026-08-15",
-      "testPassedCommit": "PENDING",
+      "testPassedCommit": "2c5a548",
       "notes": "DESIGNED-mode Printify integration per the US-MFTF-17.1 spike (docs/printify-api-notes.md). Tests written first and confirmed RED before implementation: __tests__/mftf-17-printify/US-MFTF-17.2-printify-provider.test.ts (provider contract, two-step create→send-to-production, USD cents→dollars quote, status/webhook mapping, HMAC signature, @ts-expect-error incomplete-subclass), US-MFTF-17.2-printify-designed-catalog.test.ts (curated (blueprint,print_provider) sync of colours/sizes/combo→variantId map + admin create/update PRINTIFY validation), US-MFTF-17.2-printify-fanout-split.test.ts (multi-provider split, order-line correctness, failure isolation, buyer-opacity). All 25 green vs MSW; the 40-file fulfillment/checkout/catalog regression set (336 tests) stays green. Implementation: PrintifyFulfillmentProvider (src/lib/fulfillment/providers/printify.ts) + printify/client.ts; getProviderByKey 'printify'; ProductTypePrintifyVariant combo table + printifyBlueprintId/printifyPrintProviderId on ProductType (providerSkuBase made nullable); sync-printify.ts; fanout.ts + revalidate.ts Printify branches; api/webhooks/printify/route.ts (HMAC-SHA256, marked // UNVERIFIED header, polling is primary); admin ProductTypeForm + product-catalog actions; MSW printifyHandlers; env vars in .env.local.example + runbook. HELD at 'Tests Passing — pending live confirmation' (not Passed): status vocabulary, create-order response, send-to-production requirement, and webhook signature header are // UNVERIFIED with no Printify sandbox — they resolve at US-MFTF-17.3 (founder live order), which gates Passed."
     },
     {
