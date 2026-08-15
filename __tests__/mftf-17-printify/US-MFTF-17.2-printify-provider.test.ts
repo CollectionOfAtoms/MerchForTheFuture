@@ -24,6 +24,7 @@ const {
   mapPrintifyEventToStatus,
   verifyPrintifySignature,
 } = await import("@/lib/fulfillment/providers/printify");
+const { __resetPrintifyShopIdCache } = await import("@/lib/fulfillment/printify/client");
 
 import type {
   FulfillmentJob,
@@ -92,6 +93,40 @@ describe("US-MFTF-17.2 — PrintifyFulfillmentProvider (DESIGNED)", () => {
       // Every returned method surfaces as a buyer-selectable option, cheapest first.
       expect(quote.options?.[0]).toMatchObject({ method: "standard", cost: 19.59 });
       expect(quote.options?.map((o) => o.method)).toContain("express");
+    });
+  });
+
+  describe("shop-id resolution (fix: shop-scoped calls 404 on /shops//… when unset)", () => {
+    const saved = process.env.PRINTIFY_SHOP_ID;
+    beforeEach(() => {
+      delete process.env.PRINTIFY_SHOP_ID;
+      __resetPrintifyShopIdCache();
+    });
+    afterEach(() => {
+      if (saved !== undefined) process.env.PRINTIFY_SHOP_ID = saved;
+      __resetPrintifyShopIdCache();
+    });
+
+    it("fetches the shop id from /shops.json when PRINTIFY_SHOP_ID is unset, building a well-formed URL", async () => {
+      let capturedUrl = "";
+      server.use(
+        http.get("https://api.printify.com/v1/shops.json", () => HttpResponse.json([{ id: 28204676 }])),
+        http.post("https://api.printify.com/v1/shops/:shop/orders/shipping.json", ({ request }) => {
+          capturedUrl = request.url;
+          return HttpResponse.json({ standard: 1959 });
+        }),
+      );
+      const quote = await new PrintifyFulfillmentProvider().quoteShipping([PRINTIFY_ITEM], ADDRESS);
+      expect(quote.shippingCost).toBeCloseTo(19.59, 2);
+      expect(capturedUrl).toContain("/shops/28204676/orders/shipping.json");
+      expect(capturedUrl).not.toContain("/shops//"); // the bug: empty id → malformed path → 404
+    });
+
+    it("throws a clear error when the account has no shop", async () => {
+      server.use(http.get("https://api.printify.com/v1/shops.json", () => HttpResponse.json([])));
+      await expect(
+        new PrintifyFulfillmentProvider().quoteShipping([PRINTIFY_ITEM], ADDRESS),
+      ).rejects.toThrow(/no shop/i);
     });
   });
 

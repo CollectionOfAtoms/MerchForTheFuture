@@ -17,7 +17,7 @@ import {
   printifyGet,
   printifyPost,
   printifyError,
-  getPrintifyShopId,
+  resolvePrintifyShopId,
 } from "../printify/client";
 
 // ── Printify response shapes (order/status/webhook // UNVERIFIED — resolved live
@@ -49,9 +49,9 @@ type PrintifyShippingResponse = Record<string, number>;
 export class PrintifyFulfillmentProvider extends FulfillmentProvider {
   name = "printify";
 
-  /** Prefix a shop-scoped path with the pinned shop id. */
-  private shopPath(sub: string): string {
-    return `/shops/${getPrintifyShopId()}${sub}`;
+  /** Prefix a shop-scoped path with the resolved shop id (env, else fetched once). */
+  private async shopPath(sub: string): Promise<string> {
+    return `/shops/${await resolvePrintifyShopId()}${sub}`;
   }
 
   // Printify has no legacy single-item (MFTF-3) path — designed apparel flows
@@ -70,7 +70,7 @@ export class PrintifyFulfillmentProvider extends FulfillmentProvider {
   ): Promise<ShippingQuote> {
     // POST /shops/{shop}/orders/shipping.json computes shipping WITHOUT creating an
     // order (verified: returns { standard: 1959 } in USD integer cents).
-    const resp = await printifyPost(this.shopPath("/orders/shipping.json"), {
+    const resp = await printifyPost(await this.shopPath("/orders/shipping.json"), {
       line_items: items.map((i) => ({
         blueprint_id: i.printifyBlueprintId,
         print_provider_id: i.printifyPrintProviderId,
@@ -104,7 +104,7 @@ export class PrintifyFulfillmentProvider extends FulfillmentProvider {
     // Polling backstop: GET the order and map its status. Feeds the SAME shared
     // transition seam as the webhook path (US-MFTF-14.2). // UNVERIFIED status
     // vocabulary + shipment/tracking field paths until US-MFTF-17.3.
-    const resp = await printifyGet(this.shopPath(`/orders/${q.providerOrderId}.json`));
+    const resp = await printifyGet(await this.shopPath(`/orders/${q.providerOrderId}.json`));
     if (!resp.ok) return none;
     const data = (await resp.json()) as PrintifyGetOrderResponse;
     const shipment = data.shipments?.[0];
@@ -158,7 +158,7 @@ export class PrintifyFulfillmentProvider extends FulfillmentProvider {
       }),
     );
 
-    const resp = await printifyPost(this.shopPath("/orders.json"), {
+    const resp = await printifyPost(await this.shopPath("/orders.json"), {
       label: `MFTF ${new Date().toISOString()}`,
       line_items: lineItems,
       address_to: toPrintifyAddress(job.shippingAddress, { email: job.contact?.email }),
@@ -182,8 +182,7 @@ export class PrintifyFulfillmentProvider extends FulfillmentProvider {
   ): Promise<FulfillmentOrderResult> {
     // The safety valve: a created order is NOT produced on a Manual/API shop until
     // explicitly sent to production. This is the commit step of the two-step flow.
-    const resp = await printifyPost(
-      this.shopPath(`/orders/${created.externalOrderId}/send-to-production.json`),
+    const resp = await printifyPost(await this.shopPath(`/orders/${created.externalOrderId}/send-to-production.json`),
       {},
     );
     if (!resp.ok) {

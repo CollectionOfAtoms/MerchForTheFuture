@@ -222,6 +222,11 @@ const teemillHandlers = [
 // override these per-case with server.use() to assert exact bodies / error paths.
 const PRINTIFY_BASE = "https://api.printify.com/v1";
 const printifyHandlers = [
+  // Account shops — used to resolve the shop id when PRINTIFY_SHOP_ID is unset
+  // (US-MFTF-17.2 shop-id-resolution fix, so shop-scoped calls don't 404 on /shops//…).
+  http.get(`${PRINTIFY_BASE}/shops.json`, () =>
+    HttpResponse.json([{ id: 28204676, title: "My new store", sales_channel: "disconnected" }]),
+  ),
   // Blueprint detail — stock/catalog images + brand/model (US-MFTF-17.5 admin lookup).
   http.get(`${PRINTIFY_BASE}/catalog/blueprints/:id.json`, ({ params }) =>
     HttpResponse.json({

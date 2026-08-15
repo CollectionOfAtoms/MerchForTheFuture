@@ -18,9 +18,44 @@ export function getPrintifyApiKey(): string {
   return process.env.PRINTIFY_API_KEY ?? "";
 }
 
-/** The pinned Printify shop id (Printify's analog of Teemill's `project` claim). */
+/** The pinned Printify shop id from the env, or "" when unset. */
 export function getPrintifyShopId(): string {
-  return process.env.PRINTIFY_SHOP_ID ?? "";
+  return (process.env.PRINTIFY_SHOP_ID ?? "").trim();
+}
+
+let cachedShopId: string | null = null;
+
+/** Reset the fetched-shop-id cache. Test-only. */
+export function __resetPrintifyShopIdCache(): void {
+  cachedShopId = null;
+}
+
+/**
+ * Resolve the Printify shop id for shop-scoped endpoints (Printify's analog of
+ * Teemill's `project` claim). Prefers PRINTIFY_SHOP_ID; when unset, fetches
+ * `GET /shops.json` once and caches the first shop's id.
+ *
+ * This matters because every shop-scoped call (`/shops/{id}/…`) builds a MALFORMED
+ * `/shops//…` path — a 404 — when the id is missing, which is exactly how a checkout
+ * shipping quote fails if PRINTIFY_SHOP_ID was never set. Pinning the env var still
+ * avoids the extra call.
+ */
+export async function resolvePrintifyShopId(): Promise<string> {
+  const pinned = getPrintifyShopId();
+  if (pinned) return pinned;
+  if (cachedShopId) return cachedShopId;
+
+  const res = await printifyGet("/shops.json");
+  if (!res.ok) throw await printifyError(res, "resolve shop id (GET /shops.json)");
+  const shops = (await res.json()) as Array<{ id?: number | string }>;
+  const id = shops[0]?.id;
+  if (id == null || String(id).trim() === "") {
+    throw new Error(
+      "Printify: no shop found on this account. Create a shop in Printify (or set PRINTIFY_SHOP_ID).",
+    );
+  }
+  cachedShopId = String(id);
+  return cachedShopId;
 }
 
 /** Webhook signing secret (HMAC-SHA256 over the raw body). */
