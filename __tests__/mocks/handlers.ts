@@ -214,6 +214,47 @@ const teemillHandlers = [
   ),
 ];
 
+// ─── Printify API handlers (US-MFTF-17.2) ────────────────────────────────────
+// Base: https://api.printify.com/v1 — DESIGNED provider, two-step orders (create →
+// send-to-production), shop-scoped endpoints. Catalog + shipping-calc shapes
+// verified live 2026-07-12 (docs/printify-api-notes.md); order/status shapes are
+// // UNVERIFIED and resolve at US-MFTF-17.3. No live Printify calls in tests. Tests
+// override these per-case with server.use() to assert exact bodies / error paths.
+const PRINTIFY_BASE = "https://api.printify.com/v1";
+const printifyHandlers = [
+  // Curated (blueprint, print_provider) variants — default fixture (2 colours × 2 sizes).
+  http.get(`${PRINTIFY_BASE}/catalog/blueprints/:bp/print_providers/:pp/variants.json`, () =>
+    HttpResponse.json({
+      variants: [
+        { id: 17391, title: "Heather Grey / S", options: { color: "Heather Grey", size: "S" } },
+        { id: 17392, title: "Heather Grey / M", options: { color: "Heather Grey", size: "M" } },
+        { id: 17401, title: "Black / S", options: { color: "Black", size: "S" } },
+        { id: 17402, title: "Black / M", options: { color: "Black", size: "M" } },
+      ],
+    }),
+  ),
+  // Shipping calc (creates no order) — USD integer cents.
+  http.post(`${PRINTIFY_BASE}/shops/:shop/orders/shipping.json`, () =>
+    HttpResponse.json({ standard: 1959, express: 2959 }),
+  ),
+  // Design upload — returns the image id referenced in the order's print_areas.
+  http.post(`${PRINTIFY_BASE}/uploads/images.json`, () =>
+    HttpResponse.json({ id: "img-mock", file_name: "design.png" }),
+  ),
+  // Order create (step 1) — NOT produced until send-to-production.
+  http.post(`${PRINTIFY_BASE}/shops/:shop/orders.json`, () =>
+    HttpResponse.json({ id: "printify-order-mock", status: "pending" }),
+  ),
+  // Send to production (step 2, the safety valve).
+  http.post(`${PRINTIFY_BASE}/shops/:shop/orders/:id/send-to-production.json`, ({ params }) =>
+    HttpResponse.json({ id: params.id, status: "in-production" }),
+  ),
+  // Order status polling. // UNVERIFIED status vocabulary + tracking field paths.
+  http.get(`${PRINTIFY_BASE}/shops/:shop/orders/:id.json`, ({ params }) =>
+    HttpResponse.json({ id: params.id, status: "in-production", shipments: [] }),
+  ),
+];
+
 export const handlers = [
   ...stripeHandlers,
   ...prodigiHandlers,
@@ -221,4 +262,5 @@ export const handlers = [
   ...currencyHandlers,
   ...emailHandlers,
   ...teemillHandlers,
+  ...printifyHandlers,
 ];

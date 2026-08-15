@@ -60,6 +60,14 @@ export interface ShippingQuoteItem {
    * color: "white" }). Omitted for prints, whose SKU already encodes the size.
    */
   attributes?: Record<string, string>;
+  /**
+   * Printify designed apparel (US-MFTF-17.2): a Printify order line is identified by
+   * the (blueprint_id, print_provider_id, variant_id) triple — not a single SKU. The
+   * design asset travels in `sourceImageUrl`, the print area in `printArea` ("front").
+   */
+  printifyBlueprintId?: number;
+  printifyPrintProviderId?: number;
+  printifyVariantId?: number;
   /** Print area for the design asset (Prodigi apparel = "front"; prints = "default"). */
   printArea?: string;
   /**

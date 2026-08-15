@@ -47,6 +47,9 @@ export async function revalidateCheckout(cartId: string): Promise<RevalidationRe
             select: {
               fulfillmentProvider: true,
               providerSkuBase: true,
+              printifyBlueprintId: true,
+              printifyPrintProviderId: true,
+              printifyVariants: { select: { colorName: true, sizeLabel: true, printifyVariantId: true } },
               sizes: { select: { sizeLabel: true, providerSizeCode: true } },
               colors: { select: { colorName: true, providerColorCode: true } },
             },
@@ -139,6 +142,21 @@ export async function revalidateCheckout(cartId: string): Promise<RevalidationRe
           continue;
         }
         quoteItem = { variantRef: cached.variantRef, quantity: item.quantity };
+      } else if (listing.productType?.fulfillmentProvider === "PRINTIFY") {
+        // Designed apparel → Printify. Shipping is quoted against the (blueprint,
+        // print_provider, variant) triple; the variant id is resolved from the cached
+        // (colour,size)→variantId map (US-MFTF-17.2).
+        const pt = listing.productType;
+        const combo = pt.printifyVariants.find(
+          (v) => v.colorName === colorId && v.sizeLabel === sizeLabel,
+        );
+        quoteItem = {
+          printifyBlueprintId: pt.printifyBlueprintId ?? undefined,
+          printifyPrintProviderId: pt.printifyPrintProviderId ?? undefined,
+          printifyVariantId: combo?.printifyVariantId,
+          quantity: item.quantity,
+          printArea: "front",
+        };
       } else {
         // Designed apparel → Prodigi. The blank SKU + the buyer's size/colour in
         // Prodigi's RAW spelling (providerSizeCode/providerColorCode) + the design's

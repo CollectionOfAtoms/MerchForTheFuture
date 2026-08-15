@@ -40,7 +40,9 @@ export async function AdminProductsPage() {
 
   function resolveThumbnail(pt: typeof products[number]): string | null {
     if (pt.fulfillmentProvider === "PRODIGI") return pt.blankImageUrl ?? null;
-    return pt.firstColorImageUrl ?? teemillApiMap[pt.providerSkuBase] ?? null;
+    // Printify designed types have no single SKU (providerSkuBase is null); only
+    // Teemill's referenced map is keyed by it.
+    return pt.firstColorImageUrl ?? (pt.providerSkuBase ? teemillApiMap[pt.providerSkuBase] : null) ?? null;
   }
 
   return (

@@ -7,13 +7,15 @@ interface Defaults {
   description?: string;
   fulfillmentProvider?: string;
   providerSkuBase?: string;
+  printifyBlueprintId?: string;
+  printifyPrintProviderId?: string;
   isActive?: string;
 }
 
 export default function ProductTypeForm({ defaults }: { defaults?: Defaults } = {}) {
-  // Designed product types are Prodigi-only (US-MFTF-16.1). Teemill is a
-  // REFERENCED source added via the referenced-listing path, so it is no longer
-  // offered in this designed-mode picker.
+  // Designed product types are Prodigi- or Printify-backed (US-MFTF-16.1 / 17.2).
+  // Teemill is a REFERENCED source added via the referenced-listing path, so it is
+  // not offered in this designed-mode picker.
   const [provider, setProvider] = useState(
     defaults?.fulfillmentProvider ?? "PRODIGI"
   );
@@ -59,6 +61,7 @@ export default function ProductTypeForm({ defaults }: { defaults?: Defaults } = 
           className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
         >
           <option value="PRODIGI">Prodigi</option>
+          <option value="PRINTIFY">Printify</option>
         </select>
       </div>
 
@@ -78,35 +81,84 @@ export default function ProductTypeForm({ defaults }: { defaults?: Defaults } = 
         </p>
       </div>
 
-      {/* Prodigi SKU (designed types are Prodigi-only) */}
-      <div className="space-y-3 rounded-xl border border-stone-200 bg-stone-50 px-5 py-4 text-sm">
-        <p className="font-semibold text-stone-800">Finding a Prodigi SKU</p>
-        <ol className="list-decimal list-inside space-y-1 text-stone-500">
-          <li>
-            Browse the catalog at{" "}
-            <strong className="text-stone-700">prodigi.com/products</strong>
-          </li>
-          <li>Open a product and copy its SKU from the detail page</li>
-          <li>
-            Example:{" "}
-            <code className="rounded bg-stone-200 px-1 text-xs">
-              GLOBAL-FAP-16X20
-            </code>
-          </li>
-        </ol>
-        <div>
-          <label className="block text-xs font-medium text-stone-600 mb-1">
-            Provider SKU base <span className="text-red-500">*</span>
-          </label>
-          <input
-            name="providerSkuBase"
-            required
-            defaultValue={defaults?.providerSkuBase}
-            placeholder="e.g. GLOBAL-FAP-16X20"
-            className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
-          />
+      {/* Prodigi SKU (Prodigi-backed designed types) */}
+      {provider === "PRODIGI" && (
+        <div className="space-y-3 rounded-xl border border-stone-200 bg-stone-50 px-5 py-4 text-sm">
+          <p className="font-semibold text-stone-800">Finding a Prodigi SKU</p>
+          <ol className="list-decimal list-inside space-y-1 text-stone-500">
+            <li>
+              Browse the catalog at{" "}
+              <strong className="text-stone-700">prodigi.com/products</strong>
+            </li>
+            <li>Open a product and copy its SKU from the detail page</li>
+            <li>
+              Example:{" "}
+              <code className="rounded bg-stone-200 px-1 text-xs">
+                GLOBAL-FAP-16X20
+              </code>
+            </li>
+          </ol>
+          <div>
+            <label className="block text-xs font-medium text-stone-600 mb-1">
+              Provider SKU base <span className="text-red-500">*</span>
+            </label>
+            <input
+              name="providerSkuBase"
+              required
+              defaultValue={defaults?.providerSkuBase}
+              placeholder="e.g. GLOBAL-FAP-16X20"
+              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
+            />
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Printify blueprint + print-provider pair (Printify-backed designed types).
+          Printify is a print-on-demand marketplace: one blueprint is offered by many
+          print providers, each with its own variants/pricing — so a curated style
+          pins the (blueprint, print provider) PAIR (US-MFTF-17.2). */}
+      {provider === "PRINTIFY" && (
+        <div
+          data-testid="printify-catalog-fields"
+          className="space-y-3 rounded-xl border border-stone-200 bg-stone-50 px-5 py-4 text-sm"
+        >
+          <p className="font-semibold text-stone-800">Curated Printify style</p>
+          <p className="text-stone-500">
+            Pin the exact <strong className="text-stone-700">blueprint</strong> and{" "}
+            <strong className="text-stone-700">print provider</strong> ids from the
+            Printify catalog. Sizes, colours and orderable variants are synced from
+            this pair on save.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-stone-600 mb-1">
+                Blueprint id <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="printifyBlueprintId"
+                type="number"
+                min={1}
+                defaultValue={defaults?.printifyBlueprintId}
+                placeholder="e.g. 5"
+                className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-stone-600 mb-1">
+                Print provider id <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="printifyPrintProviderId"
+                type="number"
+                min={1}
+                defaultValue={defaults?.printifyPrintProviderId}
+                placeholder="e.g. 41"
+                className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Active */}
       <div className="flex items-center gap-3">

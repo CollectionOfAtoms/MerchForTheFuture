@@ -170,9 +170,13 @@ export default async function EditProductTypePage({ params }: Props) {
                 />
               </div>
 
-              {/* Hidden — provider and SKU are set at creation; not editable here */}
+              {/* Hidden — provider + provider identity are set at creation; not
+                  editable here. Printify carries its (blueprint, print provider) pair
+                  instead of a single SKU (US-MFTF-17.2). */}
               <input type="hidden" name="fulfillmentProvider" value={pt.fulfillmentProvider} />
-              <input type="hidden" name="providerSkuBase" value={pt.providerSkuBase} />
+              <input type="hidden" name="providerSkuBase" value={pt.providerSkuBase ?? ""} />
+              <input type="hidden" name="printifyBlueprintId" value={pt.printifyBlueprintId ?? ""} />
+              <input type="hidden" name="printifyPrintProviderId" value={pt.printifyPrintProviderId ?? ""} />
 
               <div className="flex items-center gap-3">
                 <input

@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { syncDesignedProductTypeFromProdigi, prodigiProductExists } from "@/lib/apparel/sync-prodigi";
+import {
+  syncDesignedProductTypeFromPrintify,
+  printifyBlueprintProviderExists,
+} from "@/lib/apparel/sync-printify";
 
 type ActionResult = { id: string } | { error: string };
 type SyncResult = { error: string } | { sizes: number; colors: number };
@@ -33,6 +37,31 @@ async function validateProdigiSku(providerSkuBase: string): Promise<string | nul
   }
 }
 
+/** Parse a positive integer form field, or null if absent/invalid. */
+function parseIntField(fd: FormData, key: string): number | null {
+  const raw = (fd.get(key) as string | null)?.trim();
+  if (!raw) return null;
+  const n = Number.parseInt(raw, 10);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+/**
+ * Reject a Printify (blueprint, print_provider) pair Printify does not recognise, at
+ * submit time (BUG-16 precedent). Returns an error message to surface, or null when
+ * the pair is valid. A transport failure is surfaced too.
+ */
+async function validatePrintifyPair(blueprintId: number, printProviderId: number): Promise<string | null> {
+  try {
+    const exists = await printifyBlueprintProviderExists(blueprintId, printProviderId);
+    if (!exists) {
+      return `No Printify variants found for blueprint ${blueprintId} / print provider ${printProviderId}. Check the ids and try again.`;
+    }
+    return null;
+  } catch {
+    return "Could not reach Printify to verify the blueprint/provider pair. Please try again.";
+  }
+}
+
 // ─── createProductTypeAction ──────────────────────────────────────────────────
 
 export async function createProductTypeAction(fd: FormData): Promise<ActionResult> {
@@ -42,57 +71,50 @@ export async function createProductTypeAction(fd: FormData): Promise<ActionResul
   const description = (fd.get("description") as string | null)?.trim() || null;
   const fulfillmentProvider = (fd.get("fulfillmentProvider") as string | null)?.trim() ?? "";
   const providerSkuBase = (fd.get("providerSkuBase") as string | null)?.trim() ?? "";
+  const printifyBlueprintId = parseIntField(fd, "printifyBlueprintId");
+  const printifyPrintProviderId = parseIntField(fd, "printifyPrintProviderId");
   const isActive = fd.get("isActive") === "true";
 
   if (!name) return { error: "Product type name is required" };
-  if (!providerSkuBase) return { error: "Provider SKU base is required" };
-  // Designed product types are Prodigi-only (US-MFTF-16.1). Teemill is a
-  // REFERENCED source and bypasses the MFTF-4 designed catalog entirely; the
-  // enum retains TEEMILL but it is UI-blocked here and rejected to guard
-  // stale/direct calls.
-  if (fulfillmentProvider !== "PRODIGI") {
+  // Designed product types are Prodigi- or Printify-backed (US-MFTF-16.1 / 17.2).
+  // Teemill is a REFERENCED source and bypasses the MFTF-4 designed catalog; the
+  // enum retains TEEMILL but it is UI-blocked here and rejected to guard direct calls.
+  if (fulfillmentProvider !== "PRODIGI" && fulfillmentProvider !== "PRINTIFY") {
     return { error: "Teemill is a referenced source and cannot back a designed product type" };
+  }
+  if (fulfillmentProvider === "PRODIGI" && !providerSkuBase) {
+    return { error: "Provider SKU base is required" };
+  }
+  if (fulfillmentProvider === "PRINTIFY" && (printifyBlueprintId == null || printifyPrintProviderId == null)) {
+    return { error: "Printify blueprint id and print provider id are required" };
   }
 
   const existing = await prisma.productType.findUnique({ where: { name } });
   if (existing) return { error: `A product type named "${name}" already exists` };
 
-  const skuError = await validateProdigiSku(providerSkuBase);
-  if (skuError) return { error: skuError };
-
-  const pt = await prisma.productType.create({
-    data: { name, description, fulfillmentProvider: "PRODIGI", providerSkuBase, isActive },
-  });
-
-  const teemillColorsRaw = (fd.get("teemillColorsJson") as string | null)?.trim();
-  if (teemillColorsRaw) {
-    try {
-      const colors: { name: string; imageUrl: string }[] = JSON.parse(teemillColorsRaw);
-      if (Array.isArray(colors) && colors.length > 0) {
-        await prisma.productTypeColor.createMany({
-          data: colors.map((c) => ({
-            productTypeId: pt.id,
-            colorName: c.name,
-            providerColorCode: c.name,
-            colorImageUrl: c.imageUrl || null,
-          })),
-        });
-      }
-    } catch {
-      // Malformed JSON — skip color seeding; admin can add colors manually
-    }
+  if (fulfillmentProvider === "PRODIGI") {
+    const skuError = await validateProdigiSku(providerSkuBase);
+    if (skuError) return { error: skuError };
+  } else {
+    const pairError = await validatePrintifyPair(printifyBlueprintId!, printifyPrintProviderId!);
+    if (pairError) return { error: pairError };
   }
 
-  // Prodigi types have no provider colour JSON to seed from, so pull sizes +
-  // colours from Prodigi immediately (best-effort — never fail creation if the
-  // provider is unreachable; the admin can re-run "Sync from Prodigi" on the
-  // edit page).
-  if (fulfillmentProvider === "PRODIGI") {
-    try {
-      await syncDesignedProductTypeFromProdigi(pt.id);
-    } catch (e) {
-      console.error("[product-catalog] auto-sync on create failed:", e);
-    }
+  const pt = await prisma.productType.create({
+    data:
+      fulfillmentProvider === "PRINTIFY"
+        ? { name, description, fulfillmentProvider: "PRINTIFY", printifyBlueprintId, printifyPrintProviderId, isActive }
+        : { name, description, fulfillmentProvider: "PRODIGI", providerSkuBase, isActive },
+  });
+
+  // Pull sizes + colours (+ the Printify combo map) from the provider immediately
+  // (best-effort — never fail creation if the provider is unreachable; the admin can
+  // re-run the per-product "Sync" action on the edit page).
+  try {
+    if (fulfillmentProvider === "PRINTIFY") await syncDesignedProductTypeFromPrintify(pt.id);
+    else await syncDesignedProductTypeFromProdigi(pt.id);
+  } catch (e) {
+    console.error("[product-catalog] auto-sync on create failed:", e);
   }
 
   revalidatePath("/admin/products");
@@ -111,13 +133,20 @@ export async function updateProductTypeAction(id: string, fd: FormData): Promise
   const description = (fd.get("description") as string | null)?.trim() || null;
   const fulfillmentProvider = (fd.get("fulfillmentProvider") as string | null)?.trim() ?? "";
   const providerSkuBase = (fd.get("providerSkuBase") as string | null)?.trim() ?? "";
+  const printifyBlueprintId = parseIntField(fd, "printifyBlueprintId");
+  const printifyPrintProviderId = parseIntField(fd, "printifyPrintProviderId");
   const isActive = fd.get("isActive") === "true";
 
   if (!name) return { error: "Product type name is required" };
-  if (!providerSkuBase) return { error: "Provider SKU base is required" };
-  // Designed product types are Prodigi-only (US-MFTF-16.1) — see createProductTypeAction.
-  if (fulfillmentProvider !== "PRODIGI") {
+  // Designed product types are Prodigi- or Printify-backed (US-MFTF-16.1 / 17.2).
+  if (fulfillmentProvider !== "PRODIGI" && fulfillmentProvider !== "PRINTIFY") {
     return { error: "Teemill is a referenced source and cannot back a designed product type" };
+  }
+  if (fulfillmentProvider === "PRODIGI" && !providerSkuBase) {
+    return { error: "Provider SKU base is required" };
+  }
+  if (fulfillmentProvider === "PRINTIFY" && (printifyBlueprintId == null || printifyPrintProviderId == null)) {
+    return { error: "Printify blueprint id and print provider id are required" };
   }
 
   const nameConflict = await prisma.productType.findFirst({ where: { name, NOT: { id } } });
@@ -128,12 +157,20 @@ export async function updateProductTypeAction(id: string, fd: FormData): Promise
     if (colorCount === 0) return { error: "At least one color is required before activating a product type" };
   }
 
-  const skuError = await validateProdigiSku(providerSkuBase);
-  if (skuError) return { error: skuError };
+  if (fulfillmentProvider === "PRODIGI") {
+    const skuError = await validateProdigiSku(providerSkuBase);
+    if (skuError) return { error: skuError };
+  } else {
+    const pairError = await validatePrintifyPair(printifyBlueprintId!, printifyPrintProviderId!);
+    if (pairError) return { error: pairError };
+  }
 
   const pt = await prisma.productType.update({
     where: { id },
-    data: { name, description, fulfillmentProvider: "PRODIGI", providerSkuBase, isActive },
+    data:
+      fulfillmentProvider === "PRINTIFY"
+        ? { name, description, fulfillmentProvider: "PRINTIFY", providerSkuBase: null, printifyBlueprintId, printifyPrintProviderId, isActive }
+        : { name, description, fulfillmentProvider: "PRODIGI", providerSkuBase, printifyBlueprintId: null, printifyPrintProviderId: null, isActive },
   });
 
   revalidatePath("/admin/products");
@@ -186,6 +223,21 @@ export async function syncProductTypeFromProdigiAction(productTypeId: string): P
   if (!(await requireAdmin())) return { error: "Unauthorized" };
 
   const result = await syncDesignedProductTypeFromProdigi(productTypeId);
+  revalidatePath(`/admin/products/${productTypeId}`);
+  if (!result.ok) return { error: result.reason };
+  return { sizes: result.sizes.length, colors: result.colors.length };
+}
+
+// ─── syncProductTypeFromPrintifyAction ────────────────────────────────────────
+// Per-product: pull THIS designed (Printify) product type's sizes, colours and the
+// (colour,size)→variant-id map from the curated (blueprint, print_provider) pair.
+// Surfaced as the "Sync from Printify" button on the product edit page; also auto-run
+// once at creation (see createProductTypeAction).
+
+export async function syncProductTypeFromPrintifyAction(productTypeId: string): Promise<SyncResult> {
+  if (!(await requireAdmin())) return { error: "Unauthorized" };
+
+  const result = await syncDesignedProductTypeFromPrintify(productTypeId);
   revalidatePath(`/admin/products/${productTypeId}`);
   if (!result.ok) return { error: result.reason };
   return { sizes: result.sizes.length, colors: result.colors.length };
