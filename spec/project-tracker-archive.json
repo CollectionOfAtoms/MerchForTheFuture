@@ -2034,9 +2034,9 @@
         "title": "Live Printify Variant Availability (product page + checkout)",
         "status": "Passed",
         "testWrittenDate": "2026-08-15",
-        "testWrittenCommit": "PENDING",
+        "testWrittenCommit": "a57305e",
         "testPassedDate": "2026-08-15",
-        "testPassedCommit": "PENDING",
+        "testPassedCommit": "a57305e",
         "notes": "Added 2026-08-15 after a US-MFTF-17.2 live-catalog finding: Printify's variants.json HIDES out-of-stock variants unless ?show-out-of-stock=1 (verified \u2014 blueprint 1580 Women's Baby Tee / provider 99: 4 default vs 16 full), and the variant object carries no availability field, so 'orderable now' = appears in the default (no-flag) list. US-MFTF-17.2 caches the FULL range; this surfaces live availability so an OOS colour/size is never purchasable. getPrintifyAvailability (src/lib/apparel/printify-availability.ts) reads the default list; getApparelListingDetail computes ApparelDetail.unavailable for DESIGNED Printify listings only (empty for Prodigi/Teemill, buyer-opaque). ApparelProductView greys out + disables OOS sizes for the selected colour, disables a fully-OOS colour, and never defaults to a fully-OOS colour; revalidateCheckout drops a now-OOS Printify cart item (reusing detail.unavailable \u2014 one read, both surfaces). FAIL-OPEN throughout (a failed read => treat as available), mirroring the Teemill isOrderable fallback. 9 tests across US-MFTF-17.4-availability-{detail,checkout,view} green vs MSW; the 50-file detail/checkout/storefront regression set (340 tests) stays green. Reaches Passed via MSW because the availability-read shape is already live-verified (2026-08-15) \u2014 does NOT depend on US-MFTF-17.3. Also added scripts/printify-blueprint-lookup.ts (product URL -> blueprint/provider/variant ids for curation)."
       }
   ]
