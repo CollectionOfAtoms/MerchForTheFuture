@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 export type FulfillmentStatus =
   | 'PROCESSING'
   | 'PRINTING'
@@ -152,8 +154,31 @@ export interface FulfillmentStatusResult {
  * the concrete `fulfill()` template method; the polling-vs-webhook divergence and
  * the one-step-vs-two-step order divergence stay inside the subclass.
  */
+/** Prefix on the synthetic order id used when order submission is simulated. */
+export const SIMULATED_ORDER_PREFIX = "SIMULATED-";
+
+/**
+ * Dev safety switch (DROPSHIPPING_SIMULATE_ORDERS): when on, order SUBMISSION to
+ * sandbox-less providers (Printify, Teemill — providers with no test environment) is
+ * short-circuited. No real external order is created; the shipment is advanced as if
+ * the provider confirmed it. Prodigi is unaffected (it has a sandbox). Shipping quotes
+ * are NOT simulated — only the order-placement step that would produce/charge.
+ */
+export function simulateSandboxlessOrders(): boolean {
+  const v = (process.env.DROPSHIPPING_SIMULATE_ORDERS ?? "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
 export abstract class FulfillmentProvider {
   abstract name: string;
+
+  /**
+   * True for providers with NO sandbox/test environment (Printify, Teemill), where a
+   * real order-submission call creates a real, unbilled-until-produced record on the
+   * provider. Gates the DROPSHIPPING_SIMULATE_ORDERS dev switch. Prodigi leaves this
+   * false — it has a sandbox (PRODIGI_API_BASE_URL) for safe dev orders.
+   */
+  protected readonly sandboxless: boolean = false;
 
   /** Legacy single-item create (MFTF-3); used by the print buy-now path. */
   abstract createOrder(params: FulfillmentOrderParams): Promise<FulfillmentOrderResult>;
@@ -179,6 +204,13 @@ export abstract class FulfillmentProvider {
    */
   async fulfill(job: FulfillmentJob): Promise<FulfillmentOrderResult> {
     await this.validateJob(job);
+    // Dev safety: simulate submission to sandbox-less providers — advance the order
+    // as if confirmed, with no real external order created (DROPSHIPPING_SIMULATE_ORDERS).
+    if (this.sandboxless && simulateSandboxlessOrders()) {
+      const id = `${SIMULATED_ORDER_PREFIX}${this.name}-${crypto.randomUUID()}`;
+      console.warn(`[${this.name}] DROPSHIPPING_SIMULATE_ORDERS on — order NOT submitted; simulated ${id}`);
+      return { externalOrderId: id, estimatedDispatchDate: null, providerMetadata: { simulated: true } };
+    }
     const created = await this.createProviderOrder(job);
     return this.confirmProviderOrder(job, created);
   }

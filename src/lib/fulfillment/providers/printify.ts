@@ -45,6 +45,8 @@ type PrintifyShippingResponse = Record<string, number>;
  */
 export class PrintifyFulfillmentProvider extends FulfillmentProvider {
   name = "printify";
+  // Printify has no sandbox — gate the DROPSHIPPING_SIMULATE_ORDERS dev switch.
+  protected readonly sandboxless = true;
 
   /** Prefix a shop-scoped path with the resolved shop id (env, else fetched once). */
   private async shopPath(sub: string): Promise<string> {
