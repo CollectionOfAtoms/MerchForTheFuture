@@ -2078,9 +2078,9 @@
         "title": "DROPSHIPPING_SIMULATE_ORDERS \u2014 simulate order submission for sandbox-less providers",
         "status": "Passed",
         "testWrittenDate": "2026-08-15",
-        "testWrittenCommit": "PENDING",
+        "testWrittenCommit": "9e3434e",
         "testPassedDate": "2026-08-15",
-        "testPassedCommit": "PENDING",
+        "testPassedCommit": "9e3434e",
         "notes": "Dev safety switch requested after two accidental live-order attempts. Clarified for the founder: a Printify 'draft' (create without send-to-production) is a REAL Printify-side order record, not local \u2014 so a hold flag would still create records externally. Instead, DROPSHIPPING_SIMULATE_ORDERS short-circuits order SUBMISSION to sandbox-less providers (Printify + Teemill; Prodigi excluded \u2014 it has a sandbox via PRODIGI_API_BASE_URL): in the shared FulfillmentProvider.fulfill() template, when the flag is on AND the provider is sandboxless (new protected `sandboxless` flag, true on Printify+Teemill), create/confirm are skipped and a synthetic SIMULATED-{provider}-{uuid} order id is returned with providerMetadata.simulated=true, so the fan-out marks the shipment CONFIRMED exactly as if the API confirmed. checkAndSyncShipments (reconciliation cron) excludes providerOrderId starting SIMULATED- (nothing real to poll). SCOPE: order submission only \u2014 shipping QUOTES are NOT simulated (Printify quote is a safe calc; Teemill quote still creates an unbilled order record \u2014 a fully-offline mode simulating quotes too is a possible follow-up). Env documented in .env.local.example (NEVER in production). 4 tests (simulate-sandboxless-orders): Printify simulated (no order API call, synthetic id), flag-off real path, Prodigi never simulated, reconciliation skips SIMULATED-. 30-file/194-test fulfillment regression green."
       }
   ]
