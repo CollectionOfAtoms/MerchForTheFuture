@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/db";
 import { getProviderByKey } from "@/lib/fulfillment";
 import { applyFulfillmentTransition } from "@/lib/fulfillment/status";
+import { SIMULATED_ORDER_PREFIX } from "@/lib/fulfillment/types";
 
 const MATERIAL_LABELS: Record<string, string> = { FAP: "Fine Art Paper", CAN: "Stretched Canvas" };
 
@@ -41,7 +42,13 @@ export async function checkAndSyncShipments(): Promise<{ checked: number; shippe
   const fos = await prisma.fulfillmentOrder.findMany({
     // Poll everything still in-flight (not terminal, not yet DELIVERED) so PRINTING,
     // SHIPPED and DELIVERED transitions are all detected — not just the first ship.
-    where: { status: { in: ["CONFIRMED", "PRINTING", "SHIPPED"] }, providerOrderId: { not: null } },
+    // Skip simulated orders (DROPSHIPPING_SIMULATE_ORDERS): they have no real provider
+    // record to poll, so a status check would 404.
+    where: {
+      status: { in: ["CONFIRMED", "PRINTING", "SHIPPED"] },
+      providerOrderId: { not: null },
+      NOT: { providerOrderId: { startsWith: SIMULATED_ORDER_PREFIX } },
+    },
     select: { id: true, provider: true, providerOrderId: true },
   });
 

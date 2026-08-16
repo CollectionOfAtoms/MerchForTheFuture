@@ -104,6 +104,8 @@ function toTeemillAddress(address: FulfillmentShippingAddress) {
 
 export class TeemillFulfillmentProvider extends FulfillmentProvider {
   name = 'teemill';
+  // Teemill has no sandbox — gate the DROPSHIPPING_SIMULATE_ORDERS dev switch.
+  protected readonly sandboxless = true;
 
   async createOrder(_params: FulfillmentOrderParams): Promise<FulfillmentOrderResult> {
     throw new Error('TeemillFulfillmentProvider: not yet implemented');

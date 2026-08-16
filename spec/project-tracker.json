@@ -2,12 +2,12 @@
   "_meta": {
     "description": "Active tracker \u2014 Not Started, Deferred, and pending-live-confirmation stories only. This is the file coding and handoff sessions should read for current project state. Passed and Dropped stories (177 as of the 2026-07-11 split) live in project-tracker-archive.json \u2014 read that file only for historical audits, not for day-to-day implementation work. See /spec/README.md for the full protocol.",
     "archiveFile": "project-tracker-archive.json",
-    "archiveStoryCount": 181
+    "archiveStoryCount": 182
   },
   "summary": {
     "totalActive": 33,
-    "totalArchived": 183,
-    "totalAllTime": 216,
+    "totalArchived": 184,
+    "totalAllTime": 217,
     "byStatus": {
       "Not Started": 21,
       "Deferred": 9,
@@ -948,7 +948,7 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-08-15T22:06:22.000Z",
+  "lastUpdated": "2026-08-16T21:20:10.000Z",
   "statusLegend": {
     "Not Started": "No test written yet.",
     "Test Written": "Failing test committed; implementation not yet passing.",
