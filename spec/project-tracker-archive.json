@@ -2093,6 +2093,17 @@
         "testPassedDate": "2026-08-17",
         "testPassedCommit": "7a50811",
         "notes": "Passed 2026-08-17 (TDD, tests RED before impl). The Printify catalog sync now captures each curated variant's FRONT print-area pixel dims -- the placeholders array from the same variants.json response, previously fetched and discarded -- into a new ProductType.printifyPrintAreas Json? column, shape { front: { width, height } }. computeModalFrontPrintArea (pure, exported) picks ONE representative dim per product type: the modal {width,height} across curated variants, frequency ties broken by the median-ranked size (by sizeRank) among the tied pairs. Best-effort, mirroring the stockImageUrls precedent: a variant with no front placeholder is excluded without failing the sync; a product type that never sees a front placeholder keeps its default null (17.8 shows a 'placement not available' state). Tests: __tests__/mftf-17-printify/US-MFTF-17.7-printify-print-area-sync.test.ts (8 -- modal, median-size tie-break, front-missing exclusion, all-missing null, in-place re-sync, plus 3 pure-fn cases). MSW default variants fixture enriched with front/back placeholders. Schema pushed to dev+test DBs (db push, per existing Order.stripeSessionId drift). Full Printify suite (61) green; no regression to the 17.2/17.6 sync suites. Blocks US-MFTF-17.8."
+      },
+    {
+        "id": "US-MFTF-17.8",
+        "epic": "Epic MFTF-17: Printify Integration",
+        "title": "Seller Design Placement Tool (Drag, Scale & Rotate)",
+        "status": "Passed",
+        "testWrittenDate": "2026-08-17",
+        "testWrittenCommit": "PENDINGHASH",
+        "testPassedDate": "2026-08-17",
+        "testPassedCommit": "PENDINGHASH",
+        "notes": "Passed 2026-08-17 (TDD, tests RED before impl). Seller drag/scale/rotate design placement tool on the DESIGNED Printify listing edit page, mirroring the FramingTool/PrintFramingPanel + crop-geometry precedent. New pure DOM-free module src/lib/apparel/placement-geometry.ts (defaultPlacement/move/scale/rotate/clampPlacement/isValidPlacement) normalized to EXACTLY Printify's positioned print_areas shape {x,y,scale,angle}: x/y = design centre fraction (0..1), scale = width fraction (clamped [0.1,3.0] // UNVERIFIED provisional), angle = degrees wrapped to (-180,180]. New model ApparelListingPrintifyPlacement (unique on apparelListingId, one row/listing, upserted in place; db push dev+test). confirmPrintifyPlacementAction (owner/admin guard via loadOwnedListing, isValidPlacement range check, upsert) + resetPrintifyPlacementAction (deleteMany, idempotent -> centred default; 'no row' == 'explicitly centred') in actions/apparel.ts. PrintifyPlacementPanel.tsx: hook-free wrapper (unavailable state when printArea null) + internal PlacementTool (pointer-drag -> geometry). getApparelListingForEdit extended with fulfillmentProvider/printifyPrintArea(toPrintArea)/stockImageUrl/printifyPlacement; edit page renders the panel for PRINTIFY listings only (Prodigi gets none). NOT a publish gate -- a listing with no row falls back to the centred default at order time. Tests: US-MFTF-17.8-placement-geometry.test.ts (7), -confirm-placement-action.test.ts (5: owner upsert, in-place re-save, out-of-range reject, non-owner reject, idempotent reset), -placement-tool.test.tsx (jsdom: drag x/y, resize+clamp, rotate, pre-load, reset, confirm, unavailable). 19 green; full mftf-17 (73) + mftf-5 suites green. Depends on US-MFTF-17.7. Blocks US-MFTF-17.9."
       }
   ]
 }

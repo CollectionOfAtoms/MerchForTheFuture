@@ -2,15 +2,15 @@
   "_meta": {
     "description": "Active tracker \u2014 Not Started, Deferred, and pending-live-confirmation stories only. This is the file coding and handoff sessions should read for current project state. Passed and Dropped stories (177 as of the 2026-07-11 split) live in project-tracker-archive.json \u2014 read that file only for historical audits, not for day-to-day implementation work. See /spec/README.md for the full protocol.",
     "archiveFile": "project-tracker-archive.json",
-    "archiveStoryCount": 185
+    "archiveStoryCount": 186
   },
   "summary": {
-    "totalActive": 42,
-    "totalArchived": 185,
+    "totalActive": 41,
+    "totalArchived": 186,
     "totalAllTime": 227,
     "byStatus": {
       "Deferred": 8,
-      "Not Started": 31,
+      "Not Started": 30,
       "Tests Passing \u2014 pending live confirmation": 3
     }
   },
@@ -326,17 +326,6 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null
-    },
-    {
-      "id": "US-MFTF-17.8",
-      "epic": "Epic MFTF-17: Printify Integration",
-      "title": "Seller Design Placement Tool (Drag, Scale & Rotate)",
-      "status": "Not Started",
-      "testWrittenDate": null,
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "SCOPED 2026-08-16 (tdd-spec-session). Seller-facing drag/scale/rotate placement tool on the DESIGNED Printify listing edit page, reusing the FramingTool/crop-geometry pointer-drag pattern (new src/lib/apparel/placement-geometry.ts pure module) extended with scale+angle. Persists one ApparelListingPrintifyPlacement row per listing ({x,y,scale,angle}, unique on apparelListingId) via confirmPrintifyPlacementAction. Not a publish gate \u2014 a listing with no saved placement falls back to the existing centered default. Depends on US-MFTF-17.7's captured print-area dims. Blocks US-MFTF-17.9."
     },
     {
       "id": "US-MFTF-17.9",

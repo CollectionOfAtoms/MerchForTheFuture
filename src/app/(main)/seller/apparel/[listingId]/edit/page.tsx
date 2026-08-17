@@ -7,6 +7,7 @@ import {
 } from "@/lib/apparel/listings";
 import EditApparelListingForm from "@/components/seller/EditApparelListingForm";
 import ApparelImageManager from "@/components/seller/ApparelImageManager";
+import PrintifyPlacementPanel from "@/components/PrintifyPlacementPanel";
 import EditReferencedListingForm from "@/components/seller/EditReferencedListingForm";
 import ListingStatusControls from "@/components/seller/ListingStatusControls";
 import { isPubliclyViewable, canManageListing } from "@/lib/seller/listing-status";
@@ -123,6 +124,18 @@ export default async function EditApparelListingPage({
       ) : (
         <div className="space-y-8">
           <EditApparelListingForm listing={listing} />
+          {/* Design placement (US-MFTF-17.8) — DESIGNED Printify listings only. Other
+              DESIGNED providers (Prodigi) have no placement panel in this scope; a
+              Printify type with no captured print area shows an unavailable state. */}
+          {listing.fulfillmentProvider === "PRINTIFY" && (
+            <PrintifyPlacementPanel
+              listingId={listing.id}
+              designUrl={listing.designImageUrl}
+              printArea={listing.printifyPrintArea}
+              stockImageUrl={listing.stockImageUrl}
+              initialPlacement={listing.printifyPlacement}
+            />
+          )}
           <ApparelImageManager
             listingId={listing.id}
             initialImages={listing.images}

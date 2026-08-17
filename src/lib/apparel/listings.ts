@@ -50,6 +50,18 @@ export function toStockImages(raw: unknown): string[] {
   return Array.isArray(raw) ? raw.filter((s): s is string => typeof s === "string") : [];
 }
 
+/**
+ * Normalise the ProductType.printifyPrintAreas JSON column (US-MFTF-17.7) to the front
+ * print-area dims, or null. Used to gate + size the placement tool (US-MFTF-17.8).
+ */
+export function toPrintArea(raw: unknown): { width: number; height: number } | null {
+  const front = (raw as { front?: unknown } | null)?.front as
+    | { width?: unknown; height?: unknown }
+    | undefined;
+  if (!front || typeof front.width !== "number" || typeof front.height !== "number") return null;
+  return { width: front.width, height: front.height };
+}
+
 export type ApparelProductTypeOption = Awaited<
   ReturnType<typeof getActiveProductTypesForListing>
 >[number];
@@ -72,6 +84,7 @@ export async function getApparelListingForEdit(listingId: string) {
       },
       colors: true,
       images: { orderBy: { sortOrder: "asc" } },
+      printifyPlacement: true,
     },
   });
   if (!listing) return null;
@@ -79,6 +92,8 @@ export async function getApparelListingForEdit(listingId: string) {
   const offeredSet = new Set(
     listing.colors.filter((c) => c.isOffered).map((c) => c.productTypeColorId),
   );
+
+  const stockImages = toStockImages(listing.productType?.stockImageUrls);
 
   return {
     id: listing.id,
@@ -88,6 +103,20 @@ export async function getApparelListingForEdit(listingId: string) {
     retailPrice: Number(listing.retailPrice),
     status: listing.status,
     designImageUrl: listing.designImageUrl,
+    // Printify design-placement inputs (US-MFTF-17.8). fulfillmentProvider gates the
+    // panel to DESIGNED Printify listings; printArea (front dims) gates the tool
+    // within it; stockImage is the garment backdrop; placement pre-loads the saved row.
+    fulfillmentProvider: listing.productType?.fulfillmentProvider ?? null,
+    printifyPrintArea: toPrintArea(listing.productType?.printifyPrintAreas),
+    stockImageUrl: stockImages[0] ?? null,
+    printifyPlacement: listing.printifyPlacement
+      ? {
+          x: listing.printifyPlacement.x,
+          y: listing.printifyPlacement.y,
+          scale: listing.printifyPlacement.scale,
+          angle: listing.printifyPlacement.angle,
+        }
+      : null,
     // Designed listings always have a product type; referenced listings (handled
     // by the 13.4 edit path) do not, so guard for null to stay type-safe.
     productType: {
