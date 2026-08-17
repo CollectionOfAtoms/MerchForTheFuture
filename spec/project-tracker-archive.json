@@ -2089,9 +2089,9 @@
         "title": "Capture Printify Print-Area Placeholders at Sync",
         "status": "Passed",
         "testWrittenDate": "2026-08-17",
-        "testWrittenCommit": "97d2f27",
+        "testWrittenCommit": "7a50811",
         "testPassedDate": "2026-08-17",
-        "testPassedCommit": "97d2f27",
+        "testPassedCommit": "7a50811",
         "notes": "Passed 2026-08-17 (TDD, tests RED before impl). The Printify catalog sync now captures each curated variant's FRONT print-area pixel dims -- the placeholders array from the same variants.json response, previously fetched and discarded -- into a new ProductType.printifyPrintAreas Json? column, shape { front: { width, height } }. computeModalFrontPrintArea (pure, exported) picks ONE representative dim per product type: the modal {width,height} across curated variants, frequency ties broken by the median-ranked size (by sizeRank) among the tied pairs. Best-effort, mirroring the stockImageUrls precedent: a variant with no front placeholder is excluded without failing the sync; a product type that never sees a front placeholder keeps its default null (17.8 shows a 'placement not available' state). Tests: __tests__/mftf-17-printify/US-MFTF-17.7-printify-print-area-sync.test.ts (8 -- modal, median-size tie-break, front-missing exclusion, all-missing null, in-place re-sync, plus 3 pure-fn cases). MSW default variants fixture enriched with front/back placeholders. Schema pushed to dev+test DBs (db push, per existing Order.stripeSessionId drift). Full Printify suite (61) green; no regression to the 17.2/17.6 sync suites. Blocks US-MFTF-17.8."
       }
   ]
