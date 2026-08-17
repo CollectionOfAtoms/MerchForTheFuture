@@ -120,23 +120,35 @@ export class PrintifyFulfillmentProvider extends FulfillmentProvider {
   // ── fulfill() steps — two-step: create then send-to-production ──────────────
 
   protected async createProviderOrder(job: FulfillmentJob): Promise<FulfillmentOrderResult> {
-    // Printify's ORDER print_areas is an OBJECT keyed by print position (front/back);
-    // the value is the design URL, which Printify fetches and auto-positions/centres.
+    // Printify's ORDER print_areas is an OBJECT keyed by print position (front/back).
+    // Two value shapes, both live-observed as correct-or-wrong on 2026-08-15:
+    //   - SIMPLE (auto-centre): { front: "<designURL>" } — Printify fetches + centres.
+    //   - POSITIONED: { front: [{ src, x, y, scale, angle }] } — the seller's saved
+    //     placement (US-MFTF-17.8), emitted only when `item.placement` is present.
     // (The product-creation shape — {variant_ids, placeholders, images:[{id,…}]} — is
-    // WRONG for the order endpoint: it 400s "The src/x/y/scale/angle field is required",
-    // observed live 2026-08-15.) The simple URL form matches the current auto-centre
-    // behaviour; the positioned array form ({[pos]: [{src,x,y,scale,angle}]}) is what a
-    // future placement tool (US-MFTF-17.7) would emit. Submitted with no watermark, per
-    // the Prodigi/MFTF-5 design-file path. // UNVERIFIED that the URL form is preferred
-    // over an uploaded-image id — confirm at US-MFTF-17.3 (founder live order).
+    // WRONG for the order endpoint: it 400s "The src/x/y/scale/angle field is required".)
+    // Listings that never used the placement tool keep sending the simple form, exactly
+    // as before — zero regression risk. Submitted with no watermark, per the Prodigi/
+    // MFTF-5 design-file path. // UNVERIFIED that src=URL is preferred over an uploaded-
+    // image id, and that the positioned form reaches production correctly — both confirm
+    // only at a live order (US-MFTF-17.3 / the 17.9 live check).
     const lineItems = job.items.map((item) => {
       const position = item.printArea ?? "front";
+      let printAreas: Record<string, unknown> | undefined;
+      if (item.sourceImageUrl) {
+        const p = item.placement;
+        printAreas = {
+          [position]: p
+            ? [{ src: item.sourceImageUrl, x: p.x, y: p.y, scale: p.scale, angle: p.angle }]
+            : item.sourceImageUrl,
+        };
+      }
       return {
         blueprint_id: item.printifyBlueprintId,
         print_provider_id: item.printifyPrintProviderId,
         variant_id: item.printifyVariantId,
         quantity: item.quantity,
-        ...(item.sourceImageUrl ? { print_areas: { [position]: item.sourceImageUrl } } : {}),
+        ...(printAreas ? { print_areas: printAreas } : {}),
       };
     });
 

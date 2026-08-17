@@ -73,6 +73,14 @@ export interface ShippingQuoteItem {
   /** Print area for the design asset (Prodigi apparel = "front"; prints = "default"). */
   printArea?: string;
   /**
+   * Printify designed apparel (US-MFTF-17.8/17.9): the seller's saved design placement
+   * within the front print area, in Printify's positioned print_areas units (x/y =
+   * design centre fraction 0..1, scale = width fraction, angle = degrees). Present only
+   * when the listing has a saved placement row; absent → Printify auto-centres (today's
+   * simple URL form). A seller-side production detail — never surfaced to buyers.
+   */
+  placement?: { x: number; y: number; scale: number; angle: number };
+  /**
    * True for a print line item whose asset is the seller's exact-aspect framed crop
    * (US-MFTF-PF.5). Framed items send `sizing: "fitPrintArea"` (the crop already
    * matches the SKU face, so no fill-crop is wanted); unframed/apparel items keep the
