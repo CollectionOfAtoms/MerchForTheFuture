@@ -553,6 +553,13 @@ model ProductType {
   /// listing-creation flow, and as the admin edit-page hero (US-MFTF-17.6). JSON
   /// array of image URLs; null/empty when none captured.
   stockImageUrls      Json?
+  /// Representative FRONT print-area pixel dimensions for a DESIGNED Printify product
+  /// type, captured at sync from the curated variants' `placeholders` (US-MFTF-17.7).
+  /// Shape { front: { width, height } } — the modal dims across curated variants. The
+  /// `front`-only key leaves room for `back` without a migration. Null when no curated
+  /// variant exposes a front placeholder, or for non-Printify types. Consumed by the
+  /// placement tool (US-MFTF-17.8) for the print-area aspect ratio.
+  printifyPrintAreas  Json?
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
 

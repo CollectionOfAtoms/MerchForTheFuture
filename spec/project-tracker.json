@@ -2,25 +2,21 @@
   "_meta": {
     "description": "Active tracker \u2014 Not Started, Deferred, and pending-live-confirmation stories only. This is the file coding and handoff sessions should read for current project state. Passed and Dropped stories (177 as of the 2026-07-11 split) live in project-tracker-archive.json \u2014 read that file only for historical audits, not for day-to-day implementation work. See /spec/README.md for the full protocol.",
     "archiveFile": "project-tracker-archive.json",
-    "archiveStoryCount": 182
+    "archiveStoryCount": 185
   },
   "summary": {
-    "totalActive": 33,
-    "totalArchived": 184,
-    "totalAllTime": 217,
+    "totalActive": 42,
+    "totalArchived": 185,
+    "totalAllTime": 227,
     "byStatus": {
-      "Not Started": 21,
-      "Deferred": 9,
+      "Deferred": 8,
+      "Not Started": 31,
       "Tests Passing \u2014 pending live confirmation": 3
     }
   },
   "epicOrder": {
-    "description": "Authoritative implementation sequence for epics with open stories. Claude Code works the first epic in 'sequence' that has stories not yet Passed/Dropped/Deferred, unless the handoff prompt says otherwise. Maintained only via tdd-spec-session \u2014 implementation sessions never reorder this.",
+    "description": "Authoritative implementation sequence for epics with open stories. Claude Code works the first epic in 'sequence' that has stories not yet Passed/Dropped/Deferred, unless the handoff prompt says otherwise. Maintained only via tdd-spec-session \u2014 implementation sessions never reorder this. NOTE: an epic whose stories have all Passed is REMOVED from this sequence (its rows live in project-tracker-archive.json), so 'first epic in sequence' stays meaningful \u2014 Epic MFTF-23 was removed 2026-08-17 for exactly this reason, having been left here after US-MFTF-23.1 passed and archived.",
     "sequence": [
-      {
-        "epic": "Epic MFTF-23: Admin Tracker Archive Merge",
-        "rationale": "Fixes a regression introduced by the same-day (2026-07-11) tracker split: /admin/tracker now reads only the active tracker (33 stories) instead of the full picture, so completion counts are wrong for every historically-Passed epic. Founder priority: fix before starting MFTF-17 (Printify) implementation. Small, standalone, no dependency on any other open epic."
-      },
       {
         "epic": "Epic MFTF-5: Apparel Listing Creation",
         "rationale": "Listings must exist before the storefront has anything to show."
@@ -82,8 +78,12 @@
         "rationale": "Public Contact page with feedback form emailing ThePeople@MerchForTheFuture via MailerSend, plus honeypot spam protection and per-IP rate limiting. Scoped 2026-07-11 alongside MFTF-20 (same pre-launch public-pages motivation); no schema dependency between the two epics."
       },
       {
+        "epic": "Epic MFTF-24: Apparel Categories, Collections & Navigation",
+        "rationale": "Merchandising layer over the apparel catalog: Men's/Women's/Whatevs categories, admin-managed collections (seeded New + Our Favorites), a page per category and collection, a path-aware product breadcrumb, and an Apparel nav dropdown (desktop + mobile). Scoped 2026-08-17. Sequenced BEFORE MFTF-22 deliberately: US-MFTF-24.6 supersedes US-MFTF-22.3's fixed Home-Shop-Product BreadcrumbList, and MFTF-24 adds four new public routes that MFTF-22's sitemap and per-page metadata must cover \u2014 doing SEO first would mean writing it twice. Independent of the fulfillment critical path; depends only on MFTF-5/MFTF-13 (listings) and MFTF-6.1 (the browse projection it reuses)."
+      },
+      {
         "epic": "Epic MFTF-22: SEO Foundation",
-        "rationale": "Technical SEO foundation: sitemap.xml, robots.txt, complete per-page metadata (title/description/canonical/OG/Twitter), and Product/Organization/Breadcrumb JSON-LD structured data. Scoped 2026-07-11. Sequenced after MFTF-20/MFTF-21 (About/Contact must exist to be included in the sitemap and get metadata) and before MFTF-10, since the new US-MFTF-10.9 (Search Console verification) depends on the sitemap this epic produces."
+        "rationale": "Technical SEO foundation: sitemap.xml, robots.txt, complete per-page metadata (title/description/canonical/OG/Twitter), and Product/Organization/Breadcrumb JSON-LD structured data. Scoped 2026-07-11. Sequenced after MFTF-20/MFTF-21 (About/Contact must exist to be included in the sitemap and get metadata), after MFTF-24 (its category/collection routes need sitemap + metadata coverage, and US-MFTF-24.6 revises the US-MFTF-22.3 breadcrumb), and before MFTF-10, since the new US-MFTF-10.9 (Search Console verification) depends on the sitemap this epic produces."
       },
       {
         "epic": "Epic MFTF-10: Pre-Launch Checklist",
@@ -310,12 +310,12 @@
       "id": "US-MFTF-17.2",
       "epic": "Epic MFTF-17: Printify Integration",
       "title": "Printify Provider Integration",
-      "status": "Tests Passing — pending live confirmation",
+      "status": "Tests Passing \u2014 pending live confirmation",
       "testWrittenDate": "2026-08-15",
       "testWrittenCommit": "2c5a548",
       "testPassedDate": "2026-08-15",
       "testPassedCommit": "2c5a548",
-      "notes": "DESIGNED-mode Printify integration per the US-MFTF-17.1 spike (docs/printify-api-notes.md). Tests written first and confirmed RED before implementation: __tests__/mftf-17-printify/US-MFTF-17.2-printify-provider.test.ts (provider contract, two-step create→send-to-production, USD cents→dollars quote, status/webhook mapping, HMAC signature, @ts-expect-error incomplete-subclass), US-MFTF-17.2-printify-designed-catalog.test.ts (curated (blueprint,print_provider) sync of colours/sizes/combo→variantId map + admin create/update PRINTIFY validation), US-MFTF-17.2-printify-fanout-split.test.ts (multi-provider split, order-line correctness, failure isolation, buyer-opacity). All 25 green vs MSW; the 40-file fulfillment/checkout/catalog regression set (336 tests) stays green. Implementation: PrintifyFulfillmentProvider (src/lib/fulfillment/providers/printify.ts) + printify/client.ts; getProviderByKey 'printify'; ProductTypePrintifyVariant combo table + printifyBlueprintId/printifyPrintProviderId on ProductType (providerSkuBase made nullable); sync-printify.ts; fanout.ts + revalidate.ts Printify branches; api/webhooks/printify/route.ts (HMAC-SHA256, marked // UNVERIFIED header, polling is primary); admin ProductTypeForm + product-catalog actions; MSW printifyHandlers; env vars in .env.local.example + runbook. HELD at 'Tests Passing — pending live confirmation' (not Passed): status vocabulary, create-order response, send-to-production requirement, and webhook signature header are // UNVERIFIED with no Printify sandbox — they resolve at US-MFTF-17.3 (founder live order), which gates Passed. FOLLOW-UP (2026-08-15): catalog sync corrected to pass ?show-out-of-stock=1 — the default variants.json hides out-of-stock variants (blueprint 1580/provider 99: 4 default vs 16 full), so without it the cached catalog was incomplete/volatile (docs/printify-api-notes.md stock-semantics corrected; scripts/printify-blueprint-lookup.ts added to resolve a product URL → blueprint/provider/variant ids). Live per-variant orderability (product-page grey-out + checkout re-check) is scoped as US-MFTF-17.4. FIX (2026-08-15): buyer checkout hit 'Printify shipping quote (POST /orders/shipping.json) failed (404)' because PRINTIFY_SHOP_ID was unset in .env.local, so shop-scoped calls built a malformed /shops//orders/... path. The client now resolves the shop id (resolvePrintifyShopId): PRINTIFY_SHOP_ID if set, else GET /shops.json once (cached), throwing a clear error if the account has no shop; shopPath is now async. Live-verified: shop 28204676 resolved, shipping calc → 200 {standard:475}. Setting PRINTIFY_SHOP_ID=28204676 still avoids the extra call. FIX #2 (2026-08-15): with the shop id resolved, order-create then 400'd (code 8150 'src/x/y/scale/angle required') — our print_areas used the PRODUCT-creation shape. The ORDER endpoint wants print_areas as an OBJECT keyed by position with the design URL: print_areas: { front: <url> } (Printify auto-centres). Fixed in createProviderOrder (dropped the /uploads step; positioned {src,x,y,scale,angle} form deferred to the 17.7 placement tool). docs/printify-api-notes.md updated. Still // UNVERIFIED: src=URL-vs-upload-id + the create RESPONSE shape — confirmed only by an order that reaches production (US-MFTF-17.3)."
+      "notes": "DESIGNED-mode Printify integration per the US-MFTF-17.1 spike (docs/printify-api-notes.md). Tests written first and confirmed RED before implementation: __tests__/mftf-17-printify/US-MFTF-17.2-printify-provider.test.ts (provider contract, two-step create\u2192send-to-production, USD cents\u2192dollars quote, status/webhook mapping, HMAC signature, @ts-expect-error incomplete-subclass), US-MFTF-17.2-printify-designed-catalog.test.ts (curated (blueprint,print_provider) sync of colours/sizes/combo\u2192variantId map + admin create/update PRINTIFY validation), US-MFTF-17.2-printify-fanout-split.test.ts (multi-provider split, order-line correctness, failure isolation, buyer-opacity). All 25 green vs MSW; the 40-file fulfillment/checkout/catalog regression set (336 tests) stays green. Implementation: PrintifyFulfillmentProvider (src/lib/fulfillment/providers/printify.ts) + printify/client.ts; getProviderByKey 'printify'; ProductTypePrintifyVariant combo table + printifyBlueprintId/printifyPrintProviderId on ProductType (providerSkuBase made nullable); sync-printify.ts; fanout.ts + revalidate.ts Printify branches; api/webhooks/printify/route.ts (HMAC-SHA256, marked // UNVERIFIED header, polling is primary); admin ProductTypeForm + product-catalog actions; MSW printifyHandlers; env vars in .env.local.example + runbook. HELD at 'Tests Passing \u2014 pending live confirmation' (not Passed): status vocabulary, create-order response, send-to-production requirement, and webhook signature header are // UNVERIFIED with no Printify sandbox \u2014 they resolve at US-MFTF-17.3 (founder live order), which gates Passed. FOLLOW-UP (2026-08-15): catalog sync corrected to pass ?show-out-of-stock=1 \u2014 the default variants.json hides out-of-stock variants (blueprint 1580/provider 99: 4 default vs 16 full), so without it the cached catalog was incomplete/volatile (docs/printify-api-notes.md stock-semantics corrected; scripts/printify-blueprint-lookup.ts added to resolve a product URL \u2192 blueprint/provider/variant ids). Live per-variant orderability (product-page grey-out + checkout re-check) is scoped as US-MFTF-17.4. FIX (2026-08-15): buyer checkout hit 'Printify shipping quote (POST /orders/shipping.json) failed (404)' because PRINTIFY_SHOP_ID was unset in .env.local, so shop-scoped calls built a malformed /shops//orders/... path. The client now resolves the shop id (resolvePrintifyShopId): PRINTIFY_SHOP_ID if set, else GET /shops.json once (cached), throwing a clear error if the account has no shop; shopPath is now async. Live-verified: shop 28204676 resolved, shipping calc \u2192 200 {standard:475}. Setting PRINTIFY_SHOP_ID=28204676 still avoids the extra call. FIX #2 (2026-08-15): with the shop id resolved, order-create then 400'd (code 8150 'src/x/y/scale/angle required') \u2014 our print_areas used the PRODUCT-creation shape. The ORDER endpoint wants print_areas as an OBJECT keyed by position with the design URL: print_areas: { front: <url> } (Printify auto-centres). Fixed in createProviderOrder (dropped the /uploads step; positioned {src,x,y,scale,angle} form deferred to the 17.7 placement tool). docs/printify-api-notes.md updated. Still // UNVERIFIED: src=URL-vs-upload-id + the create RESPONSE shape \u2014 confirmed only by an order that reaches production (US-MFTF-17.3)."
     },
     {
       "id": "US-MFTF-17.3",
@@ -328,16 +328,38 @@
       "testPassedCommit": null
     },
     {
-        "id": "US-MFTF-17.7",
-        "epic": "Epic MFTF-17: Printify Integration",
-        "title": "Seller Apparel Design/Placement Tool (EMERGING — NEEDS SCOPING)",
-        "status": "Deferred",
-        "testWrittenDate": null,
-        "testWrittenCommit": null,
-        "testPassedDate": null,
-        "testPassedCommit": null,
-        "notes": "EMERGING NEED, NOT YET SCOPED — requires a dedicated scoping (tdd-spec-session) before any implementation; Deferred (not 'Not Started') so a coding session does not pick it up as ready work. PROBLEM: a seller uploads one design file (ApparelListing.designImageUrl) but has NO control over how it lays out on the garment. At order time PrintifyFulfillmentProvider.createProviderOrder hardcodes the placement to dead-centre, full-scale, front only (print_areas placeholder x:0.5,y:0.5,scale:1,angle:0); Prodigi apparel similarly auto-fills. No size/position/rotation/front-vs-back control. FEASIBILITY (high): (1) Printify's print_areas API already takes x/y/scale/angle per position (front/back) — a placement tool's exact output; (2) each variant's API data carries the print-area pixel dims (e.g. Baby Tee front 2419x2761) but sync-printify does NOT currently store the placeholders — capturing them is the one missing data piece; (3) strong in-repo precedent to reuse: the MFTF-PF print framing/crop tool (FramingTool.tsx, PrintFramingPanel.tsx, PrintFraming model, src/lib/print/framing.ts + crop-geometry.ts). SHAPE: capture print-area dims at sync -> seller placement tool (drag/scale/rotate design within the front/back print area, mirroring FramingTool) -> persist {position,x,y,scale,angle} per listing -> send at order time instead of the hardcoded centre (~5-line provider change) -> live preview. KEY DECISIONS FOR THE SCOPING SESSION: (a) full freeform drag/scale/rotate vs simpler centre/fill/fit + size-slider presets; (b) front-only vs front+back; (c) preview via our own composite (design over the stock image) vs Printify's mockup generator (create a DRAFT product, pull Printify's photorealistic mockups — best preview, least render work, extra product-create call). RECOMMENDED first step before scoping: prototype the Printify mockup call for one blueprint to judge preview quality (drives the composite-vs-Printify-mockup decision). Raised by the founder 2026-08-15."
-      },
+      "id": "US-MFTF-17.8",
+      "epic": "Epic MFTF-17: Printify Integration",
+      "title": "Seller Design Placement Tool (Drag, Scale & Rotate)",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "SCOPED 2026-08-16 (tdd-spec-session). Seller-facing drag/scale/rotate placement tool on the DESIGNED Printify listing edit page, reusing the FramingTool/crop-geometry pointer-drag pattern (new src/lib/apparel/placement-geometry.ts pure module) extended with scale+angle. Persists one ApparelListingPrintifyPlacement row per listing ({x,y,scale,angle}, unique on apparelListingId) via confirmPrintifyPlacementAction. Not a publish gate \u2014 a listing with no saved placement falls back to the existing centered default. Depends on US-MFTF-17.7's captured print-area dims. Blocks US-MFTF-17.9."
+    },
+    {
+      "id": "US-MFTF-17.9",
+      "epic": "Epic MFTF-17: Printify Integration",
+      "title": "Order-Time Placement Wiring",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "SCOPED 2026-08-16 (tdd-spec-session). The ~5-line provider change anticipated in the original emerging-need note: toQuoteItem (fanout.ts) attaches a saved placement to the ShippingQuoteItem when present; PrintifyFulfillmentProvider.createProviderOrder emits the POSITIONED print_areas form ({[position]:[{src,x,y,scale,angle}]}) when placement is set, else the existing simple URL form (zero regression risk for listings that haven't used the tool). Depends on US-MFTF-17.8. Cannot reach Passed until a live order confirms the positioned form reaches production correctly \u2014 piggybacks on US-MFTF-17.3 or a dedicated live check if 17.3 has already closed."
+    },
+    {
+      "id": "US-MFTF-17.11",
+      "epic": "Epic MFTF-17: Printify Integration",
+      "title": "Placement Confirmation Preview",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "SCOPED 2026-08-16 (tdd-spec-session) at the outcome level, pending US-MFTF-17.10's finding (mirrors how US-MFTF-17.2 was scoped pending US-MFTF-17.1). A higher-fidelity save-time preview beyond US-MFTF-17.8's live-editing canvas \u2014 either the composite renderer at higher quality, or a Printify DRAFT-product mockup fetch, per whichever US-MFTF-17.10 recommends. Preview failure never blocks saving a placement. US-MFTF-17.10 itself (the mockup-call prototype spike) is tracked as a chore in the epic file only, no tracker row, same convention as US-MFTF-17.1."
+    },
     {
       "id": "US-MFTF-18.1",
       "epic": "Epic MFTF-18: Printful Integration",
@@ -447,6 +469,83 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null
+    },
+    {
+      "id": "US-MFTF-24.1",
+      "epic": "Epic MFTF-24: Apparel Categories, Collections & Navigation",
+      "title": "Category & Collection Schema",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Category (kind MANUAL|ALL_APPAREL) + ApparelListingCategory many-to-many; Collection (kind MANUAL|AUTO_NEW) + CollectionListing with a nullable PIN|EXCLUDE override. Seeds Men's/Women's/Whatevs and New/Our Favorites. Whatevs is ALL_APPAREL (derived, never join rows); New is AUTO_NEW (recency window \u222a pins \u2212 excludes) behind one shared membership resolver so no page reimplements it. ALSO defines hasDurableGrouping(listingId) \u2014 true iff the listing has a MANUAL category or MANUAL collection membership, deliberately NOT counting Whatevs (everything is in it) or New (membership decays) \u2014 the single definition consumed by the US-MFTF-24.5 activation gate and the US-MFTF-24.3 last-grouping warning. Blocks every other story in the epic."
+    },
+    {
+      "id": "US-MFTF-24.2",
+      "epic": "Epic MFTF-24: Apparel Categories, Collections & Navigation",
+      "title": "Category Pages",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "/shop/category/[slug] reusing the US-MFTF-6.1 ApparelCard projection and tile component (not a second card implementation) with the same 24-per-page pagination. Route depth is load-bearing: /shop/mens would collide with the existing /shop/[listingId] dynamic segment. Unknown/inactive slug 404s; valid-but-empty renders an empty state. Depends on US-MFTF-24.1."
+    },
+    {
+      "id": "US-MFTF-24.3",
+      "epic": "Epic MFTF-24: Apparel Categories, Collections & Navigation",
+      "title": "Admin Collection Management",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "/admin/collections CRUD + membership curation + reordering, admin-guarded (rejects seller and buyer, not just anonymous). The AUTO_NEW collection surfaces pin/exclude rather than add/remove and visibly distinguishes the three states. Seeded New and Our Favorites cannot be deleted (nav + breadcrumb default trail depend on them) but can be renamed/reordered/deactivated. LAST-GROUPING WARNING: deleting/deactivating a collection or removing a listing from one warns (advisory, non-blocking) when the action would leave ACTIVE listings with no durable grouping \u2014 this closes the one gap the US-MFTF-24.5 publish-time gate can't cover, since that gate stops a listing going live ungrouped but not a live listing losing its last grouping afterwards. Depends on US-MFTF-24.1."
+    },
+    {
+      "id": "US-MFTF-24.4",
+      "epic": "Epic MFTF-24: Apparel Categories, Collections & Navigation",
+      "title": "Collection Pages",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "/shop/collections/[slug] + a /shop/collections index. MANUAL collections order by curated sortOrder; AUTO_NEW orders newest-first with pins first. One visibility rule for inactive collections applied to the index, the nav dropdown, and the page (404) \u2014 asserted together in one test so the three can't drift. Depends on US-MFTF-24.1 (and 24.3 for anything to curate)."
+    },
+    {
+      "id": "US-MFTF-24.5",
+      "epic": "Epic MFTF-24: Apparel Categories, Collections & Navigation",
+      "title": "Seller Category Assignment & Activation Gate",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Multi-select for the MANUAL categories on both the designed (MFTF-5.3/5.4) and referenced (MFTF-13.3/13.4) listing forms \u2014 categorization must not branch on sourcingMode. Whatevs is never offered (it's automatic) and is rejected if injected into the payload directly. ACTIVATION GATE (founder-ratified 2026-08-17, revising an earlier optional-membership pass): a listing cannot be created as or transitioned to ACTIVE unless hasDurableGrouping is true; drafts save freely, matching the MFTF-PF publish-gate precedent. Enforced server-side in the action, not only by a disabled button. NOTE the gate is deliberately NOT 'is in New' \u2014 the founder's first formulation \u2014 because New is recency-derived, so every listing is in it at publish (the check could never fail) and drops out ~a window later (exactly when the listing becomes unreachable); a test pins the Whatevs+New-only case as rejected so this can't regress. Existing ACTIVE listings are logged, NOT auto-archived \u2014 a deliberate divergence from MFTF-PF's strict archive-on-deploy, since an uncategorized listing is a discoverability gap rather than a defective product. Depends on US-MFTF-24.1."
+    },
+    {
+      "id": "US-MFTF-24.6",
+      "epic": "Epic MFTF-24: Apparel Categories, Collections & Navigation",
+      "title": "Path-Aware Breadcrumb on the Product Page",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "REVISES US-MFTF-22.3 (still Not Started). Navigation context travels as a ?from=category:<slug>|collection:<slug> query param \u2014 URL-carried so it survives refresh, is server-rendered, and is unit-testable. Labels are ALWAYS resolved by DB lookup, never echoed from the param; an unknown, inactive, or non-member context falls back to the default trail so the breadcrumb never asserts a false path. Default trail (founder-specified): Home \u2192 Whatevs \u2192 first collection by Collection.sortOrder (ties by slug) \u2192 listing title. Canonical URL ignores ?from= (US-MFTF-22.2's no-query-string-drift rule) and the BreadcrumbList JSON-LD always emits the DEFAULT trail, never the visitor-specific one. Pure src/lib/apparel/breadcrumb.ts module mirrors the crop-geometry/placement-geometry precedent. Depends on US-MFTF-24.1/24.2/24.4."
+    },
+    {
+      "id": "US-MFTF-24.7",
+      "epic": "Epic MFTF-24: Apparel Categories, Collections & Navigation",
+      "title": "Apparel Navigation Dropdown (Desktop & Mobile)",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Apparel dropdown in the primary nav: New, Men's, Women's, Whatevs, then remaining active collections (capped, with a 'See all collections' overflow link). Opens on hover AND keyboard focus \u2014 hover alone is keyboard-inaccessible \u2014 reusing the Epic 23 NavDropdown interaction contract (Escape returns focus, outside-click, aria-expanded, role=menu) rather than a second pattern; includes a close-delay/bridge for the diagonal-pointer failure mode. The trigger is itself a link to /shop. Data-driven, so deactivating a collection removes it with no code change. MobileMenu gets a tap-to-expand equivalent (no hover on touch). Depends on US-MFTF-24.1/24.2/24.4."
     }
   ],
   "commits": [
@@ -948,7 +1047,7 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-08-16T21:20:10.000Z",
+  "lastUpdated": "2026-08-17T00:00:00.000Z",
   "statusLegend": {
     "Not Started": "No test written yet.",
     "Test Written": "Failing test committed; implementation not yet passing.",
