@@ -51,12 +51,14 @@ export function defaultPlacement(): Placement {
 
 /**
  * The tool's STARTING placement for a listing with no saved row: centred and upright,
- * but at a friendlier 60% width rather than filling the whole print area. This is only
- * a suggested starting point the seller adjusts + confirms — distinct from
+ * but at 90% width rather than filling the whole print area — so the resize/rotate
+ * handles (which sit just outside the design's edges) stay inside the print-area box
+ * and visible on open, instead of being clipped at the boundary. This is only a
+ * suggested starting point the seller adjusts + confirms — distinct from
  * `defaultPlacement()`, which remains the scale-1 "Printify auto-centre" meaning that
  * a listing WITHOUT a saved placement still ships at order time (US-MFTF-17.9).
  */
-export const DEFAULT_DESIGN_SCALE = 0.6;
+export const DEFAULT_DESIGN_SCALE = 0.9;
 export function initialPlacement(): Placement {
   return { x: 0.5, y: 0.5, scale: DEFAULT_DESIGN_SCALE, angle: 0 };
 }

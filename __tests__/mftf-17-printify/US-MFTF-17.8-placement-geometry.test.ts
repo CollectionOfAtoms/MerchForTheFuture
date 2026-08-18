@@ -21,8 +21,8 @@ describe("US-MFTF-17.8 — placement geometry", () => {
     expect(defaultPlacement()).toEqual({ x: 0.5, y: 0.5, scale: 1, angle: 0 });
   });
 
-  it("the tool's starting placement is centred but a friendlier 60% width", () => {
-    expect(initialPlacement()).toEqual({ x: 0.5, y: 0.5, scale: 0.6, angle: 0 });
+  it("the tool's starting placement is centred at 90% width (handles stay in view)", () => {
+    expect(initialPlacement()).toEqual({ x: 0.5, y: 0.5, scale: 0.9, angle: 0 });
   });
 
   it("moves the centre by a normalized delta, clamped to [0,1]", () => {
