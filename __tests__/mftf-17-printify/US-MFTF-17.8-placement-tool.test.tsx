@@ -52,6 +52,10 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof PrintifyPlac
       designUrl="https://blob/design.png"
       printArea={printArea}
       blankImageUrl={null}
+      colors={[
+        { name: "Black", hex: "#111111" },
+        { name: "Light Pink", hex: "#fee0eb" },
+      ]}
       initialPlacement={null}
       {...overrides}
     />,
@@ -140,6 +144,16 @@ describe("US-MFTF-17.8 — placement tool", () => {
     const [id, placement] = confirmPrintifyPlacementAction.mock.calls[0] as unknown as [string, { x: number }];
     expect(id).toBe("listing-1");
     expect(placement.x).toBeCloseTo(0.6);
+  });
+
+  it("tints the print-area box to the selected preview colour", () => {
+    renderPanel();
+    const surface = screen.getByTestId("placement-surface");
+    // Defaults to the first offered colour (Black).
+    expect(surface.style.backgroundColor).toBe("rgb(17, 17, 17)");
+    // Selecting Light Pink retints the box.
+    fireEvent.click(screen.getByTestId("placement-color-Light Pink"));
+    expect(surface.style.backgroundColor).toBe("rgb(254, 224, 235)");
   });
 
   it("shows an unavailable state (no drag surface) when the product type has no print area", () => {

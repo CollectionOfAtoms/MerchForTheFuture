@@ -8,6 +8,7 @@ import {
 import EditApparelListingForm from "@/components/seller/EditApparelListingForm";
 import ApparelImageManager from "@/components/seller/ApparelImageManager";
 import PrintifyPlacementPanel from "@/components/PrintifyPlacementPanel";
+import { colorNameToHex } from "@/lib/apparel/color-hex";
 import EditReferencedListingForm from "@/components/seller/EditReferencedListingForm";
 import ListingStatusControls from "@/components/seller/ListingStatusControls";
 import { isPubliclyViewable, canManageListing } from "@/lib/seller/listing-status";
@@ -133,6 +134,9 @@ export default async function EditApparelListingPage({
               designUrl={listing.designImageUrl}
               printArea={listing.printifyPrintArea}
               blankImageUrl={listing.blankImageUrl}
+              colors={listing.colors
+                .filter((c) => c.isOffered)
+                .map((c) => ({ name: c.colorName, hex: c.colorImageUrl ? null : colorNameToHex(c.colorName) }))}
               initialPlacement={listing.printifyPlacement}
             />
           )}

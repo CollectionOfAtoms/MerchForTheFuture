@@ -15,6 +15,8 @@ describe("designed colour swatches (provider gives names only)", () => {
       expect(colorNameToHex("Navy Blue")).toBe("#1f2a44");
       expect(colorNameToHex("  WHITE ")).toBe("#ffffff");
       expect(colorNameToHex("natural")).toBeTruthy();
+      // "Light Pink" is distinct from "Pink" — added from a Printify catalog swatch.
+      expect(colorNameToHex("Light Pink")).toBe("#fee0eb");
     });
     it("returns null for an unknown name", () => {
       expect(colorNameToHex("ultraviolet sparkle")).toBeNull();

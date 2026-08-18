@@ -25,6 +25,13 @@ export interface PrintifyPlacementPanelProps {
    * model photos, not the flat print area; null → a neutral bounded rectangle.
    */
   blankImageUrl: string | null;
+  /**
+   * Offered garment colours (name + approximate hex) for the preview-colour selector.
+   * The tool has no garment photo, so the seller picks a colour to tint the print-area
+   * box behind the design — a preview aid only; placement is one-per-listing and does
+   * not vary by colour. Empty → no selector.
+   */
+  colors: { name: string; hex: string | null }[];
   /** Currently-saved placement, or null for a listing that opens at the tool default. */
   initialPlacement: Placement | null;
 }
@@ -41,6 +48,7 @@ export default function PrintifyPlacementPanel({
   designUrl,
   printArea,
   blankImageUrl,
+  colors,
   initialPlacement,
 }: PrintifyPlacementPanelProps) {
   return (
@@ -61,6 +69,7 @@ export default function PrintifyPlacementPanel({
           designUrl={designUrl}
           printArea={printArea}
           blankImageUrl={blankImageUrl}
+          colors={colors}
           initialPlacement={initialPlacement}
         />
       ) : (
@@ -75,21 +84,28 @@ export default function PrintifyPlacementPanel({
 
 type DragMode = "move" | "resize" | "rotate";
 
+/** Fallback tint when a colour has no known hex (or none is selected). */
+const NEUTRAL_BG = "#f5f5f4"; // stone-100
+
 function PlacementTool({
   listingId,
   designUrl,
   printArea,
   blankImageUrl,
+  colors,
   initialPlacement,
 }: {
   listingId: string;
   designUrl: string | null;
   printArea: { width: number; height: number };
   blankImageUrl: string | null;
+  colors: { name: string; hex: string | null }[];
   initialPlacement: Placement | null;
 }) {
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<Placement>(initialPlacement ?? initialToolPlacement());
+  const [selectedColor, setSelectedColor] = useState<string | null>(colors[0]?.name ?? null);
+  const bgColor = colors.find((c) => c.name === selectedColor)?.hex ?? NEUTRAL_BG;
   const [drag, setDrag] = useState<{ mode: DragMode; startX: number; startY: number; start: Placement } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
@@ -151,14 +167,34 @@ function PlacementTool({
 
   return (
     <div className="space-y-3">
+      {colors.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2" data-testid="placement-color-selector">
+          <span className="text-xs text-stone-500">Preview on colour:</span>
+          {colors.map((c) => (
+            <button
+              key={c.name}
+              type="button"
+              title={c.name}
+              aria-label={`Preview on ${c.name}`}
+              aria-pressed={selectedColor === c.name}
+              data-testid={`placement-color-${c.name}`}
+              onClick={() => setSelectedColor(c.name)}
+              className={`h-6 w-6 rounded-full transition-shadow ${
+                selectedColor === c.name ? "ring-2 ring-stone-900 ring-offset-1" : "border border-stone-300"
+              }`}
+              style={{ backgroundColor: c.hex ?? NEUTRAL_BG }}
+            />
+          ))}
+        </div>
+      )}
       <div
         ref={surfaceRef}
         data-testid="placement-surface"
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
-        className="relative mx-auto w-full max-w-sm select-none touch-none overflow-hidden rounded-lg border border-stone-200 bg-stone-100"
-        style={{ aspectRatio: `${printArea.width} / ${printArea.height}` }}
+        className="relative mx-auto w-full max-w-sm select-none touch-none overflow-hidden rounded-lg border border-stone-200"
+        style={{ aspectRatio: `${printArea.width} / ${printArea.height}`, backgroundColor: bgColor }}
       >
         {blankImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
