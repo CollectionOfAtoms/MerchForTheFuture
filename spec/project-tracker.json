@@ -5,12 +5,12 @@
     "archiveStoryCount": 186
   },
   "summary": {
-    "totalActive": 41,
+    "totalActive": 44,
     "totalArchived": 186,
-    "totalAllTime": 227,
+    "totalAllTime": 230,
     "byStatus": {
       "Deferred": 8,
-      "Not Started": 29,
+      "Not Started": 32,
       "Tests Passing \u2014 pending live confirmation": 4
     }
   },
@@ -348,6 +348,39 @@
       "testPassedDate": null,
       "testPassedCommit": null,
       "notes": "SCOPED 2026-08-16 (tdd-spec-session) at the outcome level, pending US-MFTF-17.10's finding (mirrors how US-MFTF-17.2 was scoped pending US-MFTF-17.1). A higher-fidelity save-time preview beyond US-MFTF-17.8's live-editing canvas \u2014 either the composite renderer at higher quality, or a Printify DRAFT-product mockup fetch, per whichever US-MFTF-17.10 recommends. Preview failure never blocks saving a placement. US-MFTF-17.10 itself (the mockup-call prototype spike) is tracked as a chore in the epic file only, no tracker row, same convention as US-MFTF-17.1."
+    },
+    {
+      "id": "US-MFTF-17.12",
+      "epic": "Epic MFTF-17: Printify Integration",
+      "title": "Printify REFERENCED Ingest (cache a shop product by product_id)",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "PROPOSED 2026-08-18 (tdd-spec-session), PENDING both-founder ratification \u2014 revises the US-MFTF-17.1 DESIGNED-only recommendation to make Printify DUAL-MODE (keep the DESIGNED lane US-MFTF-17.7-17.9; add a REFERENCED lane reusing MFTF-13). See spec/epics/mftf-17-printify-integration.md (US-MFTF-17.12-17.14 block). This story: ingest a Printify product built in our own shop (GET /shops/{shop}/products/{id}.json) into the existing MFTF-13 referenced schema additively \u2014 providerKey='printify', providerProductRef=product_id, ReferencedVariant.variantRef=integer variant_id, per-colour mockups from images[], colours+hex, sizes, stock, base price. Buyer-opaque; fail-open availability re-check (US-MFTF-17.4 pattern). Reaches Passed via MSW (read-only product shape verifiable any time, like 17.5); no dependency on 17.3. Blocks 17.13/17.14. Sequenced by launch-imagery need (not urgent: one seller, nothing live)."
+    },
+    {
+      "id": "US-MFTF-17.13",
+      "epic": "Epic MFTF-17: Printify Integration",
+      "title": "New referenced Printify listing flow + DESIGNED-vs-REFERENCED fork",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "PROPOSED 2026-08-18 (tdd-spec-session), PENDING both-founder ratification (dual-mode Printify \u2014 see epic file). Creation flow gains a Printify mode fork (DESIGNED upload vs REFERENCED product reference); Prodigi/Teemill stay single-mode, no fork, no buyer-facing branch. REFERENCED branch: paste a Printify product URL/id -> read-only resolve/preview (mockups+variants) -> ingest (US-MFTF-17.12) + create (providerKey='printify'), mirroring the Teemill US-MFTF-13.3 UX + reusing its components. Material-standard gate unchanged (manual curation). Depends on 17.12."
+    },
+    {
+      "id": "US-MFTF-17.14",
+      "epic": "Epic MFTF-17: Printify Integration",
+      "title": "Referenced Printify Order + Re-sync",
+      "status": "Not Started",
+      "testWrittenDate": null,
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "PROPOSED 2026-08-18 (tdd-spec-session), PENDING both-founder ratification (dual-mode Printify \u2014 see epic file). createProviderOrder emits the REFERENCED line form {product_id (from providerProductRef), variant_id (from ReferencedVariant), quantity} for a referenced-Printify item, distinct from the DESIGNED print_areas branch (US-MFTF-17.9) \u2014 provider forks by inspecting the item; a regression test pins that DESIGNED items still send print_areas. Two-step create->send-to-production unchanged. Re-sync/edit per US-MFTF-13.4 (read-only provider fields, 'Re-sync from Printify'). CANNOT reach Passed until a live referenced order confirms the product_id form reaches production (same // UNVERIFIED class as 17.9; piggyback 17.3); mark 'Tests Passing \u2014 pending live confirmation' once green vs MSW. Depends on 17.12/17.13."
     },
     {
       "id": "US-MFTF-18.1",
@@ -1036,7 +1069,7 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-08-18T06:58:49.000Z",
+  "lastUpdated": "2026-08-18T21:30:33.000Z",
   "statusLegend": {
     "Not Started": "No test written yet.",
     "Test Written": "Failing test committed; implementation not yet passing.",
