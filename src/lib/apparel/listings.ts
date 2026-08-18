@@ -93,8 +93,6 @@ export async function getApparelListingForEdit(listingId: string) {
     listing.colors.filter((c) => c.isOffered).map((c) => c.productTypeColorId),
   );
 
-  const stockImages = toStockImages(listing.productType?.stockImageUrls);
-
   return {
     id: listing.id,
     sellerId: listing.sellerId,
@@ -104,11 +102,12 @@ export async function getApparelListingForEdit(listingId: string) {
     status: listing.status,
     designImageUrl: listing.designImageUrl,
     // Printify design-placement inputs (US-MFTF-17.8). fulfillmentProvider gates the
-    // panel to DESIGNED Printify listings; printArea (front dims) gates the tool
-    // within it; stockImage is the garment backdrop; placement pre-loads the saved row.
+    // panel to DESIGNED Printify listings; printArea (front dims) gates the tool within
+    // it; blankImageUrl is the print-area backdrop (admin blank, NOT the lifestyle stock
+    // images); placement pre-loads the saved row.
     fulfillmentProvider: listing.productType?.fulfillmentProvider ?? null,
     printifyPrintArea: toPrintArea(listing.productType?.printifyPrintAreas),
-    stockImageUrl: stockImages[0] ?? null,
+    blankImageUrl: listing.productType?.blankImageUrl ?? null,
     printifyPlacement: listing.printifyPlacement
       ? {
           x: listing.printifyPlacement.x,

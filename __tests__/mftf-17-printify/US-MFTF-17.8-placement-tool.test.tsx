@@ -51,7 +51,7 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof PrintifyPlac
       listingId="listing-1"
       designUrl="https://blob/design.png"
       printArea={printArea}
-      stockImageUrl="https://images.printify.com/tee.png"
+      blankImageUrl={null}
       initialPlacement={null}
       {...overrides}
     />,
@@ -72,9 +72,9 @@ function nums() {
 }
 
 describe("US-MFTF-17.8 — placement tool", () => {
-  it("opens at the centred default when there is no saved placement", () => {
+  it("opens centred at the 60% tool default when there is no saved placement", () => {
     renderPanel();
-    expect(nums()).toMatchObject({ x: 0.5, y: 0.5, scale: 1, angle: 0 });
+    expect(nums()).toMatchObject({ x: 0.5, y: 0.5, scale: 0.6, angle: 0 });
   });
 
   it("drag repositions the design (updates x/y)", () => {
@@ -96,7 +96,7 @@ describe("US-MFTF-17.8 — placement tool", () => {
     fireEvent.pointerDown(handle, { clientX: 0, clientY: 0, pointerId: 1 });
     fireEvent.pointerMove(surface, { clientX: 200, clientY: 0, pointerId: 1 }); // +200/400 = +0.5
     fireEvent.pointerUp(surface, { pointerId: 1 });
-    expect(nums().scale).toBeCloseTo(1.5);
+    expect(nums().scale).toBeCloseTo(1.1); // starts at the 0.6 tool default
 
     // A huge drag is clamped to MAX_SCALE (3.0), never larger.
     fireEvent.pointerDown(handle, { clientX: 0, clientY: 0, pointerId: 1 });
@@ -125,8 +125,8 @@ describe("US-MFTF-17.8 — placement tool", () => {
     fireEvent.click(screen.getByTestId("reset-placement"));
     // Server call to delete the row…
     expect(resetPrintifyPlacementAction).toHaveBeenCalledWith("listing-1");
-    // …and the tool returns to the centred default locally.
-    await vi.waitFor(() => expect(nums()).toMatchObject({ x: 0.5, y: 0.5, scale: 1, angle: 0 }));
+    // …and the tool returns to the centred 60% starting default locally.
+    await vi.waitFor(() => expect(nums()).toMatchObject({ x: 0.5, y: 0.5, scale: 0.6, angle: 0 }));
   });
 
   it("confirm persists the current placement", async () => {

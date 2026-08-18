@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { updateApparelListingAction } from "@/app/actions/apparel";
+import { colorNameToHex } from "@/lib/apparel/color-hex";
 import type { ApparelListingEditData } from "@/lib/apparel/listings";
 
 const FIELD =
@@ -101,7 +102,10 @@ export default function EditApparelListingForm({ listing }: { listing: ApparelLi
                   isOn ? "border-stone-900 bg-stone-50" : "border-transparent opacity-50 hover:opacity-100"
                 }`}
               >
-                <span className="h-14 w-14 overflow-hidden rounded-lg bg-stone-100">
+                <span
+                  className="h-14 w-14 overflow-hidden rounded-lg bg-stone-100"
+                  style={!c.colorImageUrl && colorNameToHex(c.colorName) ? { backgroundColor: colorNameToHex(c.colorName)! } : undefined}
+                >
                   {c.colorImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={c.colorImageUrl} alt={c.colorName} className="h-full w-full object-cover" />

@@ -7,7 +7,7 @@ import {
 } from "@/app/actions/apparel";
 import {
   type Placement,
-  defaultPlacement,
+  initialPlacement as initialToolPlacement,
   movePlacement,
   scalePlacement,
   rotatePlacement,
@@ -19,9 +19,13 @@ export interface PrintifyPlacementPanelProps {
   designUrl: string | null;
   /** Captured front print-area pixel dims (US-MFTF-17.7); null → tool unavailable. */
   printArea: { width: number; height: number } | null;
-  /** Product-type stock image for a garment backdrop (US-MFTF-17.6); optional. */
-  stockImageUrl: string | null;
-  /** Currently-saved placement, or null for a listing that opens at centred default. */
+  /**
+   * Admin-uploaded garment blank photo (ProductType.blankImageUrl) as a backdrop, when
+   * present. Deliberately NOT the Printify blueprint stock images — those are lifestyle/
+   * model photos, not the flat print area; null → a neutral bounded rectangle.
+   */
+  blankImageUrl: string | null;
+  /** Currently-saved placement, or null for a listing that opens at the tool default. */
   initialPlacement: Placement | null;
 }
 
@@ -36,7 +40,7 @@ export default function PrintifyPlacementPanel({
   listingId,
   designUrl,
   printArea,
-  stockImageUrl,
+  blankImageUrl,
   initialPlacement,
 }: PrintifyPlacementPanelProps) {
   return (
@@ -56,7 +60,7 @@ export default function PrintifyPlacementPanel({
           listingId={listingId}
           designUrl={designUrl}
           printArea={printArea}
-          stockImageUrl={stockImageUrl}
+          blankImageUrl={blankImageUrl}
           initialPlacement={initialPlacement}
         />
       ) : (
@@ -75,17 +79,17 @@ function PlacementTool({
   listingId,
   designUrl,
   printArea,
-  stockImageUrl,
+  blankImageUrl,
   initialPlacement,
 }: {
   listingId: string;
   designUrl: string | null;
   printArea: { width: number; height: number };
-  stockImageUrl: string | null;
+  blankImageUrl: string | null;
   initialPlacement: Placement | null;
 }) {
   const surfaceRef = useRef<HTMLDivElement>(null);
-  const [placement, setPlacement] = useState<Placement>(initialPlacement ?? defaultPlacement());
+  const [placement, setPlacement] = useState<Placement>(initialPlacement ?? initialToolPlacement());
   const [drag, setDrag] = useState<{ mode: DragMode; startX: number; startY: number; start: Placement } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
@@ -132,7 +136,7 @@ function PlacementTool({
       if (result && "error" in result) {
         setMessage({ type: "error", text: result.error });
       } else {
-        setPlacement(defaultPlacement());
+        setPlacement(initialToolPlacement());
         setMessage({ type: "success", text: "Reset to centered." });
       }
     });
@@ -156,14 +160,18 @@ function PlacementTool({
         className="relative mx-auto w-full max-w-sm select-none touch-none overflow-hidden rounded-lg border border-stone-200 bg-stone-100"
         style={{ aspectRatio: `${printArea.width} / ${printArea.height}` }}
       >
-        {stockImageUrl && (
+        {blankImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={stockImageUrl}
+            src={blankImageUrl}
             alt=""
             aria-hidden
             className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-60"
           />
+        ) : (
+          <span className="pointer-events-none absolute left-2 top-2 text-[10px] font-medium uppercase tracking-wide text-stone-400">
+            Front print area
+          </span>
         )}
         {designUrl && (
           <div

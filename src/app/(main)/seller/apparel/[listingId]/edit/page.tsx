@@ -132,7 +132,7 @@ export default async function EditApparelListingPage({
               listingId={listing.id}
               designUrl={listing.designImageUrl}
               printArea={listing.printifyPrintArea}
-              stockImageUrl={listing.stockImageUrl}
+              blankImageUrl={listing.blankImageUrl}
               initialPlacement={listing.printifyPlacement}
             />
           )}

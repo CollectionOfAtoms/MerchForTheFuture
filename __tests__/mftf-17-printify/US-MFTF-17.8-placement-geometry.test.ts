@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   defaultPlacement,
+  initialPlacement,
   movePlacement,
   scalePlacement,
   rotatePlacement,
@@ -16,8 +17,12 @@ import {
 // angle is degrees, normalized to (-180,180]. DOM-free.
 
 describe("US-MFTF-17.8 — placement geometry", () => {
-  it("defaults to Printify's centred placement", () => {
+  it("defaults to Printify's centred placement (the scale-1 auto-centre meaning)", () => {
     expect(defaultPlacement()).toEqual({ x: 0.5, y: 0.5, scale: 1, angle: 0 });
+  });
+
+  it("the tool's starting placement is centred but a friendlier 60% width", () => {
+    expect(initialPlacement()).toEqual({ x: 0.5, y: 0.5, scale: 0.6, angle: 0 });
   });
 
   it("moves the centre by a normalized delta, clamped to [0,1]", () => {
