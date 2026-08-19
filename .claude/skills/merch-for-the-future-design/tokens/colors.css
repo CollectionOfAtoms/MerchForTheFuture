@@ -1,0 +1,52 @@
+:root {
+  /* Fixed brand palette — a warm sunrise-to-sea gradient of hues, theme-independent.
+     Used directly (never remapped by dark mode) for badges, brand chrome, and imagery
+     accents. Sourced verbatim from the product codebase (src/app/globals.css). */
+  --color-strawberry-red: #f94144;
+  --color-atomic-tangerine: #f3722c;
+  --color-carrot-orange: #f8961e;
+  --color-coral-glow: #f9844a;
+  --color-tuscan-sun: #f9c74f;
+  --color-willow-green: #90be6d;
+  --color-seagrass: #43aa8b;
+  --color-dark-cyan: #4d908e;
+  --color-blue-slate: #577590;
+  --color-cerulean: #277da1;
+
+  --color-cream: #fefbf1;
+  --color-bar-dark: #1a1a1a;
+
+  /* Semantic chrome tokens — flip with theme. Product photography and watermarked
+     media are never themed; only chrome (bg/surface/text/border/accent) uses these. */
+  --bg: #fefbf1;
+  --surface: #ffffff;
+  --text: #1c1917;
+  --muted: #78716c;
+  --border: #e7e5e4;
+  --accent: #f9c74f;
+  --accent-contrast: #1c1917;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-contrast: var(--accent-contrast);
+}
+
+/* Dark theme: either .dark on <html> or [data-theme="dark"]. Three grey tiers keep
+   structure legible (bar darkest, page a step lighter, cards lighter still); text
+   goes cream; accent shifts to a softer night-appropriate yellow. */
+.dark, [data-theme="dark"] {
+  --bg: #2a2a2a;
+  --surface: #383838;
+  --surface-hover: #444444;
+  --control: #4a4a4a;
+  --control-hover: #5a5a5a;
+  --text: #fefbf1;
+  --muted: #b3aea4;
+  --border: #4d4d4d;
+  --accent: #fcd968;
+  --accent-contrast: #1a1a1a;
+}

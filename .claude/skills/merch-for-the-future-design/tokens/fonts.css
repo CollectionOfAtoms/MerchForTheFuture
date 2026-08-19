@@ -1,0 +1,11 @@
+/* Webfonts loaded from Google Fonts (both families are published there — no local
+   binaries to vendor). Zen Dots is the display/wordmark face (a geometric, faintly
+   retro-futuristic dot-matrix style — reads as "hopeful tech" rather than corporate
+   tech); Geist is body/UI text; Geist Mono covers code/tabular contexts. */
+@import url("https://fonts.googleapis.com/css2?family=Zen+Dots&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
+
+:root {
+  --font-display: "Zen Dots", "Geist", sans-serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
+}
