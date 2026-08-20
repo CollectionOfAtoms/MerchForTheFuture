@@ -1,0 +1,25 @@
+:root {
+  /* Type scale — matches the sizes actually used across the storefront, not an
+     abstract ramp. Hero copy runs large and light; UI text stays compact. */
+  --text-hero: 4.5rem;      /* 72px — coming-soon H1 */
+  --text-display: 2.25rem; /* 36px — section headers */
+  --text-title: 1.5rem;     /* 24px — page titles, product title */
+  --text-lg: 1.125rem;      /* 18px */
+  --text-base: 0.875rem;    /* 14px — the dominant UI body size */
+  --text-sm: 0.8125rem;     /* 13px */
+  --text-xs: 0.75rem;       /* 12px — captions, badges */
+  --text-2xs: 0.6875rem;    /* 11px — micro badges/labels */
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.35;
+  --leading-relaxed: 1.6;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-tight: -0.01em;
+  --tracking-wide: 0.05em;
+  --tracking-widest: 0.15em;
+}

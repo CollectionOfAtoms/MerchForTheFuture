@@ -51,6 +51,9 @@ const foInclude = {
             },
           },
           referencedVariants: { select: { variantRef: true, colorName: true, sizeLabel: true } },
+          // Seller's saved design placement (US-MFTF-17.8), for the positioned
+          // Printify order line (US-MFTF-17.9); null → Printify auto-centres.
+          printifyPlacement: { select: { x: true, y: true, scale: true, angle: true } },
         },
       },
       originalListing: { select: { artworkId: true, printSourceImageUrl: true, printProducts: true } },
@@ -104,6 +107,9 @@ async function toQuoteItem(item: LoadedFulfillmentOrder["items"][number]): Promi
         quantity: item.quantity,
         printArea: "front",
         sourceImageUrl: listing?.designImageUrl ?? undefined,
+        // Attach the saved placement when present so the order line emits the
+        // positioned print_areas form (US-MFTF-17.9); omitted → auto-centred.
+        placement: listing?.printifyPlacement ?? undefined,
       };
     }
     // Designed (Prodigi) — blank SKU + size/colour in raw provider spelling + the

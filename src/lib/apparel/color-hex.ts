@@ -24,6 +24,7 @@ const COLOR_HEX: Record<string, string> = {
   "baby blue": "#a9c7e8",
   natural: "#efe7d3",
   pink: "#f4a7c0",
+  "light pink": "#fee0eb", // eyedropped from Printify's catalog swatch (2026-08-17)
   red: "#c8102e",
   // ── Common apparel colours (broad coverage) ───────────────────────────────
   grey: "#9ca3af",

@@ -16,9 +16,58 @@ import { prisma } from "@/lib/db";
 import { canonicalSizeLabel, sizeRank } from "@/lib/apparel/sizes";
 import { printifyGet, printifyError } from "@/lib/fulfillment/printify/client";
 
+interface PrintifyPlaceholder {
+  position?: string;
+  width?: number;
+  height?: number;
+}
+
 interface PrintifyVariant {
   id?: number;
   options?: { color?: string; size?: string };
+  /** Per-position print-area pixel dimensions (US-MFTF-17.7). */
+  placeholders?: PrintifyPlaceholder[];
+}
+
+export type PrintAreaDims = {
+  width: number;
+  height: number;
+};
+
+/**
+ * The ONE representative FRONT print-area dimension for a curated set of variants
+ * (US-MFTF-17.7). Per-variant front dims can differ slightly (usually by size), so we
+ * pick the MODAL (most frequently occurring) `{width,height}` pair. A frequency tie is
+ * broken by preferring the pair belonging to the median-ranked size (by `sizeRank`),
+ * considering only the tied pairs so the result is always a modal one. Variants with no
+ * front placeholder are ignored; returns null when none has one (defensive — not seen
+ * live). Pure/DOM-free so it is unit-testable in isolation.
+ */
+export function computeModalFrontPrintArea(variants: PrintifyVariant[]): PrintAreaDims | null {
+  const entries = variants
+    .map((v) => {
+      const f = v.placeholders?.find((p) => p.position === "front");
+      if (!f || typeof f.width !== "number" || typeof f.height !== "number") return null;
+      return { width: f.width, height: f.height, size: v.options?.size ?? "" };
+    })
+    .filter((e): e is { width: number; height: number; size: string } => e !== null);
+  if (entries.length === 0) return null;
+
+  const keyOf = (e: { width: number; height: number }) => `${e.width}x${e.height}`;
+  const counts = new Map<string, number>();
+  for (const e of entries) counts.set(keyOf(e), (counts.get(keyOf(e)) ?? 0) + 1);
+  const maxCount = Math.max(...counts.values());
+  const tiedKeys = new Set(
+    [...counts.entries()].filter(([, c]) => c === maxCount).map(([k]) => k),
+  );
+
+  // Among the variants whose front pair is one of the (tied) modal pairs, take the
+  // median-ranked size's pair. With a single modal pair this is just that pair.
+  const modalEntries = entries
+    .filter((e) => tiedKeys.has(keyOf(e)))
+    .sort((a, b) => sizeRank(a.size) - sizeRank(b.size));
+  const median = modalEntries[Math.floor((modalEntries.length - 1) / 2)];
+  return { width: median.width, height: median.height };
 }
 
 /**
@@ -246,6 +295,21 @@ async function syncOneType(type: {
       },
       create: { productTypeId: type.id, colorName, sizeLabel, printifyVariantId: v.id! },
       update: { printifyVariantId: v.id! },
+    });
+  }
+
+  // Capture the modal FRONT print-area dims from the SAME already-fetched variants
+  // (US-MFTF-17.7) so the placement tool has real geometry. Best-effort, matching the
+  // stockImageUrls precedent below: write only when a front placeholder is present, so
+  // a defensive empty read never wipes a previously-captured value. A product type that
+  // never sees a front placeholder keeps its default null, and the placement tool
+  // (US-MFTF-17.8) shows a "placement isn't available yet" state. Updated in place on
+  // re-sync (one column, not per-variant rows).
+  const modalFront = computeModalFrontPrintArea(variants);
+  if (modalFront) {
+    await prisma.productType.update({
+      where: { id: type.id },
+      data: { printifyPrintAreas: { front: modalFront } },
     });
   }
 

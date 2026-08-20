@@ -270,11 +270,17 @@ const printifyHandlers = [
   // "out of stock") without it. Catalog sync uses the flag; the availability probe
   // (US-MFTF-17.4) uses the default to detect what's orderable now.
   http.get(`${PRINTIFY_BASE}/catalog/blueprints/:bp/print_providers/:pp/variants.json`, ({ request }) => {
+    // Every variant carries per-position print-area `placeholders` (front/back), as
+    // the live catalog does — the sync captures the front dims (US-MFTF-17.7).
+    const ph = [
+      { position: "front", decoration_method: "dtg", width: 2419, height: 2761 },
+      { position: "back", decoration_method: "dtg", width: 2419, height: 2761 },
+    ];
     const full = [
-      { id: 17391, title: "Heather Grey / S", options: { color: "Heather Grey", size: "S" } },
-      { id: 17392, title: "Heather Grey / M", options: { color: "Heather Grey", size: "M" } },
-      { id: 17401, title: "Black / S", options: { color: "Black", size: "S" } },
-      { id: 17402, title: "Black / M", options: { color: "Black", size: "M" } },
+      { id: 17391, title: "Heather Grey / S", options: { color: "Heather Grey", size: "S" }, placeholders: ph },
+      { id: 17392, title: "Heather Grey / M", options: { color: "Heather Grey", size: "M" }, placeholders: ph },
+      { id: 17401, title: "Black / S", options: { color: "Black", size: "S" }, placeholders: ph },
+      { id: 17402, title: "Black / M", options: { color: "Black", size: "M" }, placeholders: ph },
     ];
     const showOOS = new URL(request.url).searchParams.get("show-out-of-stock") === "1";
     const body = showOOS ? full : full.filter((v) => v.id !== 17402); // Black/M OOS by default

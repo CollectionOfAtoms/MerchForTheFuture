@@ -6,6 +6,7 @@ import { del } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getManagerActor, canManageListing } from "@/lib/seller/authz";
+import { isValidPlacement } from "@/lib/apparel/placement-geometry";
 
 type ActionResult = { error: string } | undefined;
 type MutationResult = { error: string } | { success: true; imageId?: string };
@@ -340,6 +341,55 @@ export async function replaceApparelDesignAction(
   await prisma.apparelListing.update({
     where: { id: listingId },
     data: { designImageUrl },
+  });
+
+  revalidatePath(editPath(listingId));
+  return { success: true };
+}
+
+// ─── Printify design placement (US-MFTF-17.8) ─────────────────────────────────
+
+/**
+ * Persist the seller's design placement for a DESIGNED Printify apparel listing
+ * (US-MFTF-17.8), following the confirmFramingAction pattern: verify the caller owns
+ * the listing, validate the four values are finite and within their clamped ranges
+ * (the same ranges as the client tool), and UPSERT exactly one row per listing
+ * (unique on apparelListingId — a re-save updates in place, never duplicates). The
+ * stored x/y/scale/angle are already in Printify's positioned print_areas shape, so
+ * order-time wiring (US-MFTF-17.9) needs no translation.
+ */
+export async function confirmPrintifyPlacementAction(
+  listingId: string,
+  placement: { x: number; y: number; scale: number; angle: number },
+): Promise<MutationResult> {
+  const owned = await loadOwnedListing(listingId);
+  if ("error" in owned && owned.error) return { error: owned.error };
+
+  const p = placement ?? ({} as typeof placement);
+  if (!isValidPlacement(p)) return { error: "Invalid placement." };
+
+  await prisma.apparelListingPrintifyPlacement.upsert({
+    where: { apparelListingId: listingId },
+    create: { apparelListingId: listingId, x: p.x, y: p.y, scale: p.scale, angle: p.angle },
+    update: { x: p.x, y: p.y, scale: p.scale, angle: p.angle },
+  });
+
+  revalidatePath(editPath(listingId));
+  return { success: true };
+}
+
+/**
+ * "Reset to centered" — delete any saved placement row for the listing, returning it
+ * to Printify's default centred behaviour (x:0.5, y:0.5, scale:1, angle:0). Uses
+ * deleteMany so it is idempotent when no row exists ("no row" and "explicitly centred"
+ * are the same state). Owner/admin only.
+ */
+export async function resetPrintifyPlacementAction(listingId: string): Promise<MutationResult> {
+  const owned = await loadOwnedListing(listingId);
+  if ("error" in owned && owned.error) return { error: owned.error };
+
+  await prisma.apparelListingPrintifyPlacement.deleteMany({
+    where: { apparelListingId: listingId },
   });
 
   revalidatePath(editPath(listingId));

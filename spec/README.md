@@ -123,6 +123,38 @@ not the generic "read the spec file" instruction the `tdd-handoff` skill templat
 This is unchanged from the pre-split workflow except that step 1 creates a new file instead of
 appending a new `## Epic` section to the monolith.
 
+### Adding new stories to an existing epic (via `tdd-spec-session`)
+
+The more common case day-to-day: scoping new work — or resolving an `EMERGING`/placeholder story
+stub into real acceptance criteria — inside an epic that already has a file. First exercised
+2026-08-16 scoping US-MFTF-17.7's placeholder into US-MFTF-17.7–17.11 within the existing
+`epics/mftf-17-printify-integration.md`.
+
+1. Edit the existing `epics/<slug>.md` file directly — append new `### US-<EPIC>.<N>` story
+   blocks (or replace a placeholder stub's section entirely; don't leave superseded placeholder
+   language sitting alongside the real stories) following that file's established heading/
+   Acceptance-Criteria/TDD-Notes/`---`-separator conventions. Do **not** create a new epic file
+   or a new row in `user-stories-art-marketplace.md` — the epic already exists and its index row
+   is unchanged (unless the epic's overall status genuinely changed, e.g. its first story left
+   `Deferred`).
+2. Add the new stories to `project-tracker.json`'s `stories` array, `Not Started` (or carry over
+   an existing status if you're rescoping rather than adding, e.g. flipping a `Deferred`
+   placeholder to `Not Started` once it's actually scoped — see US-MFTF-17.7's own entry for an
+   example).
+3. **Exception — chores/spikes get no tracker row.** A story whose output is a decision document
+   rather than shipped code (API discovery spikes like US-MFTF-2/US-MFTF-17.1, or a preview-spike
+   in the same shape) is tracked only in the epic file, never added to `project-tracker.json`.
+   Keep this consistent when a new spike-shaped story is added to an existing epic.
+4. Recompute `project-tracker.json`'s `summary.totalActive`, `summary.byStatus`, and
+   `summary.totalAllTime` to match the new story count — verify programmatically (parse the JSON,
+   confirm the story-id set has no duplicates, confirm the status counts sum to `totalActive`)
+   before treating the file as done, the same check a `CHORE-16`-style commit-hash backfill or the
+   original split verified mechanically.
+5. Log the change in `project-description.md`'s Revision History, including the rationale for any
+   design decisions made in the scoping session (control-level/scope tradeoffs, what was
+   deliberately deferred and why) — not just the mechanical file diff.
+6. `epicOrder` is untouched — it sequences epics, not individual stories within one.
+
 ---
 
 ## Things this split deliberately did NOT change
@@ -132,8 +164,20 @@ appending a new `## Epic` section to the monolith.
   whole story anymore. A session that only reads what the generic skill template tells it to
   read will still function, just without the per-epic scoping benefit this protocol describes.
 - **Story ID scheme, epic numbering, and acceptance-criteria format** are all unchanged.
-- **`project-description.md`** was not split — at ~47KB it isn't a problem yet. Revisit if it
-  grows substantially (e.g. if Revision History or Open Questions balloon).
+- **`project-description.md`** was not split — ~47KB at the 2026-07-11 split, ~54KB as of
+  2026-08-16 (Revision History and Open Questions keep growing, as expected). Still not a
+  problem; revisit if it keeps growing substantially — no fixed threshold, but if a fresh
+  `tdd-spec-session` start (project-description.md + the index + the active tracker, per the
+  protocol above) is ever a meaningful fraction of a session's context budget on its own, that's
+  the signal to split it (e.g. Revision History into its own file, oldest-first, à la the tracker
+  archive).
+- **Per-epic file size is likewise unbounded.** A single epic file can grow well past its
+  post-split size as scoping sessions add stories to it (see "Adding new stories to an existing
+  epic" above) — `epics/mftf-17-printify-integration.md` was ~18KB at the 2026-07-11 split and is
+  ~40KB as of 2026-08-16 after five stories (US-MFTF-17.7–17.11) were scoped into it in one
+  session. No fixed threshold here either; the failure mode to watch for is the same one that
+  motivated the original split — a single epic file becoming a meaningful fraction of a coding
+  session's context budget when that epic is the one being implemented.
 
 ---
 
@@ -148,7 +192,14 @@ is the project-specific override. When they conflict, follow this file. Specific
   relevant epic file(s) in `epics/`, not one big file.
 - **"Read the tracker"** → read `project-tracker.json` (active); only pull in
   `project-tracker-archive.json` for historical work.
-- **Pre-commit hook checking `project-tracker.json`** → this project does not currently have a
-  pre-commit hook (verified 2026-07-11: none exists in `.git/hooks/`). If one is added later, it
-  should also account for `project-tracker-archive.json` if a story-completion commit is expected
-  to touch both files (marking `Passed` in one and removing from the other).
+- **Pre-commit hook checking `project-tracker.json`** → a hook now exists at `.husky/pre-commit`
+  (added since the 2026-07-11 "no hook" note; corrected 2026-08-17). It requires
+  `spec/project-tracker.json` to be **staged** in any commit that touches `src/`, `__tests__/`,
+  or `prisma/schema` (pure infra/config commits are exempt). Consequence: even a follow-up fix to
+  an already-`Passed` story must stage the active tracker — record the change there (e.g. a
+  post-merge note on the relevant story, or on a related open story, plus `lastUpdated`).
+  **Caveat the hook does NOT catch:** it only checks the active file, not
+  `project-tracker-archive.json`. A story-completion commit still moves the story object from the
+  active file into the archive (see "Updating tracker state after a story passes"), so remember to
+  stage `project-tracker-archive.json` too — the hook will happily pass a commit that marked a
+  story `Passed`/removed it from the active file but forgot the archive.

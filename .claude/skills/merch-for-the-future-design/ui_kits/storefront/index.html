@@ -1,0 +1,44 @@
+<!-- @dsCard group="Storefront" viewport="1200x800" name="Storefront UI Kit" subtitle="Interactive click-through: home, shop grid, product detail, browse gallery" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Merch for the Future — Storefront UI Kit</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>body{margin:0}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="NavBar.jsx"></script>
+<script type="text/babel" src="FooterBar.jsx"></script>
+<script type="text/babel" src="HomeScreen.jsx"></script>
+<script type="text/babel" src="ShopScreen.jsx"></script>
+<script type="text/babel" src="ProductScreen.jsx"></script>
+<script type="text/babel" src="BrowseScreen.jsx"></script>
+<script type="text/babel">
+function App() {
+  const [screen, setScreen] = React.useState("home");
+  const [product, setProduct] = React.useState(null);
+  const [cartCount, setCartCount] = React.useState(0);
+  const [dark, setDark] = React.useState(false);
+  return (
+    <div className={dark ? "dark" : ""} style={{ "--bg": dark ? "#343434" : "#f2f1ef", background: "var(--bg)", color: "var(--text)", minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "var(--font-sans)" }}>
+      <NavBar screen={screen} setScreen={setScreen} cartCount={cartCount} dark={dark} setDark={setDark} />
+      <main style={{ flex: 1 }}>
+        {screen === "home" && <HomeScreen setScreen={setScreen} />}
+        {screen === "shop" && <ShopScreen setScreen={setScreen} setProduct={setProduct} />}
+        {screen === "product" && <ProductScreen product={product} setScreen={setScreen} />}
+        {screen === "browse" && <BrowseScreen />}
+        {screen === "discover" && <BrowseScreen />}
+      </main>
+      <FooterBar />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

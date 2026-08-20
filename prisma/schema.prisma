@@ -553,6 +553,13 @@ model ProductType {
   /// listing-creation flow, and as the admin edit-page hero (US-MFTF-17.6). JSON
   /// array of image URLs; null/empty when none captured.
   stockImageUrls      Json?
+  /// Representative FRONT print-area pixel dimensions for a DESIGNED Printify product
+  /// type, captured at sync from the curated variants' `placeholders` (US-MFTF-17.7).
+  /// Shape { front: { width, height } } — the modal dims across curated variants. The
+  /// `front`-only key leaves room for `back` without a migration. Null when no curated
+  /// variant exposes a front placeholder, or for non-Printify types. Consumed by the
+  /// placement tool (US-MFTF-17.8) for the print-area aspect ratio.
+  printifyPrintAreas  Json?
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
 
@@ -673,6 +680,7 @@ model ApparelListing {
   colors            ApparelListingColor[]
   images            ApparelListingImage[]
   referencedVariants ReferencedVariant[]
+  printifyPlacement ApparelListingPrintifyPlacement?
   orders            Order[]
   cartItems         CartItem[]
   orderItems        OrderItem[]
@@ -681,6 +689,26 @@ model ApparelListing {
   @@index([status])
   @@index([productTypeId])
   @@index([providerProductRef])
+}
+
+/// One seller-configured design placement for a DESIGNED Printify apparel listing
+/// (US-MFTF-17.8). Exactly ONE row per listing (unique on apparelListingId, upserted
+/// in place), holding Printify's positioned `print_areas` values: x/y are the design
+/// centre as a fraction (0..1) of the front print area, scale is the design width as a
+/// fraction of the print-area width, angle is degrees. A listing with NO row falls back
+/// to Printify's centred default at order time (US-MFTF-17.9) — placement is opt-in
+/// fine-tuning, not a publish gate, so "no row" == "explicitly centred".
+model ApparelListingPrintifyPlacement {
+  id               String   @id @default(cuid())
+  apparelListingId String   @unique
+  x                Float
+  y                Float
+  scale            Float
+  angle            Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  apparelListing ApparelListing @relation(fields: [apparelListingId], references: [id], onDelete: Cascade)
 }
 
 /// Singleton site config for the founder-facing US-landed-cost color band

@@ -26,7 +26,7 @@ effectively an addendum/foundation layer predating the MFTF epic numbering.
 
 | Epic | Status | File |
 |---|---|---|
-| **MFTF-23**: Admin Tracker Archive Merge | Not Started | [`mftf-23-admin-tracker-archive-merge.md`](epics/mftf-23-admin-tracker-archive-merge.md) |
+| **MFTF-23**: Admin Tracker Archive Merge | Passed | [`mftf-23-admin-tracker-archive-merge.md`](epics/mftf-23-admin-tracker-archive-merge.md) |
 | **MFTF-5**: Apparel Listing Creation | Passed | [`mftf-5-apparel-listing-creation.md`](epics/mftf-5-apparel-listing-creation.md) |
 | **MFTF-13**: Referenced Apparel Listings (Teemill Product Ref) | Passed | [`mftf-13-referenced-apparel-listings-teemill-product-ref.md`](epics/mftf-13-referenced-apparel-listings-teemill-product-ref.md) |
 | **MFTF-6**: Apparel Product Page & Browse | Passed | [`mftf-6-apparel-product-page-browse.md`](epics/mftf-6-apparel-product-page-browse.md) |
@@ -41,6 +41,7 @@ effectively an addendum/foundation layer predating the MFTF epic numbering.
 | **MFTF-19**: Storefront Polish & Pricing Visibility | Passed | [`mftf-19-storefront-polish-pricing-visibility.md`](epics/mftf-19-storefront-polish-pricing-visibility.md) |
 | **MFTF-20**: About & Contact Pages | Not Started | [`mftf-20-about-contact-pages.md`](epics/mftf-20-about-contact-pages.md) |
 | **MFTF-21**: Contact Page & Feedback Form | Not Started | [`mftf-21-contact-page-feedback-form.md`](epics/mftf-21-contact-page-feedback-form.md) |
+| **MFTF-24**: Apparel Categories, Collections & Navigation | Not Started | [`mftf-24-apparel-categories-collections-navigation.md`](epics/mftf-24-apparel-categories-collections-navigation.md) |
 | **MFTF-22**: SEO Foundation | Not Started | [`mftf-22-seo-foundation.md`](epics/mftf-22-seo-foundation.md) |
 | **MFTF-10**: Pre-Launch Checklist | Not Started | [`mftf-10-pre-launch-checklist.md`](epics/mftf-10-pre-launch-checklist.md) |
 | **MFTF-18**: Printful Integration | Deferred | [`mftf-18-printful-integration.md`](epics/mftf-18-printful-integration.md) |
