@@ -116,7 +116,7 @@ export default async function PrintsPage({ searchParams }: PrintsPageProps) {
           </Link>
         </div>
       ) : (
-        <div className="columns-2 gap-4 sm:columns-3 lg:columns-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {artworks.map((card) => (
             <ListingCard key={card.id} card={card} display={display} />
           ))}

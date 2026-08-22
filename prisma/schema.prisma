@@ -335,6 +335,10 @@ model ArtworkImage {
   thumbnailUrl String?
   isPrimary    Boolean  @default(false)
   order        Int      @default(0)
+  // Seller-chosen focal point (each axis 0..1) for the square browse-grid crop
+  // (US-18.4); default 0.5 = centre, so existing images are unchanged.
+  focalX       Float    @default(0.5)
+  focalY       Float    @default(0.5)
   createdAt    DateTime @default(now())
 
   artwork Artwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)

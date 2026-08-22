@@ -68,7 +68,7 @@ export async function signInAction(
     ? "/dashboard/admin"
     : roles.includes("SELLER")
     ? "/dashboard/seller"
-    : "/dashboard/buyer";
+    : "/shop";
 
   try {
     await signIn("credentials", { email, password, redirectTo });

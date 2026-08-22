@@ -10,7 +10,7 @@ export default async function SignInPage() {
     const roles = user.roles ?? [];
     if (roles.includes("ADMIN")) redirect("/dashboard/admin");
     else if (roles.includes("SELLER")) redirect("/dashboard/seller");
-    else redirect("/dashboard/buyer");
+    else redirect("/shop");
   }
 
   return <SignInForm />;

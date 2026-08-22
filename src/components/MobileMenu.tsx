@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOutAction } from "@/app/actions/auth";
-import ThemeToggle from "@/components/ThemeToggle";
 
 interface MobileMenuProps {
   user: { name?: string | null; email?: string | null } | null;
@@ -149,15 +148,9 @@ export default function MobileMenu({ user, roles, fulfillmentCount = 0, exceptio
 
   // ─── Build item list ─────────────────────────────────────────────────────
 
-  // 1. Always: nav links + the dark-mode switch
+  // 1. Always: nav links (the dark-mode toggle lives on the top bar itself)
   const topItems = [
     ...sharedLinks.map((l) => navLink(l.href, l.label)),
-    {
-      key: "__theme__",
-      node: (
-        <ThemeToggle className="px-6 py-3 text-lg font-medium uppercase tracking-widest text-tuscan-sun/70" />
-      ),
-    },
   ];
 
   // 2. If signed in: separator + name, then role links + sign out

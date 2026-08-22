@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import MobileMenu from "@/components/MobileMenu";
 import NavDropdown from "@/components/NavDropdown";
 import CartBadge from "@/components/CartBadge";
+import ThemeToggle from "@/components/ThemeToggle";
+import { getThemeCookie } from "@/lib/theme/cookie";
 import { getCartCountForRequest } from "@/lib/cart/request";
 import { countSellerOriginalsToShip } from "@/lib/fulfillment/originals";
 import { countDropshipExceptions } from "@/lib/fulfillment/admin";
@@ -20,6 +22,7 @@ export default async function Nav() {
   const user = session?.user;
   const roles = (user as { roles?: string[] } | undefined)?.roles ?? [];
   const cartCount = await getCartCountForRequest();
+  const theme = await getThemeCookie();
   // Seller "Fulfillment" badge: originals awaiting shipment (US-MFTF-15.1).
   // Admin "Dropship exceptions" badge: FAILED dropship shipments (US-MFTF-15.2).
   const [fulfillmentCount, exceptionCount] = await Promise.all([
@@ -27,7 +30,7 @@ export default async function Nav() {
     user && roles.includes("ADMIN") ? countDropshipExceptions() : Promise.resolve(0),
   ]);
   return (
-    <header className="border-b border-tuscan-sun/40 bg-tuscan-sun dark:border-bar-dark dark:bg-bar-dark">
+    <header className="border-b border-tuscan-sun/40 bg-tuscan-sun dark:border-b-[3px] dark:border-tuscan-sun dark:bg-bar-dark">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="font-display text-xl tracking-tight text-cerulean dark:text-cream">
           Merch for the Future
@@ -43,6 +46,7 @@ export default async function Nav() {
         </nav>
 
         <div className="flex items-center gap-3 text-sm">
+          <ThemeToggle variant="icon" initialTheme={theme ?? "light"} />
           <CartBadge count={cartCount} />
           {user ? (
             <NavDropdown

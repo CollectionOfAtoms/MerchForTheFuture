@@ -67,6 +67,28 @@ export async function setPrimaryImageAction(listingId: string, imageId: string):
   return { success: true as const };
 }
 
+/**
+ * US-18.4 — persist a seller-chosen focal point (each axis 0..1) for an image's
+ * square browse-grid crop. Scoped to the authorized artwork via the where clause,
+ * so a seller can only set the focal point on their own listing's images.
+ */
+export async function setImageFocalAction(
+  listingId: string,
+  imageId: string,
+  focalX: number,
+  focalY: number,
+): Promise<ActionResult> {
+  const artworkId = await requireSellerOwnsListing(listingId);
+  const clamp = (n: number) => (Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0.5);
+  const res = await prisma.artworkImage.updateMany({
+    where: { id: imageId, artworkId },
+    data: { focalX: clamp(focalX), focalY: clamp(focalY) },
+  });
+  if (res.count === 0) return { error: "Image not found." };
+  revalidatePath(`/seller/listings/${listingId}/edit`);
+  return { success: true as const };
+}
+
 export async function regenerateVariantsAction(
   listingId: string,
   imageId: string,
