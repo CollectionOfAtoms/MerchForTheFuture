@@ -8,7 +8,26 @@ export const POWERED_BY_PLANTS_PRODUCT_REF =
   "https://api.teemill.com/v1/catalog/products/mock-product-uuid";
 export const POWERED_BY_PLANTS_SLUG = "powered-by-plants";
 
-export const TEEMILL_PROJECT_SUB = "merchforthefuture-451391";
+// The Teemill project id is the JWT `sub` of the configured API key. It changed
+// when the account moved from a personal email to the official MFTF account
+// (merchforthefuture-451391 → merch-for-the-future-453929), and would change again
+// on any future credential swap — so derive the expected value from the key in the
+// env rather than pinning a literal. This is an INDEPENDENT decode (not the app's
+// own), so tests still verify the app derives the same sub. Falls back to the last
+// known literal if the key is absent (e.g. CI without secrets).
+function teemillProjectSubFromEnv(): string {
+  const jwt = process.env.TEEMILL_API_KEY;
+  const payload = jwt?.split(".")[1];
+  if (!payload) return "merch-for-the-future-453929";
+  try {
+    const json = Buffer.from(payload.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+    return (JSON.parse(json).sub as string) ?? "merch-for-the-future-453929";
+  } catch {
+    return "merch-for-the-future-453929";
+  }
+}
+
+export const TEEMILL_PROJECT_SUB = teemillProjectSubFromEnv();
 
 export const COLOUR_HEX: Record<string, string> = {
   "Denim Blue": "#3b5b78",

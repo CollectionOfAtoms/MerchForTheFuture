@@ -45,3 +45,40 @@
 - On failure, the image transitions to `error` state and an error message is displayed.
 - The action verifies the requesting user is the listing's seller; unauthenticated or unauthorised calls return an error.
 - The button is disabled while any other image in the set is uploading or processing.
+
+---
+
+### US-18.4 — Seller-Specified Focal Point for the Browse-Grid Crop
+
+**As a** seller,
+**I want to** choose which part of my artwork stays in view in the square browse-grid tile,
+**so that** the automatic square crop doesn't cut off the most important part of the piece.
+
+**Context:** the browse/prints gallery now renders each listing as a fixed **square** tile
+(`object-cover`), superseding the earlier variable-height masonry presentation described in
+US-18.2 for the browse grid. With a fixed square, a non-square image is cropped; this story lets
+the seller choose the crop's focal point instead of always cropping to centre.
+
+**Acceptance Criteria:**
+- `ArtworkImage` stores a normalized focal point — `focalX` and `focalY`, each a `Float` in
+  `[0,1]` defaulting to `0.5` (centre). The migration is additive; existing images backfill to
+  centre and render exactly as before.
+- The seller listing **edit** page shows a focal-point control overlaid on the listing's primary
+  image: clicking (or dragging) places a marker whose position maps to `focalX`/`focalY` in
+  `[0,1]` of the image's width/height, with a live square-crop preview of the resulting tile.
+- Saving the listing persists the chosen focal point to the primary `ArtworkImage`. The action
+  authorizes the requester as the listing's seller (or an admin), reusing the existing edit path;
+  unauthenticated/unauthorised calls return an error.
+- The browse and prints grid tiles (`ListingCard`) apply the stored focal point as CSS
+  `object-position` on the `object-cover` square image, so the chosen point stays visible when the
+  image is cropped. A centre focal point renders as `50% 50%` — no change for legacy listings.
+- The browse read projection (`ArtworkCard`) exposes the primary image's focal point.
+
+**TDD Notes:**
+- Pure helper `focalToObjectPosition(x, y)` → `"<x·100>% <y·100>%"`, returning `"50% 50%"` for
+  null/undefined and clamping inputs to `[0,1]`; unit-tested for the centre default, an off-centre
+  point, and out-of-range clamping.
+- `ListingCard` renders the primary image with the `object-position` derived from the card's focal
+  point, and centre when absent (component test).
+- The projection maps the primary `ArtworkImage`'s `focalX`/`focalY` onto `ArtworkCard`.
+- Migration is additive (columns default `0.5`); no data backfill step needed beyond the default.

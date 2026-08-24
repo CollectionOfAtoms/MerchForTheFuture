@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { ArtworkCard } from "@/lib/artworks/browse";
+import { focalToObjectPosition } from "@/lib/artworks/focal";
 import { localizedPrice, type DisplayCurrency } from "@/lib/tax/currency";
 
 export default function ListingCard({ card, display }: { card: ArtworkCard; display?: DisplayCurrency | null }) {
@@ -23,22 +24,26 @@ export default function ListingCard({ card, display }: { card: ArtworkCard; disp
   return (
     <Link
       href={`/artwork/${card.id}`}
-      className="group relative mb-4 block break-inside-avoid overflow-hidden rounded-2xl bg-tuscan-sun/10"
+      className="group relative block overflow-hidden rounded-2xl bg-tuscan-sun/10"
     >
-      {card.primaryImageUrl ? (
-        <Image
-          src={card.primaryImageUrl}
-          alt={card.title}
-          width={600}
-          height={400}
-          className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-        />
-      ) : (
-        <div className="flex h-48 w-full items-center justify-center">
-          <span className="text-sm text-dark-cyan">No image</span>
-        </div>
-      )}
+      {/* Fixed square tile so the gallery reads as a uniform grid (object-cover
+          crops to fill). */}
+      <div className="relative aspect-square w-full overflow-hidden">
+        {card.primaryImageUrl ? (
+          <Image
+            src={card.primaryImageUrl}
+            alt={card.title}
+            fill
+            style={{ objectPosition: focalToObjectPosition(card.focalX, card.focalY) }}
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 640px) 50vw, 33vw"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <span className="text-sm text-dark-cyan">No image</span>
+          </div>
+        )}
+      </div>
 
       {/* Hover overlay */}
       <div className="absolute inset-x-0 bottom-0 translate-y-full rounded-b-2xl bg-cerulean/90 p-4 transition-transform duration-300 group-hover:translate-y-0">

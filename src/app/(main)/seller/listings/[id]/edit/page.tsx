@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import EditListingForm from "./EditListingForm";
+import FocalPointPicker from "@/components/FocalPointPicker";
 import PrintConfigForm from "@/components/PrintConfigForm";
 import PrintFramingPanel, { type FramingAspect } from "@/components/PrintFramingPanel";
 import PrintReadinessBanner from "@/components/PrintReadinessBanner";
@@ -68,6 +69,9 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
     ? offeredSizes(printProductRows).map((sku) => ({ sku, label: sizeLabels[sku] ?? sku }))
     : [];
 
+  const primaryArtworkImage =
+    listing.artwork.images.find((i) => i.isPrimary) ?? listing.artwork.images[0] ?? null;
+
   const serialized = {
     ...listing,
     price: listing.price != null ? listing.price.toString() : null,
@@ -112,6 +116,25 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
       )}
 
       <EditListingForm listing={serialized} />
+
+      {primaryArtworkImage && (
+        <div className="mt-6" id="grid-crop">
+          <h2 className="mb-1 text-lg font-semibold text-blue-slate">Grid tile crop</h2>
+          <p className="mb-4 text-sm text-muted">
+            The browse gallery shows each piece as a square. Choose which part of your
+            artwork stays in view when it&apos;s cropped to that square.
+          </p>
+          <FocalPointPicker
+            listingId={listing.id}
+            imageId={primaryArtworkImage.id}
+            imageUrl={primaryArtworkImage.displayUrl ?? primaryArtworkImage.url}
+            title={listing.artwork.title}
+            initialX={primaryArtworkImage.focalX}
+            initialY={primaryArtworkImage.focalY}
+          />
+        </div>
+      )}
+
       <div className="mt-6" id="print-config">
         <PrintConfigForm
           listingId={listing.id}

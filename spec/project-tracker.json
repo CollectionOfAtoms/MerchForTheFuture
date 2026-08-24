@@ -1,21 +1,21 @@
 {
   "_meta": {
-    "description": "Active tracker \u2014 Not Started, Deferred, and pending-live-confirmation stories only. This is the file coding and handoff sessions should read for current project state. Passed and Dropped stories (177 as of the 2026-07-11 split) live in project-tracker-archive.json \u2014 read that file only for historical audits, not for day-to-day implementation work. See /spec/README.md for the full protocol.",
+    "description": "Active tracker — Not Started, Deferred, and pending-live-confirmation stories only. This is the file coding and handoff sessions should read for current project state. Passed and Dropped stories (177 as of the 2026-07-11 split) live in project-tracker-archive.json — read that file only for historical audits, not for day-to-day implementation work. See /spec/README.md for the full protocol.",
     "archiveFile": "project-tracker-archive.json",
     "archiveStoryCount": 186
   },
   "summary": {
-    "totalActive": 44,
+    "totalActive": 45,
     "totalArchived": 186,
-    "totalAllTime": 230,
+    "totalAllTime": 231,
     "byStatus": {
       "Deferred": 8,
       "Not Started": 32,
-      "Tests Passing \u2014 pending live confirmation": 4
+      "Tests Passing — pending live confirmation": 5
     }
   },
   "epicOrder": {
-    "description": "Authoritative implementation sequence for epics with open stories. Claude Code works the first epic in 'sequence' that has stories not yet Passed/Dropped/Deferred, unless the handoff prompt says otherwise. Maintained only via tdd-spec-session \u2014 implementation sessions never reorder this. NOTE: an epic whose stories have all Passed is REMOVED from this sequence (its rows live in project-tracker-archive.json), so 'first epic in sequence' stays meaningful \u2014 Epic MFTF-23 was removed 2026-08-17 for exactly this reason, having been left here after US-MFTF-23.1 passed and archived.",
+    "description": "Authoritative implementation sequence for epics with open stories. Claude Code works the first epic in 'sequence' that has stories not yet Passed/Dropped/Deferred, unless the handoff prompt says otherwise. Maintained only via tdd-spec-session — implementation sessions never reorder this. NOTE: an epic whose stories have all Passed is REMOVED from this sequence (its rows live in project-tracker-archive.json), so 'first epic in sequence' stays meaningful — Epic MFTF-23 was removed 2026-08-17 for exactly this reason, having been left here after US-MFTF-23.1 passed and archived.",
     "sequence": [
       {
         "epic": "Epic MFTF-5: Apparel Listing Creation",
@@ -43,7 +43,7 @@
       },
       {
         "epic": "Epic MFTF-15: Seller Fulfillment for Originals",
-        "rationale": "Hybrid split: physical-original fulfillment moves admin\u2192seller (seller-scoped queue); admin retains a dropship-exception/retry queue re-homed from US-14.5. Dropship fulfillment stays fully automated. Depends on MFTF-14 for status/email plumbing."
+        "rationale": "Hybrid split: physical-original fulfillment moves admin→seller (seller-scoped queue); admin retains a dropship-exception/retry queue re-homed from US-14.5. Dropship fulfillment stays fully automated. Depends on MFTF-14 for status/email plumbing."
       },
       {
         "epic": "Epic MFTF-16: Storefront & Catalog Corrections",
@@ -71,7 +71,7 @@
       },
       {
         "epic": "Epic MFTF-20: About & Contact Pages",
-        "rationale": "Public About page (vision/goals, Who We Are founder bios, material-standard commitment). Scoped 2026-07-11 as admin-editable content (small CMS), not static copy \u2014 bios/photos reuse the existing Blob image pipeline. Independent of fulfillment; sequenced after MFTF-19 polish and before the Pre-Launch Checklist since a public site should have this before go-live."
+        "rationale": "Public About page (vision/goals, Who We Are founder bios, material-standard commitment). Scoped 2026-07-11 as admin-editable content (small CMS), not static copy — bios/photos reuse the existing Blob image pipeline. Independent of fulfillment; sequenced after MFTF-19 polish and before the Pre-Launch Checklist since a public site should have this before go-live."
       },
       {
         "epic": "Epic MFTF-21: Contact Page & Feedback Form",
@@ -79,7 +79,7 @@
       },
       {
         "epic": "Epic MFTF-24: Apparel Categories, Collections & Navigation",
-        "rationale": "Merchandising layer over the apparel catalog: Men's/Women's/Whatevs categories, admin-managed collections (seeded New + Our Favorites), a page per category and collection, a path-aware product breadcrumb, and an Apparel nav dropdown (desktop + mobile). Scoped 2026-08-17. Sequenced BEFORE MFTF-22 deliberately: US-MFTF-24.6 supersedes US-MFTF-22.3's fixed Home-Shop-Product BreadcrumbList, and MFTF-24 adds four new public routes that MFTF-22's sitemap and per-page metadata must cover \u2014 doing SEO first would mean writing it twice. Independent of the fulfillment critical path; depends only on MFTF-5/MFTF-13 (listings) and MFTF-6.1 (the browse projection it reuses)."
+        "rationale": "Merchandising layer over the apparel catalog: Men's/Women's/Whatevs categories, admin-managed collections (seeded New + Our Favorites), a page per category and collection, a path-aware product breadcrumb, and an Apparel nav dropdown (desktop + mobile). Scoped 2026-08-17. Sequenced BEFORE MFTF-22 deliberately: US-MFTF-24.6 supersedes US-MFTF-22.3's fixed Home-Shop-Product BreadcrumbList, and MFTF-24 adds four new public routes that MFTF-22's sitemap and per-page metadata must cover — doing SEO first would mean writing it twice. Independent of the fulfillment critical path; depends only on MFTF-5/MFTF-13 (listings) and MFTF-6.1 (the browse projection it reuses)."
       },
       {
         "epic": "Epic MFTF-22: SEO Foundation",
@@ -91,7 +91,7 @@
       }
     ],
     "deferred": [
-      "Epic MFTF-18: Printful Integration (material-standard gate cleared 2026-07-11; sequenced after MFTF-17 \u2014 same founder bandwidth, reuse discovery checklist)",
+      "Epic MFTF-18: Printful Integration (material-standard gate cleared 2026-07-11; sequenced after MFTF-17 — same founder bandwidth, reuse discovery checklist)",
       "Epic MFTF-8: T-Mill Mockup Generation",
       "Epic MFTF-9: Seller Apparel Product Management"
     ]
@@ -106,7 +106,7 @@
       "testWrittenCommit": "c0e7a59",
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Deferred \u2014 single-seller model; no Stripe Connect onboarding"
+      "notes": "Deferred — single-seller model; no Stripe Connect onboarding"
     },
     {
       "id": "CHORE-1",
@@ -128,7 +128,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "In Vercel production env vars: (1) PRODIGI_API_KEY \u2192 live key from dashboard.prodigi.com; PRODIGI_API_BASE_URL \u2192 leave unset (defaults to live API). (2) STRIPE_SECRET_KEY \u2192 live sk_live_... key; NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \u2192 live pk_live_... key; STRIPE_WEBHOOK_SECRET \u2192 re-register webhook at api.stripe.com/webhooks pointing to production domain and use the new signing secret. Verify Stripe Connect is enabled for live mode. Double-check no test_ or sandbox keys remain in Vercel settings."
+      "notes": "In Vercel production env vars: (1) PRODIGI_API_KEY → live key from dashboard.prodigi.com; PRODIGI_API_BASE_URL → leave unset (defaults to live API). (2) STRIPE_SECRET_KEY → live sk_live_... key; NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY → live pk_live_... key; STRIPE_WEBHOOK_SECRET → re-register webhook at api.stripe.com/webhooks pointing to production domain and use the new signing secret. Verify Stripe Connect is enabled for live mode. Double-check no test_ or sandbox keys remain in Vercel settings."
     },
     {
       "id": "CHORE-2",
@@ -156,23 +156,23 @@
       "id": "US-MFTF-12.5",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "Post-Payment Fulfillment Fan-Out",
-      "status": "Tests Passing \u2014 pending live confirmation",
+      "status": "Tests Passing — pending live confirmation",
       "testWrittenDate": "2026-06-17",
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-17",
       "testPassedCommit": "pending",
-      "notes": "On PAID, the webhook CART branch calls dispatchOrderFulfillment(orderId) which dispatches each FulfillmentOrder through provider.fulfill() (the 12.1 template). Implemented the fulfill() steps: Prodigi createProviderOrder (multi-item POST /orders; single-step, default no-op confirm); Teemill two-step createProviderOrder (POST /orders) + confirmProviderOrder (POST /orders/{id}/confirm with the quoted shippingMethodId \u2014 // UNVERIFIED 'standard', Open Q#7). Per-shipment FAILURE ISOLATION: any error sets that FulfillmentOrder FAILED + notes and does not throw, so siblings proceed. IDEMPOTENT per FulfillmentOrder: skipped once providerOrderId is set (no duplicate provider orders on webhook replay). Admin retry: retryFulfillmentAction (admin-only) + a 'Failed shipments' section with a Retry button on /admin/fulfillment (US-14.5 page). Job items resolve referenced variantRef from the cached ReferencedVariant by colour+size, designed apparel to providerSkuBase, prints to prodigiSku + printSourceImageUrl. Legacy single-item PRINT webhook path left as-is (cart prints now route through the abstraction). MSW: Teemill POST /orders/:id/confirm + GET /orders/:ref added globally. MFTF-3 provider tests re-run green. DOWNGRADED to 'Tests Passing \u2014 pending live confirmation' (2026-06-17, founder): actually SUBMITTING an order \u2014 Teemill POST /orders \u2192 /confirm \u2014 charges real money, so the founder is intentionally not running it live yet; live order placement (incl. the designed\u2192Prodigi order with the design asset, fanout buildJobItems) is therefore unverified against the real APIs. Logic is fully green vs MSW; flip to Passed after a real proofing order confirms the two-step confirm + the Prodigi designed order succeed. PLAN (founder, 2026-06-17): live confirmation is intentionally deferred \u2014 a live Teemill order costs real money, so the founders will combine it with their FIRST design-proof order (the proof print doubles as the live integration test). Until that order is placed and observed, 12.5 stays at this status. Everything is green vs MSW and the cart\u2192checkout\u2192payment path is live-verified in Stripe test mode."
+      "notes": "On PAID, the webhook CART branch calls dispatchOrderFulfillment(orderId) which dispatches each FulfillmentOrder through provider.fulfill() (the 12.1 template). Implemented the fulfill() steps: Prodigi createProviderOrder (multi-item POST /orders; single-step, default no-op confirm); Teemill two-step createProviderOrder (POST /orders) + confirmProviderOrder (POST /orders/{id}/confirm with the quoted shippingMethodId — // UNVERIFIED 'standard', Open Q#7). Per-shipment FAILURE ISOLATION: any error sets that FulfillmentOrder FAILED + notes and does not throw, so siblings proceed. IDEMPOTENT per FulfillmentOrder: skipped once providerOrderId is set (no duplicate provider orders on webhook replay). Admin retry: retryFulfillmentAction (admin-only) + a 'Failed shipments' section with a Retry button on /admin/fulfillment (US-14.5 page). Job items resolve referenced variantRef from the cached ReferencedVariant by colour+size, designed apparel to providerSkuBase, prints to prodigiSku + printSourceImageUrl. Legacy single-item PRINT webhook path left as-is (cart prints now route through the abstraction). MSW: Teemill POST /orders/:id/confirm + GET /orders/:ref added globally. MFTF-3 provider tests re-run green. DOWNGRADED to 'Tests Passing — pending live confirmation' (2026-06-17, founder): actually SUBMITTING an order — Teemill POST /orders → /confirm — charges real money, so the founder is intentionally not running it live yet; live order placement (incl. the designed→Prodigi order with the design asset, fanout buildJobItems) is therefore unverified against the real APIs. Logic is fully green vs MSW; flip to Passed after a real proofing order confirms the two-step confirm + the Prodigi designed order succeed. PLAN (founder, 2026-06-17): live confirmation is intentionally deferred — a live Teemill order costs real money, so the founders will combine it with their FIRST design-proof order (the proof print doubles as the live integration test). Until that order is placed and observed, 12.5 stays at this status. Everything is green vs MSW and the cart→checkout→payment path is live-verified in Stripe test mode."
     },
     {
       "id": "US-MFTF-12.6",
       "epic": "Epic MFTF-12: Multi-Provider Checkout & Fulfillment",
       "title": "Buyer Order View with Per-Shipment Status",
-      "status": "Tests Passing \u2014 pending live confirmation",
+      "status": "Tests Passing — pending live confirmation",
       "testWrittenDate": "2026-06-17",
       "testWrittenCommit": "pending",
       "testPassedDate": "2026-06-17",
       "testPassedCommit": "pending",
-      "notes": "Implemented + green against MSW (8 tests incl. a jsdom component test). getOrderShipmentsView groups a cart order's items into 'Shipment N of M' with per-shipment status + tracking and NEVER exposes provider names; OrderShipments component renders it on the confirmation page and the Epic 22 order detail page (CART branch). aggregateOrderStatus \u2192 order history shows 'Processing' until all shipments SHIPPED then 'Shipped' (getBuyerOrders CART branch). checkFulfillmentStatus() on the provider abstraction: Prodigi reads shipments[].tracking over its order GET (same data its webhook carries); Teemill polls GET /orders/{orderRef}. checkAndSyncShipments (daily cron /api/cron/teemill-shipments, schedule 0 6 * * *, Hobby-compatible, CRON_SECRET) marks dispatched shipments SHIPPED + tracking/carrier and sends a per-shipment MailerSend email (sendShipmentShippedEmail \u2014 only that shipment's items; identical path for poll vs webhook); idempotent (only CONFIRMED+providerOrderId are polled). HELD at non-Passed (Option B, founder decision): Open Q#2 \u2014 Teemill webhook support unconfirmed, so shipment status is polling with a '// TODO: replace Teemill polling with webhook once payload shape is confirmed live' marker and the tracking field paths / dispatched-status value marked // UNVERIFIED; needs a live proofing order before Passed. No live API calls in tests (MSW only). PLAN (founder, 2026-06-17): same as 12.5 \u2014 shipment-status/polling + the per-shipment SHIPPED email can only be observed after a real order exists, so this is deferred to the founders' first Teemill design-proof order (a live order costs money, so it doubles as a proof print). Buyer order views + aggregate status are verifiable in test mode today; the SHIPPED transition + tracking + email await that first live order."
+      "notes": "Implemented + green against MSW (8 tests incl. a jsdom component test). getOrderShipmentsView groups a cart order's items into 'Shipment N of M' with per-shipment status + tracking and NEVER exposes provider names; OrderShipments component renders it on the confirmation page and the Epic 22 order detail page (CART branch). aggregateOrderStatus → order history shows 'Processing' until all shipments SHIPPED then 'Shipped' (getBuyerOrders CART branch). checkFulfillmentStatus() on the provider abstraction: Prodigi reads shipments[].tracking over its order GET (same data its webhook carries); Teemill polls GET /orders/{orderRef}. checkAndSyncShipments (daily cron /api/cron/teemill-shipments, schedule 0 6 * * *, Hobby-compatible, CRON_SECRET) marks dispatched shipments SHIPPED + tracking/carrier and sends a per-shipment MailerSend email (sendShipmentShippedEmail — only that shipment's items; identical path for poll vs webhook); idempotent (only CONFIRMED+providerOrderId are polled). HELD at non-Passed (Option B, founder decision): Open Q#2 — Teemill webhook support unconfirmed, so shipment status is polling with a '// TODO: replace Teemill polling with webhook once payload shape is confirmed live' marker and the tracking field paths / dispatched-status value marked // UNVERIFIED; needs a live proofing order before Passed. No live API calls in tests (MSW only). PLAN (founder, 2026-06-17): same as 12.5 — shipment-status/polling + the per-shipment SHIPPED email can only be observed after a real order exists, so this is deferred to the founders' first Teemill design-proof order (a live order costs money, so it doubles as a proof print). Buyer order views + aggregate status are verifiable in test mode today; the SHIPPED transition + tracking + email await that first live order."
     },
     {
       "id": "US-MFTF-8.1",
@@ -183,7 +183,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Deferred \u2014 NOT blocked (CHORE-17 spike resolved). Moot for Teemill: live verification (2026-06-12) confirmed Teemill serves per-colour mockups via /catalog/products (images[].variantIds), cached at ingest by US-MFTF-13.2. Nothing to generate. Retained for history."
+      "notes": "Deferred — NOT blocked (CHORE-17 spike resolved). Moot for Teemill: live verification (2026-06-12) confirmed Teemill serves per-colour mockups via /catalog/products (images[].variantIds), cached at ingest by US-MFTF-13.2. Nothing to generate. Retained for history."
     },
     {
       "id": "US-MFTF-8.2",
@@ -194,7 +194,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Deferred \u2014 NOT blocked (spike resolved). Residual 'accept/discard mockups' concern survives only for designed-mode (Prodigi) and is captured as a deferred Open Question in project_description.md, not scoped here. Retained for history."
+      "notes": "Deferred — NOT blocked (spike resolved). Residual 'accept/discard mockups' concern survives only for designed-mode (Prodigi) and is captured as a deferred Open Question in project_description.md, not scoped here. Retained for history."
     },
     {
       "id": "US-MFTF-9.1",
@@ -238,7 +238,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Human task. Supersedes/completes CHORE-4. Set live keys in Vercel production env vars for: Stripe (publishable + secret), T-Mill (Authorization header key + project param), Prodigi. Confirm test/sandbox keys remain in .env.local and Vercel preview environments only. Smoke-test each service after rotation. Full production env-var inventory + smoke-test commands: docs/pre-launch-runbook.md (prepared 2026-07-10; .env.local.example refreshed to match \u2014 dead TaxJar/Connect/Google vars removed, Teemill/Stripe Tax/dropshipping-contact vars added)."
+      "notes": "Human task. Supersedes/completes CHORE-4. Set live keys in Vercel production env vars for: Stripe (publishable + secret), T-Mill (Authorization header key + project param), Prodigi. Confirm test/sandbox keys remain in .env.local and Vercel preview environments only. Smoke-test each service after rotation. Full production env-var inventory + smoke-test commands: docs/pre-launch-runbook.md (prepared 2026-07-10; .env.local.example refreshed to match — dead TaxJar/Connect/Google vars removed, Teemill/Stripe Tax/dropshipping-contact vars added)."
     },
     {
       "id": "US-MFTF-10.3",
@@ -304,18 +304,18 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Human task (with a small code component). Remove or disable the under-construction route guard added in CHORE-15. Confirm the homepage and /shop are publicly accessible. This is the final step \u2014 all other US-MFTF-10.x items should be complete before this one. The gate is one line (src/app/page.tsx redirect to /coming-soon); the prepared-but-NOT-applied change + destination options (redirect /discover vs. render Discover at /) are documented in docs/pre-launch-runbook.md \u2014 awaiting both founders' go-ahead."
+      "notes": "Human task (with a small code component). Remove or disable the under-construction route guard added in CHORE-15. Confirm the homepage and /shop are publicly accessible. This is the final step — all other US-MFTF-10.x items should be complete before this one. The gate is one line (src/app/page.tsx redirect to /coming-soon); the prepared-but-NOT-applied change + destination options (redirect /discover vs. render Discover at /) are documented in docs/pre-launch-runbook.md — awaiting both founders' go-ahead."
     },
     {
       "id": "US-MFTF-17.2",
       "epic": "Epic MFTF-17: Printify Integration",
       "title": "Printify Provider Integration",
-      "status": "Tests Passing \u2014 pending live confirmation",
+      "status": "Tests Passing — pending live confirmation",
       "testWrittenDate": "2026-08-15",
       "testWrittenCommit": "2c5a548",
       "testPassedDate": "2026-08-15",
       "testPassedCommit": "2c5a548",
-      "notes": "DESIGNED-mode Printify integration per the US-MFTF-17.1 spike (docs/printify-api-notes.md). Tests written first and confirmed RED before implementation: __tests__/mftf-17-printify/US-MFTF-17.2-printify-provider.test.ts (provider contract, two-step create\u2192send-to-production, USD cents\u2192dollars quote, status/webhook mapping, HMAC signature, @ts-expect-error incomplete-subclass), US-MFTF-17.2-printify-designed-catalog.test.ts (curated (blueprint,print_provider) sync of colours/sizes/combo\u2192variantId map + admin create/update PRINTIFY validation), US-MFTF-17.2-printify-fanout-split.test.ts (multi-provider split, order-line correctness, failure isolation, buyer-opacity). All 25 green vs MSW; the 40-file fulfillment/checkout/catalog regression set (336 tests) stays green. Implementation: PrintifyFulfillmentProvider (src/lib/fulfillment/providers/printify.ts) + printify/client.ts; getProviderByKey 'printify'; ProductTypePrintifyVariant combo table + printifyBlueprintId/printifyPrintProviderId on ProductType (providerSkuBase made nullable); sync-printify.ts; fanout.ts + revalidate.ts Printify branches; api/webhooks/printify/route.ts (HMAC-SHA256, marked // UNVERIFIED header, polling is primary); admin ProductTypeForm + product-catalog actions; MSW printifyHandlers; env vars in .env.local.example + runbook. HELD at 'Tests Passing \u2014 pending live confirmation' (not Passed): status vocabulary, create-order response, send-to-production requirement, and webhook signature header are // UNVERIFIED with no Printify sandbox \u2014 they resolve at US-MFTF-17.3 (founder live order), which gates Passed. FOLLOW-UP (2026-08-15): catalog sync corrected to pass ?show-out-of-stock=1 \u2014 the default variants.json hides out-of-stock variants (blueprint 1580/provider 99: 4 default vs 16 full), so without it the cached catalog was incomplete/volatile (docs/printify-api-notes.md stock-semantics corrected; scripts/printify-blueprint-lookup.ts added to resolve a product URL \u2192 blueprint/provider/variant ids). Live per-variant orderability (product-page grey-out + checkout re-check) is scoped as US-MFTF-17.4. FIX (2026-08-15): buyer checkout hit 'Printify shipping quote (POST /orders/shipping.json) failed (404)' because PRINTIFY_SHOP_ID was unset in .env.local, so shop-scoped calls built a malformed /shops//orders/... path. The client now resolves the shop id (resolvePrintifyShopId): PRINTIFY_SHOP_ID if set, else GET /shops.json once (cached), throwing a clear error if the account has no shop; shopPath is now async. Live-verified: shop 28204676 resolved, shipping calc \u2192 200 {standard:475}. Setting PRINTIFY_SHOP_ID=28204676 still avoids the extra call. FIX #2 (2026-08-15): with the shop id resolved, order-create then 400'd (code 8150 'src/x/y/scale/angle required') \u2014 our print_areas used the PRODUCT-creation shape. The ORDER endpoint wants print_areas as an OBJECT keyed by position with the design URL: print_areas: { front: <url> } (Printify auto-centres). Fixed in createProviderOrder (dropped the /uploads step; positioned {src,x,y,scale,angle} form deferred to the 17.7 placement tool). docs/printify-api-notes.md updated. Still // UNVERIFIED: src=URL-vs-upload-id + the create RESPONSE shape \u2014 confirmed only by an order that reaches production (US-MFTF-17.3)."
+      "notes": "DESIGNED-mode Printify integration per the US-MFTF-17.1 spike (docs/printify-api-notes.md). Tests written first and confirmed RED before implementation: __tests__/mftf-17-printify/US-MFTF-17.2-printify-provider.test.ts (provider contract, two-step create→send-to-production, USD cents→dollars quote, status/webhook mapping, HMAC signature, @ts-expect-error incomplete-subclass), US-MFTF-17.2-printify-designed-catalog.test.ts (curated (blueprint,print_provider) sync of colours/sizes/combo→variantId map + admin create/update PRINTIFY validation), US-MFTF-17.2-printify-fanout-split.test.ts (multi-provider split, order-line correctness, failure isolation, buyer-opacity). All 25 green vs MSW; the 40-file fulfillment/checkout/catalog regression set (336 tests) stays green. Implementation: PrintifyFulfillmentProvider (src/lib/fulfillment/providers/printify.ts) + printify/client.ts; getProviderByKey 'printify'; ProductTypePrintifyVariant combo table + printifyBlueprintId/printifyPrintProviderId on ProductType (providerSkuBase made nullable); sync-printify.ts; fanout.ts + revalidate.ts Printify branches; api/webhooks/printify/route.ts (HMAC-SHA256, marked // UNVERIFIED header, polling is primary); admin ProductTypeForm + product-catalog actions; MSW printifyHandlers; env vars in .env.local.example + runbook. HELD at 'Tests Passing — pending live confirmation' (not Passed): status vocabulary, create-order response, send-to-production requirement, and webhook signature header are // UNVERIFIED with no Printify sandbox — they resolve at US-MFTF-17.3 (founder live order), which gates Passed. FOLLOW-UP (2026-08-15): catalog sync corrected to pass ?show-out-of-stock=1 — the default variants.json hides out-of-stock variants (blueprint 1580/provider 99: 4 default vs 16 full), so without it the cached catalog was incomplete/volatile (docs/printify-api-notes.md stock-semantics corrected; scripts/printify-blueprint-lookup.ts added to resolve a product URL → blueprint/provider/variant ids). Live per-variant orderability (product-page grey-out + checkout re-check) is scoped as US-MFTF-17.4. FIX (2026-08-15): buyer checkout hit 'Printify shipping quote (POST /orders/shipping.json) failed (404)' because PRINTIFY_SHOP_ID was unset in .env.local, so shop-scoped calls built a malformed /shops//orders/... path. The client now resolves the shop id (resolvePrintifyShopId): PRINTIFY_SHOP_ID if set, else GET /shops.json once (cached), throwing a clear error if the account has no shop; shopPath is now async. Live-verified: shop 28204676 resolved, shipping calc → 200 {standard:475}. Setting PRINTIFY_SHOP_ID=28204676 still avoids the extra call. FIX #2 (2026-08-15): with the shop id resolved, order-create then 400'd (code 8150 'src/x/y/scale/angle required') — our print_areas used the PRODUCT-creation shape. The ORDER endpoint wants print_areas as an OBJECT keyed by position with the design URL: print_areas: { front: <url> } (Printify auto-centres). Fixed in createProviderOrder (dropped the /uploads step; positioned {src,x,y,scale,angle} form deferred to the 17.7 placement tool). docs/printify-api-notes.md updated. Still // UNVERIFIED: src=URL-vs-upload-id + the create RESPONSE shape — confirmed only by an order that reaches production (US-MFTF-17.3)."
     },
     {
       "id": "US-MFTF-17.3",
@@ -331,12 +331,12 @@
       "id": "US-MFTF-17.9",
       "epic": "Epic MFTF-17: Printify Integration",
       "title": "Order-Time Placement Wiring",
-      "status": "Tests Passing \u2014 pending live confirmation",
+      "status": "Tests Passing — pending live confirmation",
       "testWrittenDate": "2026-08-17",
       "testWrittenCommit": "34034e3",
       "testPassedDate": "2026-08-17",
       "testPassedCommit": "34034e3",
-      "notes": "Tests Passing \u2014 pending live confirmation (2026-08-17, TDD, tests RED before impl). The ~5-line order-time wiring anticipated in the original emerging-need note. toQuoteItem (src/lib/checkout/fanout.ts) reads the listing's saved ApparelListingPrintifyPlacement (added to foInclude) and attaches it to the ShippingQuoteItem as a new optional placement:{x,y,scale,angle} field; omitted when no row. PrintifyFulfillmentProvider.createProviderOrder emits the POSITIONED print_areas form { [pos]: [{ src, x, y, scale, angle }] } when item.placement is present, and the existing simple URL form { [pos]: '<url>' } when absent \u2014 zero regression risk for listings that never used the tool. No other provider touched; quoteShipping unaffected; buyer-opacity unaffected (placement is a seller-side production detail). Tests: __tests__/mftf-17-printify/US-MFTF-17.9-printify-positioned-order.test.ts (4: provider positioned-vs-simple + a regression pin on the simple form protecting every already-live listing; fan-out end-to-end with/without a saved placement row). 4 green; broad fulfillment/checkout regression (39 files / 252 tests incl. mftf-3/12/14/15/17) green. HELD at pending-live-confirmation (NOT Passed), per the epic convention: whether the positioned form (and src=URL) reaches Printify PRODUCTION correctly is // UNVERIFIED without a live order \u2014 confirm by piggybacking on US-MFTF-17.3, or a dedicated live check if 17.3 has closed by the time this ships. Depends on US-MFTF-17.8. NOTE (2026-08-17): a post-merge placement-tool UI polish (90% default design size, blank-not-lifestyle backdrop, edit-page colour swatches) explicitly PRESERVED this story's invariant -- defaultPlacement() stays scale 1 so a listing with NO saved row still emits the simple (auto-centre) form; only the tool's starting DISPLAY changed. See archived US-MFTF-17.8 notes."
+      "notes": "Tests Passing — pending live confirmation (2026-08-17, TDD, tests RED before impl). The ~5-line order-time wiring anticipated in the original emerging-need note. toQuoteItem (src/lib/checkout/fanout.ts) reads the listing's saved ApparelListingPrintifyPlacement (added to foInclude) and attaches it to the ShippingQuoteItem as a new optional placement:{x,y,scale,angle} field; omitted when no row. PrintifyFulfillmentProvider.createProviderOrder emits the POSITIONED print_areas form { [pos]: [{ src, x, y, scale, angle }] } when item.placement is present, and the existing simple URL form { [pos]: '<url>' } when absent — zero regression risk for listings that never used the tool. No other provider touched; quoteShipping unaffected; buyer-opacity unaffected (placement is a seller-side production detail). Tests: __tests__/mftf-17-printify/US-MFTF-17.9-printify-positioned-order.test.ts (4: provider positioned-vs-simple + a regression pin on the simple form protecting every already-live listing; fan-out end-to-end with/without a saved placement row). 4 green; broad fulfillment/checkout regression (39 files / 252 tests incl. mftf-3/12/14/15/17) green. HELD at pending-live-confirmation (NOT Passed), per the epic convention: whether the positioned form (and src=URL) reaches Printify PRODUCTION correctly is // UNVERIFIED without a live order — confirm by piggybacking on US-MFTF-17.3, or a dedicated live check if 17.3 has closed by the time this ships. Depends on US-MFTF-17.8. NOTE (2026-08-17): a post-merge placement-tool UI polish (90% default design size, blank-not-lifestyle backdrop, edit-page colour swatches) explicitly PRESERVED this story's invariant -- defaultPlacement() stays scale 1 so a listing with NO saved row still emits the simple (auto-centre) form; only the tool's starting DISPLAY changed. See archived US-MFTF-17.8 notes."
     },
     {
       "id": "US-MFTF-17.11",
@@ -347,7 +347,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "SCOPED 2026-08-16 (tdd-spec-session) at the outcome level, pending US-MFTF-17.10's finding (mirrors how US-MFTF-17.2 was scoped pending US-MFTF-17.1). A higher-fidelity save-time preview beyond US-MFTF-17.8's live-editing canvas \u2014 either the composite renderer at higher quality, or a Printify DRAFT-product mockup fetch, per whichever US-MFTF-17.10 recommends. Preview failure never blocks saving a placement. US-MFTF-17.10 itself (the mockup-call prototype spike) is tracked as a chore in the epic file only, no tracker row, same convention as US-MFTF-17.1."
+      "notes": "SCOPED 2026-08-16 (tdd-spec-session) at the outcome level, pending US-MFTF-17.10's finding (mirrors how US-MFTF-17.2 was scoped pending US-MFTF-17.1). A higher-fidelity save-time preview beyond US-MFTF-17.8's live-editing canvas — either the composite renderer at higher quality, or a Printify DRAFT-product mockup fetch, per whichever US-MFTF-17.10 recommends. Preview failure never blocks saving a placement. US-MFTF-17.10 itself (the mockup-call prototype spike) is tracked as a chore in the epic file only, no tracker row, same convention as US-MFTF-17.1."
     },
     {
       "id": "US-MFTF-17.12",
@@ -358,7 +358,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "PROPOSED 2026-08-18 (tdd-spec-session), PENDING both-founder ratification \u2014 revises the US-MFTF-17.1 DESIGNED-only recommendation to make Printify DUAL-MODE (keep the DESIGNED lane US-MFTF-17.7-17.9; add a REFERENCED lane reusing MFTF-13). See spec/epics/mftf-17-printify-integration.md (US-MFTF-17.12-17.14 block). This story: ingest a Printify product built in our own shop (GET /shops/{shop}/products/{id}.json) into the existing MFTF-13 referenced schema additively \u2014 providerKey='printify', providerProductRef=product_id, ReferencedVariant.variantRef=integer variant_id, per-colour mockups from images[], colours+hex, sizes, stock, base price. Buyer-opaque; fail-open availability re-check (US-MFTF-17.4 pattern). Reaches Passed via MSW (read-only product shape verifiable any time, like 17.5); no dependency on 17.3. Blocks 17.13/17.14. Sequenced by launch-imagery need (not urgent: one seller, nothing live)."
+      "notes": "PROPOSED 2026-08-18 (tdd-spec-session), PENDING both-founder ratification — revises the US-MFTF-17.1 DESIGNED-only recommendation to make Printify DUAL-MODE (keep the DESIGNED lane US-MFTF-17.7-17.9; add a REFERENCED lane reusing MFTF-13). See spec/epics/mftf-17-printify-integration.md (US-MFTF-17.12-17.14 block). This story: ingest a Printify product built in our own shop (GET /shops/{shop}/products/{id}.json) into the existing MFTF-13 referenced schema additively — providerKey='printify', providerProductRef=product_id, ReferencedVariant.variantRef=integer variant_id, per-colour mockups from images[], colours+hex, sizes, stock, base price. Buyer-opaque; fail-open availability re-check (US-MFTF-17.4 pattern). Reaches Passed via MSW (read-only product shape verifiable any time, like 17.5); no dependency on 17.3. Blocks 17.13/17.14. Sequenced by launch-imagery need (not urgent: one seller, nothing live)."
     },
     {
       "id": "US-MFTF-17.13",
@@ -369,7 +369,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "PROPOSED 2026-08-18 (tdd-spec-session), PENDING both-founder ratification (dual-mode Printify \u2014 see epic file). Creation flow gains a Printify mode fork (DESIGNED upload vs REFERENCED product reference); Prodigi/Teemill stay single-mode, no fork, no buyer-facing branch. REFERENCED branch: paste a Printify product URL/id -> read-only resolve/preview (mockups+variants) -> ingest (US-MFTF-17.12) + create (providerKey='printify'), mirroring the Teemill US-MFTF-13.3 UX + reusing its components. Material-standard gate unchanged (manual curation). Depends on 17.12."
+      "notes": "PROPOSED 2026-08-18 (tdd-spec-session), PENDING both-founder ratification (dual-mode Printify — see epic file). Creation flow gains a Printify mode fork (DESIGNED upload vs REFERENCED product reference); Prodigi/Teemill stay single-mode, no fork, no buyer-facing branch. REFERENCED branch: paste a Printify product URL/id -> read-only resolve/preview (mockups+variants) -> ingest (US-MFTF-17.12) + create (providerKey='printify'), mirroring the Teemill US-MFTF-13.3 UX + reusing its components. Material-standard gate unchanged (manual curation). Depends on 17.12."
     },
     {
       "id": "US-MFTF-17.14",
@@ -380,7 +380,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "PROPOSED 2026-08-18 (tdd-spec-session), PENDING both-founder ratification (dual-mode Printify \u2014 see epic file). createProviderOrder emits the REFERENCED line form {product_id (from providerProductRef), variant_id (from ReferencedVariant), quantity} for a referenced-Printify item, distinct from the DESIGNED print_areas branch (US-MFTF-17.9) \u2014 provider forks by inspecting the item; a regression test pins that DESIGNED items still send print_areas. Two-step create->send-to-production unchanged. Re-sync/edit per US-MFTF-13.4 (read-only provider fields, 'Re-sync from Printify'). CANNOT reach Passed until a live referenced order confirms the product_id form reaches production (same // UNVERIFIED class as 17.9; piggyback 17.3); mark 'Tests Passing \u2014 pending live confirmation' once green vs MSW. Depends on 17.12/17.13."
+      "notes": "PROPOSED 2026-08-18 (tdd-spec-session), PENDING both-founder ratification (dual-mode Printify — see epic file). createProviderOrder emits the REFERENCED line form {product_id (from providerProductRef), variant_id (from ReferencedVariant), quantity} for a referenced-Printify item, distinct from the DESIGNED print_areas branch (US-MFTF-17.9) — provider forks by inspecting the item; a regression test pins that DESIGNED items still send print_areas. Two-step create->send-to-production unchanged. Re-sync/edit per US-MFTF-13.4 (read-only provider fields, 'Re-sync from Printify'). CANNOT reach Passed until a live referenced order confirms the product_id form reaches production (same // UNVERIFIED class as 17.9; piggyback 17.3); mark 'Tests Passing — pending live confirmation' once green vs MSW. Depends on 17.12/17.13."
     },
     {
       "id": "US-MFTF-18.1",
@@ -501,7 +501,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Category (kind MANUAL|ALL_APPAREL) + ApparelListingCategory many-to-many; Collection (kind MANUAL|AUTO_NEW) + CollectionListing with a nullable PIN|EXCLUDE override. Seeds Men's/Women's/Whatevs and New/Our Favorites. Whatevs is ALL_APPAREL (derived, never join rows); New is AUTO_NEW (recency window \u222a pins \u2212 excludes) behind one shared membership resolver so no page reimplements it. ALSO defines hasDurableGrouping(listingId) \u2014 true iff the listing has a MANUAL category or MANUAL collection membership, deliberately NOT counting Whatevs (everything is in it) or New (membership decays) \u2014 the single definition consumed by the US-MFTF-24.5 activation gate and the US-MFTF-24.3 last-grouping warning. Blocks every other story in the epic."
+      "notes": "Category (kind MANUAL|ALL_APPAREL) + ApparelListingCategory many-to-many; Collection (kind MANUAL|AUTO_NEW) + CollectionListing with a nullable PIN|EXCLUDE override. Seeds Men's/Women's/Whatevs and New/Our Favorites. Whatevs is ALL_APPAREL (derived, never join rows); New is AUTO_NEW (recency window ∪ pins − excludes) behind one shared membership resolver so no page reimplements it. ALSO defines hasDurableGrouping(listingId) — true iff the listing has a MANUAL category or MANUAL collection membership, deliberately NOT counting Whatevs (everything is in it) or New (membership decays) — the single definition consumed by the US-MFTF-24.5 activation gate and the US-MFTF-24.3 last-grouping warning. Blocks every other story in the epic."
     },
     {
       "id": "US-MFTF-24.2",
@@ -523,7 +523,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "/admin/collections CRUD + membership curation + reordering, admin-guarded (rejects seller and buyer, not just anonymous). The AUTO_NEW collection surfaces pin/exclude rather than add/remove and visibly distinguishes the three states. Seeded New and Our Favorites cannot be deleted (nav + breadcrumb default trail depend on them) but can be renamed/reordered/deactivated. LAST-GROUPING WARNING: deleting/deactivating a collection or removing a listing from one warns (advisory, non-blocking) when the action would leave ACTIVE listings with no durable grouping \u2014 this closes the one gap the US-MFTF-24.5 publish-time gate can't cover, since that gate stops a listing going live ungrouped but not a live listing losing its last grouping afterwards. Depends on US-MFTF-24.1."
+      "notes": "/admin/collections CRUD + membership curation + reordering, admin-guarded (rejects seller and buyer, not just anonymous). The AUTO_NEW collection surfaces pin/exclude rather than add/remove and visibly distinguishes the three states. Seeded New and Our Favorites cannot be deleted (nav + breadcrumb default trail depend on them) but can be renamed/reordered/deactivated. LAST-GROUPING WARNING: deleting/deactivating a collection or removing a listing from one warns (advisory, non-blocking) when the action would leave ACTIVE listings with no durable grouping — this closes the one gap the US-MFTF-24.5 publish-time gate can't cover, since that gate stops a listing going live ungrouped but not a live listing losing its last grouping afterwards. Depends on US-MFTF-24.1."
     },
     {
       "id": "US-MFTF-24.4",
@@ -534,7 +534,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "/shop/collections/[slug] + a /shop/collections index. MANUAL collections order by curated sortOrder; AUTO_NEW orders newest-first with pins first. One visibility rule for inactive collections applied to the index, the nav dropdown, and the page (404) \u2014 asserted together in one test so the three can't drift. Depends on US-MFTF-24.1 (and 24.3 for anything to curate)."
+      "notes": "/shop/collections/[slug] + a /shop/collections index. MANUAL collections order by curated sortOrder; AUTO_NEW orders newest-first with pins first. One visibility rule for inactive collections applied to the index, the nav dropdown, and the page (404) — asserted together in one test so the three can't drift. Depends on US-MFTF-24.1 (and 24.3 for anything to curate)."
     },
     {
       "id": "US-MFTF-24.5",
@@ -545,7 +545,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Multi-select for the MANUAL categories on both the designed (MFTF-5.3/5.4) and referenced (MFTF-13.3/13.4) listing forms \u2014 categorization must not branch on sourcingMode. Whatevs is never offered (it's automatic) and is rejected if injected into the payload directly. ACTIVATION GATE (founder-ratified 2026-08-17, revising an earlier optional-membership pass): a listing cannot be created as or transitioned to ACTIVE unless hasDurableGrouping is true; drafts save freely, matching the MFTF-PF publish-gate precedent. Enforced server-side in the action, not only by a disabled button. NOTE the gate is deliberately NOT 'is in New' \u2014 the founder's first formulation \u2014 because New is recency-derived, so every listing is in it at publish (the check could never fail) and drops out ~a window later (exactly when the listing becomes unreachable); a test pins the Whatevs+New-only case as rejected so this can't regress. Existing ACTIVE listings are logged, NOT auto-archived \u2014 a deliberate divergence from MFTF-PF's strict archive-on-deploy, since an uncategorized listing is a discoverability gap rather than a defective product. Depends on US-MFTF-24.1."
+      "notes": "Multi-select for the MANUAL categories on both the designed (MFTF-5.3/5.4) and referenced (MFTF-13.3/13.4) listing forms — categorization must not branch on sourcingMode. Whatevs is never offered (it's automatic) and is rejected if injected into the payload directly. ACTIVATION GATE (founder-ratified 2026-08-17, revising an earlier optional-membership pass): a listing cannot be created as or transitioned to ACTIVE unless hasDurableGrouping is true; drafts save freely, matching the MFTF-PF publish-gate precedent. Enforced server-side in the action, not only by a disabled button. NOTE the gate is deliberately NOT 'is in New' — the founder's first formulation — because New is recency-derived, so every listing is in it at publish (the check could never fail) and drops out ~a window later (exactly when the listing becomes unreachable); a test pins the Whatevs+New-only case as rejected so this can't regress. Existing ACTIVE listings are logged, NOT auto-archived — a deliberate divergence from MFTF-PF's strict archive-on-deploy, since an uncategorized listing is a discoverability gap rather than a defective product. Depends on US-MFTF-24.1."
     },
     {
       "id": "US-MFTF-24.6",
@@ -556,7 +556,7 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "REVISES US-MFTF-22.3 (still Not Started). Navigation context travels as a ?from=category:<slug>|collection:<slug> query param \u2014 URL-carried so it survives refresh, is server-rendered, and is unit-testable. Labels are ALWAYS resolved by DB lookup, never echoed from the param; an unknown, inactive, or non-member context falls back to the default trail so the breadcrumb never asserts a false path. Default trail (founder-specified): Home \u2192 Whatevs \u2192 first collection by Collection.sortOrder (ties by slug) \u2192 listing title. Canonical URL ignores ?from= (US-MFTF-22.2's no-query-string-drift rule) and the BreadcrumbList JSON-LD always emits the DEFAULT trail, never the visitor-specific one. Pure src/lib/apparel/breadcrumb.ts module mirrors the crop-geometry/placement-geometry precedent. Depends on US-MFTF-24.1/24.2/24.4."
+      "notes": "REVISES US-MFTF-22.3 (still Not Started). Navigation context travels as a ?from=category:<slug>|collection:<slug> query param — URL-carried so it survives refresh, is server-rendered, and is unit-testable. Labels are ALWAYS resolved by DB lookup, never echoed from the param; an unknown, inactive, or non-member context falls back to the default trail so the breadcrumb never asserts a false path. Default trail (founder-specified): Home → Whatevs → first collection by Collection.sortOrder (ties by slug) → listing title. Canonical URL ignores ?from= (US-MFTF-22.2's no-query-string-drift rule) and the BreadcrumbList JSON-LD always emits the DEFAULT trail, never the visitor-specific one. Pure src/lib/apparel/breadcrumb.ts module mirrors the crop-geometry/placement-geometry precedent. Depends on US-MFTF-24.1/24.2/24.4."
     },
     {
       "id": "US-MFTF-24.7",
@@ -567,7 +567,18 @@
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "Apparel dropdown in the primary nav: New, Men's, Women's, Whatevs, then remaining active collections (capped, with a 'See all collections' overflow link). Opens on hover AND keyboard focus \u2014 hover alone is keyboard-inaccessible \u2014 reusing the Epic 23 NavDropdown interaction contract (Escape returns focus, outside-click, aria-expanded, role=menu) rather than a second pattern; includes a close-delay/bridge for the diagonal-pointer failure mode. The trigger is itself a link to /shop. Data-driven, so deactivating a collection removes it with no code change. MobileMenu gets a tap-to-expand equivalent (no hover on touch). Depends on US-MFTF-24.1/24.2/24.4."
+      "notes": "Apparel dropdown in the primary nav: New, Men's, Women's, Whatevs, then remaining active collections (capped, with a 'See all collections' overflow link). Opens on hover AND keyboard focus — hover alone is keyboard-inaccessible — reusing the Epic 23 NavDropdown interaction contract (Escape returns focus, outside-click, aria-expanded, role=menu) rather than a second pattern; includes a close-delay/bridge for the diagonal-pointer failure mode. The trigger is itself a link to /shop. Data-driven, so deactivating a collection removes it with no code change. MobileMenu gets a tap-to-expand equivalent (no hover on touch). Depends on US-MFTF-24.1/24.2/24.4."
+    },
+    {
+      "id": "US-18.4",
+      "epic": "Epic 18: Image Upload & Processing Pipeline",
+      "title": "Seller-Specified Focal Point for the Browse-Grid Crop",
+      "status": "Tests Passing — pending live confirmation",
+      "testWrittenDate": "2026-08-20",
+      "testWrittenCommit": null,
+      "testPassedDate": null,
+      "testPassedCommit": null,
+      "notes": "Focal point (ArtworkImage.focalX/focalY Float @default(0.5)) lets sellers choose the square browse-grid crop; applied as object-position in ListingCard. Implemented 2026-08-20 (design-system adoption branch). Unit tests pass (focalToObjectPosition + ListingCard object-position, __tests__/epic-18-image-upload/US-18.4-focal-point.test.tsx). Schema synced to dev + test DBs via db push (this DB is db-push-managed; migrate history shows 0 applied). Migration file added for record: prisma/migrations/20260820120000_add_artwork_image_focal. PENDING LIVE: (1) dev server restart to load the regenerated Prisma client (running server 500s on browse/prints until reload); (2) seller click-test of the FocalPointPicker on the edit page (needs a seller login)."
     }
   ],
   "commits": [
@@ -576,7 +587,7 @@
       "date": "2026-05-09",
       "author": "Claude Sonnet 4.6",
       "storiesAffected": [],
-      "message": "chore: project scaffolding \u2014 Next.js, Prisma schema, test infrastructure",
+      "message": "chore: project scaffolding — Next.js, Prisma schema, test infrastructure",
       "trackerUpdated": true
     },
     {
@@ -588,7 +599,7 @@
         "US-6.2",
         "US-6.3"
       ],
-      "message": "feat(epic-6): implement US-6.1 through US-6.3 \u2014 user accounts and authentication",
+      "message": "feat(epic-6): implement US-6.1 through US-6.3 — user accounts and authentication",
       "trackerUpdated": true
     },
     {
@@ -603,7 +614,7 @@
         "US-1.5",
         "US-1.6"
       ],
-      "message": "feat(epic-1): implement US-1.1 through US-1.6 \u2014 artwork listing and product page",
+      "message": "feat(epic-1): implement US-1.1 through US-1.6 — artwork listing and product page",
       "trackerUpdated": true
     },
     {
@@ -619,7 +630,7 @@
       "date": "2026-05-09",
       "author": "Claude Sonnet 4.6",
       "storiesAffected": [],
-      "message": "feat: navigable site shell \u2014 homepage, nav, footer, stub pages for browse/sign-in/sign-up/sell",
+      "message": "feat: navigable site shell — homepage, nav, footer, stub pages for browse/sign-in/sign-up/sell",
       "trackerUpdated": true
     },
     {
@@ -632,7 +643,7 @@
         "US-7.3",
         "US-7.4"
       ],
-      "message": "feat(epic-7): implement US-7.1 through US-7.4 \u2014 browsing, filtering, search, unified display",
+      "message": "feat(epic-7): implement US-7.1 through US-7.4 — browsing, filtering, search, unified display",
       "trackerUpdated": true
     },
     {
@@ -645,7 +656,7 @@
         "US-2.3",
         "US-2.4"
       ],
-      "message": "feat(epic-2): implement US-2.1 through US-2.4 \u2014 fixed-price sales",
+      "message": "feat(epic-2): implement US-2.1 through US-2.4 — fixed-price sales",
       "trackerUpdated": true
     },
     {
@@ -670,7 +681,7 @@
         "US-4.4",
         "US-4.5"
       ],
-      "message": "feat(epic-4): implement US-4.1\u20134.5 \u2014 payments via Stripe",
+      "message": "feat(epic-4): implement US-4.1–4.5 — payments via Stripe",
       "trackerUpdated": true
     },
     {
@@ -688,7 +699,7 @@
       "storiesAffected": [
         "US-13.1"
       ],
-      "message": "feat(epic-13): implement US-13.1 \u2014 admin dashboard homepage",
+      "message": "feat(epic-13): implement US-13.1 — admin dashboard homepage",
       "trackerUpdated": true
     },
     {
@@ -698,7 +709,7 @@
       "storiesAffected": [
         "US-13.2"
       ],
-      "message": "feat(epic-13): implement US-13.2 \u2014 seller dashboard homepage",
+      "message": "feat(epic-13): implement US-13.2 — seller dashboard homepage",
       "trackerUpdated": true
     },
     {
@@ -708,7 +719,7 @@
       "storiesAffected": [
         "US-13.3"
       ],
-      "message": "feat(epic-13): implement US-13.3 \u2014 buyer dashboard homepage",
+      "message": "feat(epic-13): implement US-13.3 — buyer dashboard homepage",
       "trackerUpdated": true
     },
     {
@@ -745,7 +756,7 @@
       "storiesAffected": [
         "US-10.1"
       ],
-      "message": "feat(epic-10): implement US-10.1 \u2014 browse gallery layout",
+      "message": "feat(epic-10): implement US-10.1 — browse gallery layout",
       "trackerUpdated": true
     },
     {
@@ -755,7 +766,7 @@
       "storiesAffected": [
         "US-10.2"
       ],
-      "message": "feat(epic-10): implement US-10.2 \u2014 listing detail page",
+      "message": "feat(epic-10): implement US-10.2 — listing detail page",
       "trackerUpdated": true
     },
     {
@@ -770,7 +781,7 @@
       "storiesAffected": [
         "US-15.1"
       ],
-      "message": "feat(epic-15): implement US-15.1 \u2014 buy from listing page (fixed-price)",
+      "message": "feat(epic-15): implement US-15.1 — buy from listing page (fixed-price)",
       "trackerUpdated": true
     },
     {
@@ -780,7 +791,7 @@
       "storiesAffected": [
         "US-15.2"
       ],
-      "message": "feat(epic-15): implement US-15.2 \u2014 print availability toggle on OriginalListing",
+      "message": "feat(epic-15): implement US-15.2 — print availability toggle on OriginalListing",
       "trackerUpdated": true
     },
     {
@@ -790,7 +801,7 @@
       "storiesAffected": [
         "US-15.3"
       ],
-      "message": "feat(epic-15): implement US-15.3 \u2014 prints page with filtered browse",
+      "message": "feat(epic-15): implement US-15.3 — prints page with filtered browse",
       "trackerUpdated": true
     },
     {
@@ -800,7 +811,7 @@
       "storiesAffected": [
         "US-15.4"
       ],
-      "message": "feat(epic-15): implement US-15.4 \u2014 order a print from listing page",
+      "message": "feat(epic-15): implement US-15.4 — order a print from listing page",
       "trackerUpdated": true
     },
     {
@@ -813,7 +824,7 @@
         "US-19.3",
         "US-19.4"
       ],
-      "message": "feat(epic-19): implement US-19.1-19.4 \u2014 artwork image lightbox & magnifier",
+      "message": "feat(epic-19): implement US-19.1-19.4 — artwork image lightbox & magnifier",
       "trackerUpdated": true
     },
     {
@@ -874,7 +885,7 @@
       "storiesAffected": [
         "US-20.1"
       ],
-      "message": "chore: add Epic 20 Mobile Usability \u2014 US-20.1 Mobile Navigation",
+      "message": "chore: add Epic 20 Mobile Usability — US-20.1 Mobile Navigation",
       "trackerUpdated": true
     },
     {
@@ -899,7 +910,7 @@
       "storiesAffected": [
         "US-20.1"
       ],
-      "message": "feat(mobile-menu): active page indicator (underline+glow) and CSS focus ring \u2014 28 tests pass",
+      "message": "feat(mobile-menu): active page indicator (underline+glow) and CSS focus ring — 28 tests pass",
       "trackerUpdated": true
     },
     {
@@ -931,7 +942,7 @@
         "US-21.1",
         "US-21.2"
       ],
-      "message": "feat(epic-21): implement US-21.1 and US-21.2 \u2014 Stripe Checkout Sessions & payment confirmation",
+      "message": "feat(epic-21): implement US-21.1 and US-21.2 — Stripe Checkout Sessions & payment confirmation",
       "trackerUpdated": true
     },
     {
@@ -963,7 +974,7 @@
       "storiesAffected": [
         "US-21.2"
       ],
-      "message": "feat(epic-21): reverse fulfillment flow \u2014 payment first, shipping after",
+      "message": "feat(epic-21): reverse fulfillment flow — payment first, shipping after",
       "trackerUpdated": true
     },
     {
@@ -1019,7 +1030,7 @@
         "US-22.3",
         "US-22.4"
       ],
-      "message": "feat(epic-22): implement US-22.1 through US-22.4 \u2014 buyer order history & order detail",
+      "message": "feat(epic-22): implement US-22.1 through US-22.4 — buyer order history & order detail",
       "trackerUpdated": true
     },
     {
@@ -1037,7 +1048,7 @@
       "date": "2026-06-03",
       "author": "Claude Sonnet 4.6",
       "storiesAffected": [],
-      "message": "chore(tracker): log BUG-1 \u2014 portrait images rotated/cropped in variant generation",
+      "message": "chore(tracker): log BUG-1 — portrait images rotated/cropped in variant generation",
       "trackerUpdated": true
     },
     {
@@ -1069,12 +1080,12 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-08-18T21:30:33.000Z",
+  "lastUpdated": "2026-08-20T00:00:00.000Z",
   "statusLegend": {
     "Not Started": "No test written yet.",
     "Test Written": "Failing test committed; implementation not yet passing.",
     "Passed": "Test passing; testPassedCommit + testPassedDate recorded.",
-    "Tests Passing \u2014 pending live confirmation": "Implementation complete and full local/MSW test suite passes, but a story-level acceptance criterion depends on a live external-API fact not yet verified (e.g. Teemill webhook payload). Not promotable to Passed until the live-confirmation flag in the story resolves.",
+    "Tests Passing — pending live confirmation": "Implementation complete and full local/MSW test suite passes, but a story-level acceptance criterion depends on a live external-API fact not yet verified (e.g. Teemill webhook payload). Not promotable to Passed until the live-confirmation flag in the story resolves.",
     "Deferred": "Intentionally not scheduled; not rejected.",
     "Dropped": "Superseded or cancelled; will not be implemented as written."
   }

@@ -133,24 +133,14 @@ export default function ApparelProductView({
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      {/* Title + price header, centred above the grid as "{title} - {price}". */}
-      <div className="mb-8 flex flex-wrap items-baseline justify-center gap-x-2 text-center">
-        <h1 className="text-2xl font-semibold text-stone-900">
-          {detail.title}
-        </h1>
-        <span className="text-2xl text-stone-900">-</span>
-        <p className="text-2xl font-bold text-stone-900">
-          {price}
-          {priceSecondary && (
-            <span className="ml-2 text-sm font-normal text-stone-500">
-              ({priceSecondary})
-            </span>
-          )}
-        </p>
-      </div>
-
-      <div className="grid gap-10 lg:grid-cols-2">
-        {/* Carousel — shared component (src/components/Carousel.tsx). Controlled so
+      {/* Two-column product layout. Left: the carousel. Right: a full-height flex
+          column where the title + description float to the top and the colour/size
+          pickers + add-to-cart float to the bottom (`lg:items-stretch` gives the
+          right column the carousel's height so the top block can grow to fill it).
+          On mobile the whole right column simply stacks under the carousel, which
+          keeps the description paired with the colour/size options. */}
+      <div className="grid gap-10 lg:grid-cols-2 lg:items-stretch">
+        {/* Left column — carousel (src/components/Carousel.tsx). Controlled so
             selecting a colour can jump to that colour's mockup; manual carousel
             navigation just updates imageIndex and never changes colour/size. */}
         <Carousel
@@ -163,29 +153,40 @@ export default function ApparelProductView({
           onIndexChange={setImageIndex}
         />
 
-        {/* Description only. On large screens the grid row's height is set by the
-            carousel alone: this cell is `relative` and the description absolutely
-            fills it, scrolling when longer. On small screens (single column) it
-            flows at its natural height. */}
-        <div className="relative">
-          {detail.description && (
-            <div className="lg:absolute lg:inset-0 lg:overflow-y-auto">
-              <p className="whitespace-pre-line text-sm leading-relaxed text-stone-700">
-                {detail.description}
+        {/* Right column */}
+        <div className="flex flex-col gap-8">
+          {/* Top block — title (Zen Dots) + price + description, floated to the
+              top. On large screens it grows to fill the space above the controls;
+              a long description scrolls within it rather than stretching the row. */}
+          <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1">
+            <div>
+              <h1 className="font-display text-2xl font-semibold text-blue-slate">
+                {detail.title}
+              </h1>
+              <p className="mt-2 text-2xl font-bold text-cerulean">
+                {price}
+                {priceSecondary && (
+                  <span className="ml-2 text-sm font-normal text-dark-cyan">
+                    ({priceSecondary})
+                  </span>
+                )}
               </p>
             </div>
-          )}
-        </div>
-      </div>
+            {detail.description && (
+              <p className="whitespace-pre-line text-sm leading-relaxed text-muted lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                {detail.description}
+              </p>
+            )}
+          </div>
 
-      {/* Purchase controls beneath the grid */}
-      <div className="mt-10 space-y-6">
-        {/* Colour picker — inset 20% of the container's width on each side,
-            right-justified against the right inset. */}
+          {/* Bottom block — colour (left-justified) + size (right-justified) +
+              add-to-cart, floated to the bottom of the column. */}
+          <div className="flex flex-col gap-6">
+        {/* Colour picker — left-justified within the column. */}
         {detail.colors.length > 0 && (
-          <div className="px-[20%] text-right">
-            <p className="mb-2 text-sm font-medium text-stone-700">Color</p>
-            <div className="flex flex-wrap justify-end gap-2">
+          <div className="text-left">
+            <p className="mb-2 text-sm font-medium text-blue-slate">Color</p>
+            <div className="flex flex-wrap justify-start gap-2">
               {detail.colors.map((color, i) => {
                 const selected = colorIndex === i;
                 const soldOut = isColorSoldOut(color.name);
@@ -223,18 +224,17 @@ export default function ApparelProductView({
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-stone-500">
+            <p className="mt-2 text-xs text-dark-cyan">
               Colors shown are representative — exact shade may vary slightly by
               batch
             </p>
           </div>
         )}
 
-        {/* Size selector — inset 20% of the container's width on each side,
-            right-justified against the right inset. */}
+        {/* Size selector — right-justified within the column. */}
         {detail.sizes.length > 0 && (
-          <div role="group" aria-label="Size" className="px-[20%] text-right">
-            <p className="mb-2 text-sm font-medium text-stone-700">Size</p>
+          <div role="group" aria-label="Size" className="text-right">
+            <p className="mb-2 text-sm font-medium text-blue-slate">Size</p>
             <div className="flex flex-wrap justify-end gap-2">
               {detail.sizes.map((s) => {
                 const selected = size === s;
@@ -265,48 +265,52 @@ export default function ApparelProductView({
           </div>
         )}
 
-        {/* Add to cart (US-MFTF-11.2). The first colour is defaulted on load
-              (US-MFTF-16.2), so the button gates on size alone; the buyer stays
-              on the page and the nav badge updates. Centred at ~200px wide
-              (label measured so longer text can't overflow the button). */}
-        <button
-          type="button"
-          onClick={handleAddToCart}
-          disabled={!canAddToCart}
-          aria-disabled={!canAddToCart}
-          style={{ width: buttonWidth ?? undefined }}
-          className={`mx-auto block rounded-full py-3 text-sm font-medium transition-colors ${
-            canAddToCart
-              ? "bg-stone-900 text-white hover:bg-stone-700"
-              : "cursor-not-allowed bg-stone-200 text-stone-400"
-          }`}
-        >
-          <span ref={buttonTextRef} className="inline-block whitespace-nowrap">
-            {isPending ? "Adding…" : "Add to cart"}
-          </span>
-        </button>
-        {colorIndex === null ? (
-          <p className="-mt-3 text-center text-xs text-stone-400">
-            This item is currently unavailable
-          </p>
-        ) : size === null ? (
-          <p className="-mt-3 text-center text-xs text-stone-400">
-            Select a size to continue
-          </p>
-        ) : null}
-        {added && (
-          <p
-            role="status"
-            className="-mt-3 text-center text-xs font-medium text-emerald-700"
-          >
-            Added to cart
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="-mt-3 text-center text-xs text-rose-600">
-            {error}
-          </p>
-        )}
+            {/* Add to cart (US-MFTF-11.2). The first colour is defaulted on load
+                (US-MFTF-16.2), so the button gates on size alone; the buyer stays
+                on the page and the nav badge updates. Centred at ~200px wide
+                (label measured so longer text can't overflow the button). */}
+            <div>
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={!canAddToCart}
+                aria-disabled={!canAddToCart}
+                style={{ width: buttonWidth ?? undefined }}
+                className={`mx-auto block rounded-full py-3 text-sm font-medium transition-colors ${
+                  canAddToCart
+                    ? "bg-stone-900 text-white hover:bg-stone-700"
+                    : "cursor-not-allowed bg-stone-200 text-stone-400"
+                }`}
+              >
+                <span ref={buttonTextRef} className="inline-block whitespace-nowrap">
+                  {isPending ? "Adding…" : "Add to cart"}
+                </span>
+              </button>
+              {colorIndex === null ? (
+                <p className="mt-3 text-center text-xs text-stone-400">
+                  This item is currently unavailable
+                </p>
+              ) : size === null ? (
+                <p className="mt-3 text-center text-xs text-stone-400">
+                  Select a size to continue
+                </p>
+              ) : null}
+              {added && (
+                <p
+                  role="status"
+                  className="mt-3 text-center text-xs font-medium text-emerald-700"
+                >
+                  Added to cart
+                </p>
+              )}
+              {error && (
+                <p role="alert" className="mt-3 text-center text-xs text-rose-600">
+                  {error}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

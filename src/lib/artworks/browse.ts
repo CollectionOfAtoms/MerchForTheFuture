@@ -33,6 +33,9 @@ export interface ArtworkCard {
   sellerId: string;
   artist: string | null;
   primaryImageUrl: string | null;
+  /** Primary image focal point (each axis 0..1) for the square grid crop (US-18.4); null → centre. */
+  focalX?: number | null;
+  focalY?: number | null;
   hasOriginal: boolean;
   hasPrint: boolean;
   originalStatus: string | null;
@@ -156,6 +159,8 @@ function toCard(raw: Awaited<ReturnType<typeof fetchRaw>>[number]): ArtworkCard 
     sellerId: raw.sellerId,
     artist: raw.artist,
     primaryImageUrl: primaryImage?.url ?? null,
+    focalX: primaryImage?.focalX ?? null,
+    focalY: primaryImage?.focalY ?? null,
     hasOriginal: listing != null,
     hasPrint: listing?.availableForPrint ?? false,
     originalStatus: listing?.status ?? null,
@@ -167,7 +172,7 @@ function toCard(raw: Awaited<ReturnType<typeof fetchRaw>>[number]): ArtworkCard 
 }
 
 const artworkInclude = {
-  images: { select: { url: true, isPrimary: true } },
+  images: { select: { url: true, isPrimary: true, focalX: true, focalY: true } },
   originalListing: {
     select: { saleType: true, price: true, currency: true, status: true, availableForPrint: true, auction: { select: { startBid: true, currentBid: true, endAt: true } } },
   },

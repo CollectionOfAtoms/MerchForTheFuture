@@ -293,7 +293,7 @@ export default function DiscoverBento({ tiles }: { tiles: DiscoverTile[] }) {
   }
 
   return (
-    <div className="grid grid-flow-dense auto-rows-[160px] grid-cols-2 gap-3 sm:auto-rows-[180px] sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-flow-dense auto-rows-[160px] grid-cols-2 gap-3 sm:auto-rows-[180px] sm:grid-cols-3">
       {tiles.map((t, i) => (
         <TileCard key={`${t.kind}-${t.id}`} tile={t} i={i} />
       ))}
