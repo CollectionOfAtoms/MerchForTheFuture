@@ -22,6 +22,7 @@ const TYPE_WITH_IMAGES: ApparelProductTypeOption = {
   name: "Women's Baby Tee",
   description: null,
   stockImages: ["https://images.printify.com/a", "https://images.printify.com/b"],
+  isPrintify: false,
   colors: [{ id: "c1", colorName: "Black", colorImageUrl: null }],
   sizes: [{ id: "s1", sizeLabel: "M", sortOrder: 0 }],
 };

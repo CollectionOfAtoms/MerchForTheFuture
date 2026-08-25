@@ -74,6 +74,23 @@ interface RawProduct {
   variants?: RawVariant[];
 }
 
+/**
+ * Extract a Printify shop `product_id` from a pasted product URL or a bare id
+ * (US-MFTF-17.13). Printify product ids are 24-char hex (Mongo ObjectId); a merchant
+ * product URL looks like `https://printify.com/app/store/products/{id}`. Returns the
+ * 24-hex id found anywhere in the input, else a bare token with no whitespace/slashes,
+ * else null.
+ */
+export function parsePrintifyProductId(input: string | null | undefined): string | null {
+  const trimmed = (input ?? "").trim();
+  if (!trimmed) return null;
+  const hex = trimmed.match(/[0-9a-f]{24}/i);
+  if (hex) return hex[0];
+  // A bare id token that isn't 24-hex — accept it and let the API 404 if invalid.
+  if (!/[\s/]/.test(trimmed)) return trimmed;
+  return null;
+}
+
 /** The per-colour mockup for a variant: the product image whose variant_ids include it. */
 function mockupFor(variant: RawVariant, product: RawProduct): string | null {
   const match = product.images?.find((img) => img.variant_ids?.includes(variant.id));

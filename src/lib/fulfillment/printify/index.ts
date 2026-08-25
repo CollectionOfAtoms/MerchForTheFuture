@@ -1,4 +1,4 @@
-export { ingestPrintifyProduct, applyPrintifySnapshot } from "./ingest";
+export { ingestPrintifyProduct, applyPrintifySnapshot, parsePrintifyProductId } from "./ingest";
 export type {
   PrintifyProductSnapshot,
   PrintifyVariantSnapshot,

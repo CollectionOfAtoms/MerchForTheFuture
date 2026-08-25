@@ -9,6 +9,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 vi.mock("@/app/actions/referenced-apparel", () => ({
   resolveTeemillRefAction: vi.fn(),
   createReferencedListingAction: vi.fn(),
+  // Provider-aware form (US-MFTF-17.13) imports the Printify actions too.
+  resolvePrintifyRefAction: vi.fn(),
+  createReferencedPrintifyListingAction: vi.fn(),
 }));
 vi.mock("@vercel/blob/client", () => ({ upload: vi.fn() }));
 

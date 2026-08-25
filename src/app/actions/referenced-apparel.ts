@@ -7,6 +7,11 @@ import { prisma } from "@/lib/db";
 import { ingestTeemillProduct, applyTeemillSnapshot } from "@/lib/fulfillment/teemill";
 import type { TeemillProductSnapshot } from "@/lib/fulfillment/teemill";
 import {
+  ingestPrintifyProduct,
+  applyPrintifySnapshot,
+  parsePrintifyProductId,
+} from "@/lib/fulfillment/printify";
+import {
   referencedListingColors,
   referencedListingSizes,
   teemillDescriptionToText,
@@ -164,6 +169,125 @@ export async function createReferencedListingAction(
 
   // Cache the variant snapshot + provider base price / currency / fetchedAt.
   await applyTeemillSnapshot(listing.id, snapshot);
+
+  revalidatePath("/seller/listings");
+  redirect(`/seller/apparel/${listing.id}/edit`);
+}
+
+// ─── Printify REFERENCED lane (US-MFTF-17.13) ─────────────────────────────────
+// Printify is DUAL-MODE: DESIGNED (US-MFTF-17.2/17.7–17.9) and REFERENCED (this lane,
+// mirroring Teemill). These actions reuse the same ReferencedPreview shape and create
+// path, differing only in the ingest source (a product built in our own Printify shop,
+// resolved by product_id) and USD currency.
+
+/**
+ * Resolve a pasted Printify product URL/id into a Step-1 preview. Errors are returned
+ * so the form can re-surface "build the product in Printify first" guidance. USD
+ * throughout (Printify quotes USD); mirrors resolveTeemillRefAction.
+ */
+export async function resolvePrintifyRefAction(input: string): Promise<ResolveResult> {
+  const sellerId = await getSellerId();
+  if (!sellerId) return { error: "Unauthorized" };
+
+  const productId = parsePrintifyProductId(input);
+  if (!productId) {
+    return {
+      error:
+        "Paste your Printify product link or id. Build the product in Printify first, then copy its link.",
+    };
+  }
+
+  const ingest = await ingestPrintifyProduct(productId);
+  if (!ingest.ok) return { error: ingest.error };
+
+  const { snapshot } = ingest;
+  const mockups = [
+    ...new Set(snapshot.variants.map((v) => v.mockupUrl).filter((u): u is string => Boolean(u))),
+  ];
+  return {
+    preview: {
+      title: snapshot.title,
+      description: teemillDescriptionToText(snapshot.description),
+      providerBaseCurrency: snapshot.providerBaseCurrency,
+      providerBasePrice: snapshot.providerBasePrice,
+      colors: referencedListingColors(snapshot.variants),
+      sizes: referencedListingSizes(snapshot.variants),
+      mockups,
+      orderableCount: snapshot.variants.filter((v) => v.isOrderable).length,
+    },
+  };
+}
+
+/**
+ * Create a REFERENCED Printify listing from a pasted product URL/id. Mirrors
+ * createReferencedListingAction (Teemill): resolves + validates, creates the listing
+ * with `providerKey = "printify"`, then caches the variant snapshot. The design lives
+ * on the Printify product — no design file is uploaded.
+ */
+export async function createReferencedPrintifyListingAction(
+  _prevState: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const sellerId = await getSellerId();
+  if (!sellerId) return { error: "Unauthorized" };
+
+  const productId = parsePrintifyProductId((formData.get("providerProductRef") as string | null) ?? "");
+  const title = (formData.get("title") as string | null)?.trim() ?? "";
+  const description = (formData.get("description") as string | null)?.trim() || null;
+  const retailPrice = parseFloat((formData.get("retailPrice") as string | null) ?? "");
+  const intent = (formData.get("intent") as string | null) ?? "publish";
+  const lifestyleImageUrls = formData.getAll("lifestyleImageUrl").map(String).filter(Boolean);
+
+  if (!title) return { error: "Title is required." };
+  if (!productId) {
+    return {
+      error:
+        "Paste your Printify product link or id. Build the product in Printify first, then copy its link.",
+    };
+  }
+  if (!isFinite(retailPrice) || retailPrice < 1) {
+    return { error: "Retail price must be at least $1." };
+  }
+  if (lifestyleImageUrls.length > MAX_LIFESTYLE_PHOTOS) {
+    return { error: `You can upload at most ${MAX_LIFESTYLE_PHOTOS} lifestyle photos.` };
+  }
+
+  const ingest = await ingestPrintifyProduct(productId);
+  if (!ingest.ok) {
+    return {
+      error: `${ingest.error} Build the product in Printify first, then copy its product link and paste it here.`,
+    };
+  }
+  const { snapshot } = ingest;
+  if (!snapshot.variants.some((v) => v.isOrderable)) {
+    return { error: "That Printify product has no orderable variants in stock right now." };
+  }
+
+  const status = intent === "draft" ? "UNLISTED" : "ACTIVE";
+
+  const listing = await prisma.apparelListing.create({
+    data: {
+      sellerId,
+      sourcingMode: "REFERENCED",
+      productTypeId: null,
+      designImageUrl: null,
+      title,
+      description,
+      retailPrice,
+      status,
+      providerKey: snapshot.providerKey,
+      providerProductRef: productId,
+      images: {
+        create: lifestyleImageUrls.map((originalUrl, i) => ({
+          originalUrl,
+          isPrimary: i === 0,
+          sortOrder: i,
+        })),
+      },
+    },
+  });
+
+  await applyPrintifySnapshot(listing.id, snapshot);
 
   revalidatePath("/seller/listings");
   redirect(`/seller/apparel/${listing.id}/edit`);

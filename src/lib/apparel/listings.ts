@@ -36,6 +36,10 @@ export async function getActiveProductTypesForListing() {
     description: pt.description,
     // Provider stock/catalog images shown to the seller as design reference (US-MFTF-17.6).
     stockImages: toStockImages(pt.stockImageUrls),
+    // A narrow capability flag (NOT the SKU/provider identity that stays excluded):
+    // Printify is dual-mode, so the DESIGNED form points sellers at the REFERENCED
+    // lane, which gives Printify's automatic per-colour mockups (US-MFTF-17.13).
+    isPrintify: pt.fulfillmentProvider === "PRINTIFY",
     colors: pt.colors.map((c) => ({
       id: c.id,
       colorName: c.colorName,

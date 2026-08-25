@@ -10,8 +10,8 @@
     "totalAllTime": 231,
     "byStatus": {
       "Deferred": 8,
-      "Not Started": 31,
-      "Tests Passing — pending live confirmation": 6
+      "Not Started": 30,
+      "Tests Passing — pending live confirmation": 7
     }
   },
   "epicOrder": {
@@ -364,12 +364,12 @@
       "id": "US-MFTF-17.13",
       "epic": "Epic MFTF-17: Printify Integration",
       "title": "New referenced Printify listing flow + DESIGNED-vs-REFERENCED fork",
-      "status": "Not Started",
-      "testWrittenDate": null,
+      "status": "Tests Passing — pending live confirmation",
+      "testWrittenDate": "2026-08-25",
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "RATIFIED by both founders 2026-08-25 (proposed 2026-08-18 tdd-spec-session) (dual-mode Printify — see epic file). Creation flow gains a Printify mode fork (DESIGNED upload vs REFERENCED product reference); Prodigi/Teemill stay single-mode, no fork, no buyer-facing branch. REFERENCED branch: paste a Printify product URL/id -> read-only resolve/preview (mockups+variants) -> ingest (US-MFTF-17.12) + create (providerKey='printify'), mirroring the Teemill US-MFTF-13.3 UX + reusing its components. Material-standard gate unchanged (manual curation). Depends on 17.12."
+      "notes": "RATIFIED by both founders 2026-08-25 (proposed 2026-08-18). Printify referenced creation flow + DESIGNED-vs-REFERENCED presence implemented via TDD (19 tests green: US-MFTF-17.13-resolve-printify-product.test.ts + US-MFTF-17.13-printify-mode-fork.test.tsx). Server: parsePrintifyProductId (URL/id → product_id), resolvePrintifyRefAction (preview, USD), createReferencedPrintifyListingAction (providerKey='printify', reuses applyPrintifySnapshot) in src/app/actions/referenced-apparel.ts. UI: NewReferencedListingForm is now provider-aware (Teemill default | Printify fork — own field/guidance/link, USD cost; Teemill copy/behaviour unchanged so 13.3 tests pass). Per founder direction, Printify sits under BOTH types: the DESIGNED form (NewApparelListingForm) shows an advisory note recommending the referenced lane (automatic per-colour mockups) when a Printify product type is selected — required a narrow isPrintify capability flag on ApparelProductTypeOption (NOT the excluded SKU/provider identity; a deliberate, founder-directed opacity relaxation for Printify, which is already openly named in the referenced lane). Held at pending-live: inherits US-MFTF-17.12's // UNVERIFIED product-read shape (resolve/create call ingestPrintifyProduct). Depends on 17.12; blocks 17.14."
     },
     {
       "id": "US-MFTF-17.14",
