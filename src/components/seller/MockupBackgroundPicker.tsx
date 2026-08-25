@@ -11,8 +11,9 @@ import {
 import { BACKGROUND_DESIGNS } from "@/lib/apparel/background-designs";
 
 /**
- * Per-mockup background picker (US-MFTF-19.7). For each transparent Teemill mockup
- * (keyed by its colour), the seller picks a colour swatch, a free colour (colour
+ * Per-mockup background picker (US-MFTF-19.7). For each referenced mockup with a
+ * transparent background (Teemill, or a Printify product whose mockups are transparent),
+ * keyed by its colour, the seller picks a colour swatch, a free colour (colour
  * picker), or a design thumbnail; the choice composites behind the mockup at render
  * time (the stored image is untouched). Controlled: the parent owns the background
  * map so the edit page's preview carousel updates live as the seller drags the
@@ -65,8 +66,8 @@ export default function MockupBackgroundPicker({
     <div className="space-y-4">
       <h2 className="text-sm font-semibold text-stone-800">Mockup backgrounds</h2>
       <p className="text-xs text-stone-500">
-        Teemill mockups have transparent backgrounds. Pick a backdrop for each — it shows behind
-        the mockup on the product page; the image itself isn&apos;t changed.
+        When a mockup has a transparent background, your chosen backdrop shows behind it on the
+        product page. Pick one for each — the mockup image itself isn&apos;t changed.
       </p>
       <ul className="space-y-3">
         {mockups.map((mk) => {

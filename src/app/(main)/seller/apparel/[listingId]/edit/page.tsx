@@ -59,7 +59,8 @@ export default async function EditApparelListingPage({
           <div>
             <h1 className="text-2xl font-semibold text-stone-900">Edit referenced listing</h1>
             <p className="mt-1 text-sm text-stone-500">
-              Update your price and photos, or re-sync the latest from Teemill.
+              Update your price and photos, or re-sync the latest from{" "}
+              {referenced.providerKey === "printify" ? "Printify" : "Teemill"}.
             </p>
           </div>
           <ViewListingButton listingId={referenced.id} status={referenced.status} />

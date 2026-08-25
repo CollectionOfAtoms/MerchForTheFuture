@@ -58,6 +58,16 @@ export async function resolvePrintifyShopId(): Promise<string> {
   return cachedShopId;
 }
 
+/**
+ * Deep link to a product's editor in the Printify merchant app (US-MFTF-17.14 — the
+ * referenced edit page's "Edit on Printify" link). Falls back to the products list
+ * when no id is known. // UNVERIFIED exact editor path.
+ */
+export function printifyProductEditUrl(productId: string | null | undefined): string {
+  const id = (productId ?? "").trim();
+  return id ? `https://printify.com/app/editor/${id}` : "https://printify.com/app/products";
+}
+
 /** Webhook signing secret (HMAC-SHA256 over the raw body). */
 export function getPrintifyWebhookSecret(): string {
   return process.env.PRINTIFY_WEBHOOK_SECRET ?? "";

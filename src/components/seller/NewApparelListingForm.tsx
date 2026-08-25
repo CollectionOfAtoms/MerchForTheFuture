@@ -182,6 +182,21 @@ export default function NewApparelListingForm({
           </select>
         </div>
 
+        {/* Printify is dual-mode: nudge the seller toward the REFERENCED lane, which
+            carries Printify's own automatic per-colour mockups instead of the composite
+            we generate for a designed listing (US-MFTF-17.13). */}
+        {selected?.isPrintify && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p>
+              For Printify, a <strong>referenced</strong> listing is preferred — it uses
+              Printify&apos;s automatic per-colour mockups instead of a generated preview.{" "}
+              <a href="/seller/apparel/new-referenced" className="font-medium underline">
+                Create a referenced Printify listing instead →
+              </a>
+            </p>
+          </div>
+        )}
+
         {/* Product reference images (US-MFTF-17.6): the blank's stock photos, so the
             seller can see what they're designing onto. Empty for product types with no
             captured imagery. */}

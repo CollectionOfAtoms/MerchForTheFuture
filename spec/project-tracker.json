@@ -10,8 +10,8 @@
     "totalAllTime": 231,
     "byStatus": {
       "Deferred": 8,
-      "Not Started": 32,
-      "Tests Passing — pending live confirmation": 5
+      "Not Started": 29,
+      "Tests Passing — pending live confirmation": 8
     }
   },
   "epicOrder": {
@@ -353,34 +353,34 @@
       "id": "US-MFTF-17.12",
       "epic": "Epic MFTF-17: Printify Integration",
       "title": "Printify REFERENCED Ingest (cache a shop product by product_id)",
-      "status": "Not Started",
-      "testWrittenDate": null,
+      "status": "Tests Passing — pending live confirmation",
+      "testWrittenDate": "2026-08-25",
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "PROPOSED 2026-08-18 (tdd-spec-session), PENDING both-founder ratification — revises the US-MFTF-17.1 DESIGNED-only recommendation to make Printify DUAL-MODE (keep the DESIGNED lane US-MFTF-17.7-17.9; add a REFERENCED lane reusing MFTF-13). See spec/epics/mftf-17-printify-integration.md (US-MFTF-17.12-17.14 block). This story: ingest a Printify product built in our own shop (GET /shops/{shop}/products/{id}.json) into the existing MFTF-13 referenced schema additively — providerKey='printify', providerProductRef=product_id, ReferencedVariant.variantRef=integer variant_id, per-colour mockups from images[], colours+hex, sizes, stock, base price. Buyer-opaque; fail-open availability re-check (US-MFTF-17.4 pattern). Reaches Passed via MSW (read-only product shape verifiable any time, like 17.5); no dependency on 17.3. Blocks 17.13/17.14. Sequenced by launch-imagery need (not urgent: one seller, nothing live)."
+      "notes": "RATIFIED by both founders 2026-08-25 (proposed 2026-08-18). REFERENCED Printify ingest implemented via TDD (13 tests green, __tests__/mftf-17-printify/US-MFTF-17.12-printify-referenced-ingest.test.ts). New: src/lib/fulfillment/printify/ingest.ts (ingestPrintifyProduct → GET /shops/{shop}/products/{id}.json → normalized snapshot; applyPrintifySnapshot → idempotent ReferencedVariant upsert + providerBasePrice/currency/snapshotFetchedAt), barrel src/lib/fulfillment/printify/index.ts; MSW product-read fixture (__tests__/mocks/printify-fixture.ts) + handler. Mirrors the Teemill 13.2 ingest wholesale; no schema change (reuses MFTF-13 providerKey='printify'/providerProductRef=product_id + ReferencedVariant.variantRef=integer variant_id-as-string). Renders through the existing getApparelListingDetail projection with ZERO buyer-facing change (no provider identity/ids); per-colour mockups from images[] by variant_ids; hex via colorNameToHex; USD base price cents→dollars; POD orderability = is_enabled && is_available (stockLevel 0, Teemill POD pattern). Held at pending-live (NOT Passed, despite the spec's 'MSW-Passable' note): the Printify PRODUCT-read variant/image shape is // UNVERIFIED — no product exists in the shop yet (docs/printify-api-notes.md). LIVE CHECK: once a real referenced product is built in the shop, confirm the product-read variant shape matches (options.color/size, images[].variant_ids) — read-only, can piggyback US-MFTF-17.3. Blocks 17.13/17.14. PRODUCT-READ SHAPE LIVE-VERIFIED 2026-08-25 (a real product now exists in the shop): the initial // UNVERIFIED guess was WRONG — variant.options is an array of option-value ids (order not fixed), not {color,size}; colour/size NAMES + hex live in product.options[].values[] (hex from values[].colors[0]); variant.cost (not price) is the base cost cents; is_enabled = merchant-offered (ingest only enabled), is_available = orderable. Parser rewritten to resolve via the option table + fixture updated to the real shape (docs/printify-api-notes.md updated). Symptom that surfaced it: a real referenced listing had empty colorName/sizeLabel so its mockups had no labels -> the edit-page background picker showed an empty box. Re-synced the founder's live listing ('The Future Gets Better'): 12 enabled variants across 3 colours, all mockups resolved, base cost $34.59. The read-shape live gate for 17.12 is now RESOLVED; remaining referenced pending-live is the end-to-end detail render + the live order (17.14)."
     },
     {
       "id": "US-MFTF-17.13",
       "epic": "Epic MFTF-17: Printify Integration",
       "title": "New referenced Printify listing flow + DESIGNED-vs-REFERENCED fork",
-      "status": "Not Started",
-      "testWrittenDate": null,
+      "status": "Tests Passing — pending live confirmation",
+      "testWrittenDate": "2026-08-25",
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "PROPOSED 2026-08-18 (tdd-spec-session), PENDING both-founder ratification (dual-mode Printify — see epic file). Creation flow gains a Printify mode fork (DESIGNED upload vs REFERENCED product reference); Prodigi/Teemill stay single-mode, no fork, no buyer-facing branch. REFERENCED branch: paste a Printify product URL/id -> read-only resolve/preview (mockups+variants) -> ingest (US-MFTF-17.12) + create (providerKey='printify'), mirroring the Teemill US-MFTF-13.3 UX + reusing its components. Material-standard gate unchanged (manual curation). Depends on 17.12."
+      "notes": "RATIFIED by both founders 2026-08-25 (proposed 2026-08-18). Printify referenced creation flow + DESIGNED-vs-REFERENCED presence implemented via TDD (19 tests green: US-MFTF-17.13-resolve-printify-product.test.ts + US-MFTF-17.13-printify-mode-fork.test.tsx). Server: parsePrintifyProductId (URL/id → product_id), resolvePrintifyRefAction (preview, USD), createReferencedPrintifyListingAction (providerKey='printify', reuses applyPrintifySnapshot) in src/app/actions/referenced-apparel.ts. UI: NewReferencedListingForm is now provider-aware (Teemill default | Printify fork — own field/guidance/link, USD cost; Teemill copy/behaviour unchanged so 13.3 tests pass). Per founder direction, Printify sits under BOTH types: the DESIGNED form (NewApparelListingForm) shows an advisory note recommending the referenced lane (automatic per-colour mockups) when a Printify product type is selected — required a narrow isPrintify capability flag on ApparelProductTypeOption (NOT the excluded SKU/provider identity; a deliberate, founder-directed opacity relaxation for Printify, which is already openly named in the referenced lane). Held at pending-live: inherits US-MFTF-17.12's // UNVERIFIED product-read shape (resolve/create call ingestPrintifyProduct). Depends on 17.12; blocks 17.14."
     },
     {
       "id": "US-MFTF-17.14",
       "epic": "Epic MFTF-17: Printify Integration",
       "title": "Referenced Printify Order + Re-sync",
-      "status": "Not Started",
-      "testWrittenDate": null,
+      "status": "Tests Passing — pending live confirmation",
+      "testWrittenDate": "2026-08-25",
       "testWrittenCommit": null,
       "testPassedDate": null,
       "testPassedCommit": null,
-      "notes": "PROPOSED 2026-08-18 (tdd-spec-session), PENDING both-founder ratification (dual-mode Printify — see epic file). createProviderOrder emits the REFERENCED line form {product_id (from providerProductRef), variant_id (from ReferencedVariant), quantity} for a referenced-Printify item, distinct from the DESIGNED print_areas branch (US-MFTF-17.9) — provider forks by inspecting the item; a regression test pins that DESIGNED items still send print_areas. Two-step create->send-to-production unchanged. Re-sync/edit per US-MFTF-13.4 (read-only provider fields, 'Re-sync from Printify'). CANNOT reach Passed until a live referenced order confirms the product_id form reaches production (same // UNVERIFIED class as 17.9; piggyback 17.3); mark 'Tests Passing — pending live confirmation' once green vs MSW. Depends on 17.12/17.13."
+      "notes": "RATIFIED by both founders 2026-08-25 (proposed 2026-08-18). Referenced Printify order + re-sync implemented via TDD (4 tests green, US-MFTF-17.14-referenced-order-resync.test.ts). PrintifyFulfillmentProvider.createProviderOrder now forks: a referenced item (carries variantRef) emits { product_id, variant_id: Number(variantRef), quantity }; a designed item (no variantRef) keeps the print_areas branch (US-MFTF-17.9) — regression test pins print_areas for designed. Fan-out (src/lib/checkout/fanout.ts) loads providerKey/providerProductRef and attaches printifyProductId to referenced-Printify items (routing already sends providerKey='printify' orders to the Printify provider, revalidate.ts). Added ShippingQuoteItem.printifyProductId. Re-sync: resyncReferencedListingAction is now provider-aware (Printify → ingestPrintifyProduct + applyPrintifySnapshot; diffSnapshot generalized + provider-named); preserves order-history variants (13.4 pattern). No other provider touched; buyer opacity unaffected. mftf-17 + mftf-12 suites green (199). PENDING LIVE: cannot reach Passed until a live referenced Printify order confirms the { product_id, variant_id } form reaches production (same // UNVERIFIED class as 17.9; piggyback US-MFTF-17.3 or a dedicated referenced live order). Depends on 17.12/17.13. EDIT SURFACE FIX (2026-08-25): the referenced edit page was Teemill-hardcoded — made EditReferencedListingForm provider-aware (From/Edit-on/Re-sync-from {providerName}, USD $ vs GBP £), renamed editOnTeemillUrl→providerEditUrl (getReferencedListingForEdit computes a Printify product-editor deep link via printifyProductEditUrl), generalized the carousel mockup badge, and hide the transparent-mockup background picker (US-MFTF-19.7) for Printify (opaque mockups). Test: US-MFTF-17.14-edit-referenced-printify.test.tsx; existing 13.4 edit tests updated for the field rename. FOLLOW-UP (2026-08-25, founder-requested): the per-mockup background picker (US-MFTF-19.7) is now available for Printify referenced listings too, not just Teemill — reverted the earlier Printify-hidden gate. The picker mechanism is provider-agnostic (keyed by colorName, composited at render); a backdrop shows only behind a transparent mockup, so it's a harmless no-op for an opaque one. Copy generalized (no longer Teemill-specific). MOCKUP BACKGROUND REMOVAL (2026-08-25, founder-requested): Printify mockups bake in an opaque WHITE studio background, so the US-MFTF-19.7 background picker was a no-op for them. Added removeWhiteBackground (src/lib/apparel/white-bg-removal.ts) — sharp-based EDGE-CONNECTED flood fill (only near-white reachable from the border goes transparent, so white inside the garment/design is preserved; faint edge halo is the accepted tradeoff). transparentizePrintifyMockups (src/lib/fulfillment/printify/mockups.ts) downloads each distinct raw Printify mockup, removes the white bg, uploads a transparent PNG to blob, and repoints the ReferencedVariant rows; best-effort per mockup, idempotent (skips already-blob URLs). Wired into createReferencedPrintifyListingAction + resyncReferencedListingAction (after applyPrintifySnapshot). Tests: white-bg-removal (flood-fill preserves a disconnected white island) + transparentize (blob/fetch mocked). Applied to the founder's live listing: 3 mockups → transparent, ~58% bg removed / 42% garment preserved, corners transparent + centre opaque."
     },
     {
       "id": "US-MFTF-18.1",
@@ -1080,7 +1080,7 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-08-20T00:00:00.000Z",
+  "lastUpdated": "2026-08-25T00:00:00.000Z",
   "statusLegend": {
     "Not Started": "No test written yet.",
     "Test Written": "Failing test committed; implementation not yet passing.",

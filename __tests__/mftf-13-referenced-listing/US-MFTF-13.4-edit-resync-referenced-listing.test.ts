@@ -301,7 +301,7 @@ describe("US-MFTF-13.4 — getReferencedListingForEdit", () => {
     expect(data!.colors.find((c) => c.colorName === "Evergreen")?.colorHex).toBe("#23312d");
     expect(data!.sizes.length).toBeGreaterThan(0);
     // Live-confirmed editor deep-link: /create-a-product/{slug}/?project={sub}.
-    expect(data!.editOnTeemillUrl).toBe(EXPECTED_EDIT_URL);
+    expect(data!.providerEditUrl).toBe(EXPECTED_EDIT_URL);
     expect(Number(data!.retailPrice)).toBe(32);
   });
 

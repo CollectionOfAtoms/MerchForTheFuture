@@ -133,6 +133,23 @@ export class PrintifyFulfillmentProvider extends FulfillmentProvider {
     // image id, and that the positioned form reaches production correctly — both confirm
     // only at a live order (US-MFTF-17.3 / the 17.9 live check).
     const lineItems = job.items.map((item) => {
+      // REFERENCED (US-MFTF-17.14): a product already built in our Printify shop is
+      // ordered by { product_id, variant_id } — the design/placement/mockups live on
+      // the product, so no print_areas travel on the order. A referenced item carries
+      // the Printify integer variant_id in `variantRef` plus the product_id; a designed
+      // item never has `variantRef`, so this fork can't misfire on designed lines.
+      if (item.variantRef) {
+        if (!item.printifyProductId) {
+          throw new Error("Printify referenced order line is missing the product_id");
+        }
+        return {
+          product_id: item.printifyProductId,
+          variant_id: Number(item.variantRef),
+          quantity: item.quantity,
+        };
+      }
+
+      // DESIGNED: the design asset travels on the order line's print_areas.
       const position = item.printArea ?? "front";
       let printAreas: Record<string, unknown> | undefined;
       if (item.sourceImageUrl) {

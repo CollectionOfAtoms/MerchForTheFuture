@@ -4,7 +4,9 @@ import { useActionState, useRef, useState, useTransition } from "react";
 import { upload } from "@vercel/blob/client";
 import {
   createReferencedListingAction,
+  createReferencedPrintifyListingAction,
   resolveTeemillRefAction,
+  resolvePrintifyRefAction,
   type ReferencedPreview,
 } from "@/app/actions/referenced-apparel";
 
@@ -19,19 +21,39 @@ const MAX_LIFESTYLE = 10;
 // Fallback only — the page passes a project-scoped designer URL
 // (https://teemill.com/create-a-product/?project={projectId}).
 const DEFAULT_TEEMILL_DESIGNER = "https://teemill.com/create-a-product/";
-// Indicative GBP→USD rate for a display-only margin hint. NOT a live FX call and
-// never used to compute the buyer's price (US-MFTF-13.3).
+// Printify's product builder (US-MFTF-17.13). The seller authors the product —
+// design + placement + generated mockups — in Printify, then references it here.
+const DEFAULT_PRINTIFY_BUILDER = "https://printify.com/app/products";
+// Indicative GBP→USD rate for a display-only margin hint on Teemill (GBP) products.
+// NOT a live FX call and never used to compute the buyer's price (US-MFTF-13.3).
+// Printify quotes USD, so no conversion is applied there.
 const INDICATIVE_GBP_USD = 1.27;
+
+type Provider = "teemill" | "printify";
 
 export default function NewReferencedListingForm({
   teemillDesignerUrl = DEFAULT_TEEMILL_DESIGNER,
+  printifyBuilderUrl = DEFAULT_PRINTIFY_BUILDER,
 }: {
   teemillDesignerUrl?: string;
+  printifyBuilderUrl?: string;
 }) {
-  const [state, action, pending] = useActionState(
+  const [provider, setProvider] = useState<Provider>("teemill");
+  const isPrintify = provider === "printify";
+
+  // One hook per provider action; the form binds the one matching the selected
+  // provider. Both are always called (rules of hooks), only one is wired up.
+  const [tState, tAction, tPending] = useActionState(
     createReferencedListingAction,
     undefined as { error: string } | undefined,
   );
+  const [pState, pAction, pPending] = useActionState(
+    createReferencedPrintifyListingAction,
+    undefined as { error: string } | undefined,
+  );
+  const state = isPrintify ? pState : tState;
+  const formAction = isPrintify ? pAction : tAction;
+  const pending = isPrintify ? pPending : tPending;
 
   const [ref, setRef] = useState("");
   const [resolving, startResolve] = useTransition();
@@ -44,10 +66,22 @@ export default function NewReferencedListingForm({
   const [lifestyleUploading, startLifestyle] = useTransition();
   const lifestyleRef = useRef<HTMLInputElement>(null);
 
+  function selectProvider(next: Provider) {
+    if (next === provider) return;
+    // A resolved preview belongs to one provider — clear it so a stale Teemill
+    // product can't be submitted through the Printify action (or vice versa).
+    setProvider(next);
+    setRef("");
+    setPreview(null);
+    setResolveError(null);
+  }
+
   function handleResolve() {
     setResolveError(null);
     startResolve(async () => {
-      const res = await resolveTeemillRefAction(ref);
+      const res = isPrintify
+        ? await resolvePrintifyRefAction(ref)
+        : await resolveTeemillRefAction(ref);
       if ("error" in res) {
         setPreview(null);
         setResolveError(res.error);
@@ -91,17 +125,24 @@ export default function NewReferencedListingForm({
     });
   }
 
+  // Provider-specific copy. Teemill wording is unchanged (US-MFTF-13.3); Printify
+  // mirrors it for the referenced lane (US-MFTF-17.13).
+  const providerName = isPrintify ? "Printify" : "Teemill";
+  const designerUrl = isPrintify ? printifyBuilderUrl : teemillDesignerUrl;
+  const currencySymbol = preview?.providerBaseCurrency === "USD" ? "$" : "£";
+
   const retailNum = parseFloat(retailPrice);
   const marginHint =
     preview && isFinite(retailNum) && retailNum > 0
-      ? retailNum - preview.providerBasePrice * INDICATIVE_GBP_USD
+      ? retailNum -
+        preview.providerBasePrice * (preview.providerBaseCurrency === "GBP" ? INDICATIVE_GBP_USD : 1)
       : null;
 
   const busy = pending || lifestyleUploading;
   const canSubmit = !busy && !!preview && isFinite(retailNum) && retailNum >= 1;
 
   return (
-    <form action={action} className="space-y-8">
+    <form action={formAction} className="space-y-8">
       {state && "error" in state && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {state.error}
@@ -114,43 +155,81 @@ export default function NewReferencedListingForm({
         <input key={url} type="hidden" name="lifestyleImageUrl" value={url} />
       ))}
 
-      {/* Step 1 — Reference a Teemill product */}
+      {/* Provider fork — which print provider owns this referenced product. */}
+      <div className="flex gap-2">
+        {(["teemill", "printify"] as Provider[]).map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => selectProvider(p)}
+            aria-pressed={provider === p}
+            className={`rounded-full border px-5 py-2 text-sm font-medium capitalize transition-colors ${
+              provider === p
+                ? "border-stone-900 bg-stone-900 text-white"
+                : "border-stone-300 text-stone-700 hover:bg-stone-50"
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+
+      {/* Step 1 — Reference a product */}
       <section className="rounded-2xl border border-stone-200 bg-white p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-stone-800">Reference a Teemill product</h2>
+        <h2 className="text-sm font-semibold text-stone-800">Reference a {providerName} product</h2>
 
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 space-y-2">
-          <p className="font-medium">Create your design on Teemill first.</p>
-          <p>
-            This form does <strong>not</strong> create the product — it references one that
-            already exists on Teemill. Design and publish your product on Teemill, then come back
-            and paste its link below.
-          </p>
-          <p>
-            Once your design is published on Teemill, open the product and copy its link (or ref)
-            from the address bar, then paste it here. Colours, sizes, and mockups come from the
-            Teemill product and can&apos;t be edited here.
-          </p>
+          {isPrintify ? (
+            <>
+              <p className="font-medium">Build the product in Printify first.</p>
+              <p>
+                This form does <strong>not</strong> create the product — it references one you
+                built in Printify. Design it, set its placement, and publish it in Printify, then
+                come back and paste its link below. Colours, sizes, and Printify&apos;s automatic
+                mockups come from that product and can&apos;t be edited here.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-medium">Create your design on Teemill first.</p>
+              <p>
+                This form does <strong>not</strong> create the product — it references one that
+                already exists on Teemill. Design and publish your product on Teemill, then come
+                back and paste its link below.
+              </p>
+              <p>
+                Once your design is published on Teemill, open the product and copy its link (or
+                ref) from the address bar, then paste it here. Colours, sizes, and mockups come from
+                the Teemill product and can&apos;t be edited here.
+              </p>
+            </>
+          )}
           <a
-            href={teemillDesignerUrl}
+            href={designerUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 rounded-full bg-stone-900 px-4 py-2 text-xs font-medium text-white hover:bg-stone-700"
           >
-            Open the Teemill designer ↗
+            {isPrintify ? "Open Printify ↗" : "Open the Teemill designer ↗"}
           </a>
         </div>
 
         <div>
-          <label htmlFor="teemillRef" className={LABEL}>
-            Teemill product link or ref <span className="text-red-400">*</span>
+          <label htmlFor="providerRef" className={LABEL}>
+            {providerName} product link or {isPrintify ? "id" : "ref"}{" "}
+            <span className="text-red-400">*</span>
           </label>
           <div className="flex gap-2">
             <input
-              id="teemillRef"
+              id="providerRef"
               type="text"
               value={ref}
               onChange={(e) => setRef(e.target.value)}
-              placeholder="https://teemill.com/product/…  or  the product ref"
+              placeholder={
+                isPrintify
+                  ? "https://printify.com/app/store/products/…  or  the product id"
+                  : "https://teemill.com/product/…  or  the product ref"
+              }
               className={FIELD}
             />
             <button
@@ -162,9 +241,7 @@ export default function NewReferencedListingForm({
               {resolving ? "Resolving…" : "Resolve"}
             </button>
           </div>
-          {resolveError && (
-            <p className="mt-2 text-sm text-red-600">{resolveError}</p>
-          )}
+          {resolveError && <p className="mt-2 text-sm text-red-600">{resolveError}</p>}
         </div>
 
         {preview && (
@@ -187,12 +264,13 @@ export default function NewReferencedListingForm({
               <div className="flex flex-wrap gap-2">
                 {preview.mockups.map((src) => (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img key={src} src={src} alt="Teemill mockup" className="h-20 w-20 rounded-lg object-cover" />
+                  <img key={src} src={src} alt={`${providerName} mockup`} className="h-20 w-20 rounded-lg object-cover" />
                 ))}
               </div>
             )}
             <p className="text-xs text-stone-500">
-              Your cost (Teemill, {preview.providerBaseCurrency}): £{preview.providerBasePrice.toFixed(2)}
+              Your cost ({providerName}, {preview.providerBaseCurrency}): {currencySymbol}
+              {preview.providerBasePrice.toFixed(2)}
             </p>
           </div>
         )}
@@ -220,7 +298,7 @@ export default function NewReferencedListingForm({
 
         <div>
           <label htmlFor="description" className={LABEL}>Description</label>
-          {/* Pre-filled from the Teemill product description; keyed so a fresh
+          {/* Pre-filled from the provider product description; keyed so a fresh
               resolve replaces the default. The seller can edit or clear it. */}
           <textarea
             id="description"
@@ -254,8 +332,10 @@ export default function NewReferencedListingForm({
           </div>
           {marginHint !== null && (
             <p className="mt-1.5 text-xs text-stone-400">
-              Indicative margin: ~${marginHint.toFixed(2)} (using an illustrative rate; not a live
-              conversion — for your eyeballing only).
+              Indicative margin: ~${marginHint.toFixed(2)}
+              {preview?.providerBaseCurrency === "GBP"
+                ? " (using an illustrative rate; not a live conversion — for your eyeballing only)."
+                : " (before shipping/tax — for your eyeballing only)."}
             </p>
           )}
         </div>
@@ -265,7 +345,7 @@ export default function NewReferencedListingForm({
       <section className="rounded-2xl border border-stone-200 bg-white p-6 space-y-5">
         <h2 className="text-sm font-semibold text-stone-800">Lifestyle photos</h2>
         <p className="text-xs text-stone-400">
-          Optional — if you don&apos;t add any, the Teemill mockups are used as the listing images.
+          Optional — if you don&apos;t add any, the {providerName} mockups are used as the listing images.
         </p>
 
         {lifestyleUrls.length > 0 && (
@@ -321,7 +401,7 @@ export default function NewReferencedListingForm({
           name="intent"
           value="publish"
           disabled={!canSubmit}
-          title={!preview ? "Resolve a Teemill product to continue" : undefined}
+          title={!preview ? `Resolve a ${providerName} product to continue` : undefined}
           className="rounded-full bg-stone-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50"
         >
           {pending ? "Publishing…" : "Publish"}

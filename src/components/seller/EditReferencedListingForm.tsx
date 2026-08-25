@@ -36,7 +36,8 @@ export interface ReferencedListingForForm {
   sizes: string[];
   images: { id: string; originalUrl: string }[];
   carouselImages: ReferencedCarouselImage[];
-  editOnTeemillUrl: string;
+  /** Deep link to the product on its provider (Teemill designer / Printify editor). */
+  providerEditUrl: string;
 }
 
 export default function EditReferencedListingForm({
@@ -46,6 +47,11 @@ export default function EditReferencedListingForm({
   listing: ReferencedListingForForm;
   costThresholds: BandThresholds;
 }) {
+  // Referenced mode names the provider openly. Printify listings must say "Printify"
+  // (and show USD $), Teemill listings "Teemill" (GBP £) — US-MFTF-17.14.
+  const providerName = listing.providerKey === "printify" ? "Printify" : "Teemill";
+  const currencySymbol = listing.providerBaseCurrency === "USD" ? "$" : "£";
+
   const action = updateReferencedListingAction.bind(null, listing.id);
   const [state, formAction, pending] = useActionState(
     action,
@@ -55,6 +61,13 @@ export default function EditReferencedListingForm({
   const [resyncing, startResync] = useTransition();
   const [resyncChanges, setResyncChanges] = useState<string[] | null>(null);
   const [resyncError, setResyncError] = useState<string | null>(null);
+
+  // The distinct per-colour mockups the background picker operates on. Empty when the
+  // provider product has no captured mockups, in which case the whole section is hidden
+  // (so no empty bordered box renders).
+  const mockups = listing.carouselImages
+    .filter((img) => img.kind === "mockup" && img.label)
+    .map((img) => ({ colorName: img.label as string, url: img.url }));
 
   // Lifted so the top preview carousel and the picker share one source of truth —
   // the picker updates this live (incl. the colour picker), so the preview reflects
@@ -87,19 +100,19 @@ export default function EditReferencedListingForm({
       <div className="rounded-2xl border border-stone-200 bg-white p-6 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-sm font-semibold text-stone-800">From Teemill</h2>
+            <h2 className="text-sm font-semibold text-stone-800">From {providerName}</h2>
             <p className="mt-1 text-xs text-stone-500">
-              Colours, sizes, mockups, and the design are owned by the Teemill product and can&apos;t
-              be edited here. Change them on Teemill, then re-sync to pull the updates in.
+              Colours, sizes, mockups, and the design are owned by the {providerName} product and can&apos;t
+              be edited here. Change them on {providerName}, then re-sync to pull the updates in.
             </p>
           </div>
           <a
-            href={listing.editOnTeemillUrl}
+            href={listing.providerEditUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="shrink-0 rounded-full border border-stone-300 px-4 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50"
           >
-            Edit on Teemill ↗
+            Edit on {providerName} ↗
           </a>
         </div>
 
@@ -118,7 +131,7 @@ export default function EditReferencedListingForm({
         <p className="text-xs text-stone-500">Sizes: {listing.sizes.join(", ")}</p>
         {listing.providerBasePrice != null && (
           <p className="text-xs text-stone-500">
-            Your cost (Teemill, {listing.providerBaseCurrency}): £{listing.providerBasePrice.toFixed(2)}
+            Your cost ({providerName}, {listing.providerBaseCurrency}): {currencySymbol}{listing.providerBasePrice.toFixed(2)}
           </p>
         )}
 
@@ -129,10 +142,10 @@ export default function EditReferencedListingForm({
             disabled={resyncing}
             className="rounded-full bg-stone-900 px-5 py-2 text-xs font-medium text-white hover:bg-stone-700 disabled:opacity-50"
           >
-            {resyncing ? "Re-syncing…" : "Re-sync from Teemill"}
+            {resyncing ? "Re-syncing…" : `Re-sync from ${providerName}`}
           </button>
           <span className="text-xs text-stone-400">
-            After editing on Teemill, re-sync to refresh stock, mockups, and base price.
+            After editing on {providerName}, re-sync to refresh stock, mockups, and base price.
           </span>
         </div>
 
@@ -140,7 +153,7 @@ export default function EditReferencedListingForm({
         {resyncChanges && (
           <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-xs text-stone-600">
             {resyncChanges.length === 0 ? (
-              <p>No changes — your listing already matches Teemill.</p>
+              <p>No changes — your listing already matches {providerName}.</p>
             ) : (
               <ul className="list-disc space-y-1 pl-4">
                 {resyncChanges.map((c, i) => (
@@ -152,17 +165,21 @@ export default function EditReferencedListingForm({
         )}
       </div>
 
-      {/* Per-mockup background selection (US-MFTF-19.7) */}
-      <div className="rounded-2xl border border-stone-200 bg-white p-6">
-        <MockupBackgroundPicker
-          listingId={listing.id}
-          mockups={listing.carouselImages
-            .filter((img) => img.kind === "mockup" && img.label)
-            .map((img) => ({ colorName: img.label as string, url: img.url }))}
-          backgrounds={backgrounds}
-          onChange={setBackgrounds}
-        />
-      </div>
+      {/* Per-mockup background selection (US-MFTF-19.7) — available for every referenced
+          provider (Teemill and Printify). The backdrop composites behind a mockup only
+          when that mockup has a transparent background, so it's a harmless no-op for an
+          opaque mockup while still giving the seller the control when it applies. Hidden
+          entirely when the product has no captured mockups. */}
+      {mockups.length > 0 && (
+        <div className="rounded-2xl border border-stone-200 bg-white p-6">
+          <MockupBackgroundPicker
+            listingId={listing.id}
+            mockups={mockups}
+            backgrounds={backgrounds}
+            onChange={setBackgrounds}
+          />
+        </div>
+      )}
 
       {/* Editable merchandising */}
       <form action={formAction} className="rounded-2xl border border-stone-200 bg-white p-6 space-y-5">

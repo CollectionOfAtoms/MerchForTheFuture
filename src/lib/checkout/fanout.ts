@@ -37,6 +37,10 @@ const foInclude = {
       apparelListing: {
         select: {
           sourcingMode: true,
+          // Referenced provider + product ref: a referenced-Printify line orders by
+          // { product_id (providerProductRef), variant_id (variantRef) } (US-MFTF-17.14).
+          providerKey: true,
+          providerProductRef: true,
           // The clean design file to print onto the blank (designed/Prodigi).
           designImageUrl: true,
           productType: {
@@ -89,7 +93,16 @@ async function toQuoteItem(item: LoadedFulfillmentOrder["items"][number]): Promi
       (v) => v.colorName === sel.colorId && v.sizeLabel === sel.sizeLabel,
     );
     if (variant) {
-      // Referenced (Teemill) — order by the cached variantRef.
+      // Referenced — order by the cached variantRef. Teemill orders by variantRef
+      // alone; referenced Printify (US-MFTF-17.14) also needs the product_id, so the
+      // provider can emit the { product_id, variant_id } line.
+      if (listing?.providerKey === "printify") {
+        return {
+          variantRef: variant.variantRef,
+          printifyProductId: listing.providerProductRef ?? undefined,
+          quantity: item.quantity,
+        };
+      }
       return { variantRef: variant.variantRef, quantity: item.quantity };
     }
     const pt = listing?.productType;

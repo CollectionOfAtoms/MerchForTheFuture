@@ -5,9 +5,16 @@ import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/re
 // Server actions are mocked so the client component can render in jsdom.
 const resolveTeemillRefAction = vi.fn();
 const createReferencedListingAction = vi.fn();
+// The form is provider-aware (US-MFTF-17.13) and imports the Printify actions too;
+// they must exist on the mock so useActionState binds a real function (unused here,
+// as these tests never switch to the Printify provider).
+const resolvePrintifyRefAction = vi.fn();
+const createReferencedPrintifyListingAction = vi.fn();
 vi.mock("@/app/actions/referenced-apparel", () => ({
   resolveTeemillRefAction: (...a: unknown[]) => resolveTeemillRefAction(...a),
   createReferencedListingAction: (...a: unknown[]) => createReferencedListingAction(...a),
+  resolvePrintifyRefAction: (...a: unknown[]) => resolvePrintifyRefAction(...a),
+  createReferencedPrintifyListingAction: (...a: unknown[]) => createReferencedPrintifyListingAction(...a),
 }));
 vi.mock("@vercel/blob/client", () => ({ upload: vi.fn() }));
 
