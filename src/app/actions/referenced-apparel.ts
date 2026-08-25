@@ -11,6 +11,7 @@ import {
   applyPrintifySnapshot,
   parsePrintifyProductId,
 } from "@/lib/fulfillment/printify";
+import type { PrintifyProductSnapshot } from "@/lib/fulfillment/printify";
 import {
   referencedListingColors,
   referencedListingSizes,
@@ -389,6 +390,13 @@ export async function setMockupBackgroundAction(
 
 type ResyncResult = { error: string } | { changes: string[] };
 
+/** Minimal snapshot shape the diff reads — satisfied by Teemill and Printify snapshots. */
+interface DiffSnapshot {
+  providerBaseCurrency: string;
+  providerBasePrice: number;
+  variants: { variantRef: string; colorName: string; sizeLabel: string; stockLevel: number }[];
+}
+
 /** Human-readable diff between the cached snapshot and a freshly-ingested one. */
 function diffSnapshot(
   oldVariants: {
@@ -398,7 +406,8 @@ function diffSnapshot(
     stockLevel: number;
   }[],
   oldBasePrice: number | null,
-  snapshot: TeemillProductSnapshot,
+  snapshot: DiffSnapshot,
+  providerName: string,
 ): string[] {
   const changes: string[] = [];
 
@@ -427,7 +436,7 @@ function diffSnapshot(
 
   for (const ov of oldVariants) {
     if (!newByRef.has(ov.variantRef)) {
-      changes.push(`${label(ov)} is no longer available on Teemill.`);
+      changes.push(`${label(ov)} is no longer available on ${providerName}.`);
     }
   }
 
@@ -440,10 +449,16 @@ export async function resyncReferencedListingAction(listingId: string): Promise<
   const { listing } = owned;
 
   if (!listing.providerProductRef) {
-    return { error: "This listing has no Teemill product ref to re-sync." };
+    return { error: "This listing has no provider product ref to re-sync." };
   }
 
-  const ingest = await ingestTeemillProduct(listing.providerProductRef);
+  // Re-run the ingest for the listing's provider (US-MFTF-17.14: Printify referenced
+  // re-sync mirrors the Teemill US-MFTF-13.4 flow, differing only in the ingest source).
+  const isPrintify = listing.providerKey === "printify";
+  const providerName = isPrintify ? "Printify" : "Teemill";
+  const ingest = isPrintify
+    ? await ingestPrintifyProduct(listing.providerProductRef)
+    : await ingestTeemillProduct(listing.providerProductRef);
   if (!ingest.ok) return { error: ingest.error };
   const { snapshot } = ingest;
 
@@ -451,6 +466,7 @@ export async function resyncReferencedListingAction(listingId: string): Promise<
     listing.referencedVariants,
     listing.providerBasePrice != null ? Number(listing.providerBasePrice) : null,
     snapshot,
+    providerName,
   );
 
   // Keep variants that vanished from the catalog but have order history — they
@@ -463,7 +479,11 @@ export async function resyncReferencedListingAction(listingId: string): Promise<
     .map((o) => o.externalSku)
     .filter((s): s is string => Boolean(s));
 
-  await applyTeemillSnapshot(listingId, snapshot, { preserveOrderableVariantRefs });
+  if (isPrintify) {
+    await applyPrintifySnapshot(listingId, snapshot as PrintifyProductSnapshot, { preserveOrderableVariantRefs });
+  } else {
+    await applyTeemillSnapshot(listingId, snapshot as TeemillProductSnapshot, { preserveOrderableVariantRefs });
+  }
 
   revalidatePath(editPath(listingId));
   return { changes };

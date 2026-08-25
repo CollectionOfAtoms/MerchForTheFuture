@@ -70,6 +70,13 @@ export interface ShippingQuoteItem {
   printifyBlueprintId?: number;
   printifyPrintProviderId?: number;
   printifyVariantId?: number;
+  /**
+   * Referenced Printify apparel (US-MFTF-17.14): the Printify `product_id` of a product
+   * built in our own shop. Present together with `variantRef` (the Printify integer
+   * `variant_id`, as a string) for a referenced-Printify line, which orders by
+   * { product_id, variant_id } — distinct from the designed `print_areas` branch.
+   */
+  printifyProductId?: string;
   /** Print area for the design asset (Prodigi apparel = "front"; prints = "default"). */
   printArea?: string;
   /**
