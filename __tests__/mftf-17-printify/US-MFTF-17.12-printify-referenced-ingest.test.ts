@@ -55,7 +55,7 @@ describe("US-MFTF-17.12 — ingestPrintifyProduct parser", () => {
     expect(hgSmall?.variantRef).toBe("17391");
   });
 
-  it("populates colour name + hex (via colorNameToHex)", async () => {
+  it("populates colour name + hex from the product option values (order-independent)", async () => {
     const result = await ingestPrintifyProduct(PRINTIFY_PRODUCT_ID);
     if (!result.ok) throw new Error("expected ok");
     const hg = result.snapshot.variants.find((v) => v.colorName === "Heather Grey");
@@ -74,11 +74,25 @@ describe("US-MFTF-17.12 — ingestPrintifyProduct parser", () => {
     expect(hg?.mockupUrl).not.toBe(black?.mockupUrl);
   });
 
-  it("parses USD base price from variant price cents (2200 → 22.00 USD)", async () => {
+  it("parses USD base cost from variant cost cents (2200 → 22.00 USD)", async () => {
     const result = await ingestPrintifyProduct(PRINTIFY_PRODUCT_ID);
     if (!result.ok) throw new Error("expected ok");
     expect(result.snapshot.providerBaseCurrency).toBe("USD");
     expect(result.snapshot.providerBasePrice).toBe(22);
+  });
+
+  it("ingests only merchant-enabled variants (a disabled variant is excluded)", async () => {
+    server.use(
+      http.get(PRODUCT_URL, () =>
+        HttpResponse.json(buildPrintifyReferencedProduct({ disabledVariantIds: [17402] })),
+      ),
+    );
+    const result = await ingestPrintifyProduct(PRINTIFY_PRODUCT_ID);
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.snapshot.variants).toHaveLength(3);
+    expect(
+      result.snapshot.variants.find((v) => v.colorName === "Black" && v.sizeLabel === "M"),
+    ).toBeUndefined();
   });
 
   it("derives isOrderable from enabled + available (Black/M is out of stock)", async () => {
@@ -178,7 +192,7 @@ describe("US-MFTF-17.12 — applyPrintifySnapshot persistence", () => {
 
     server.use(
       http.get(PRODUCT_URL, () =>
-        HttpResponse.json(buildPrintifyReferencedProduct({ price: 2500 })),
+        HttpResponse.json(buildPrintifyReferencedProduct({ cost: 2500 })),
       ),
     );
     const second = await ingestPrintifyProduct(PRINTIFY_PRODUCT_ID);

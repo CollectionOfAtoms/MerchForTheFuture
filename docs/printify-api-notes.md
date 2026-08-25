@@ -187,7 +187,30 @@ qualifying blueprint+provider styles by hand (done 2026-07-11 — "specific styl
 
 ---
 
-## Mockups  // UNVERIFIED
+## Product read — `GET /shops/{shop_id}/products/{id}.json`  // LIVE-VERIFIED 2026-08-25
+
+Used by the REFERENCED lane (US-MFTF-17.12). Verified against a real product built in the shop:
+
+- **`options`** — an array of option TYPE definitions, e.g.
+  `[{ name:"Colors", type:"color", values:[{ id, title, colors:["#hex"] }] }, { name:"Sizes", type:"size", values:[{ id, title }] }]`.
+  Colour hex comes from `values[].colors[0]`.
+- **`variants[]`** — `{ id (integer variant_id), title:"Black / S", cost, price, options:[valueId,…], is_enabled, is_available }`.
+  `variant.options` is an array of **option-value ids** (order NOT fixed — resolve each id against
+  the `options` value table to get colour vs size). `cost`/`price` are USD integer **cents** (`cost`
+  = our production cost, `price` = Printify's retail). `is_enabled` = the merchant offers this
+  variant (the full blueprint grid is present; the founder curates which combos to sell —
+  ingest only enabled ones); `is_available` = the print provider can currently fulfil it (the
+  orderability signal — a POD analog of Teemill stock).
+- **`images[]`** — `{ src, variant_ids:[…], position, is_default }`; the per-colour mockup for a
+  variant is the image whose `variant_ids` include that variant id.
+
+Corrected US-MFTF-17.12's initial guess (which assumed `variant.options = {color,size}` names) — that
+produced empty colour/size labels on the first real ingest; the parser now resolves via the option
+table. The read is safe to call read-only at any time (no order side-effect).
+
+---
+
+## Mockups  // LIVE-VERIFIED 2026-08-25 (see Product read above)
 
 Printify **generates** mockup images, but they are produced when a **product** is created/
 published in a shop, exposed on the product's `images[]` (each with `src`, `variant_ids`,

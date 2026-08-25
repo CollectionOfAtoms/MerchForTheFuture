@@ -45,10 +45,12 @@ export type PrintifyIngestResult =
   | { ok: false; error: string };
 
 // ─── Raw product shape (only the fields we read) ──────────────────────────────
-// // UNVERIFIED against the live API — no product exists in the shop yet
-// (docs/printify-api-notes.md). Follows the shape the US-MFTF-17.12 TDD Notes and the
-// catalog-variants fixture use: variant.options is {color,size} names; images carry
-// src + variant_ids + is_default.
+// Shape LIVE-VERIFIED 2026-08-25 against a real shop product. `product.options` is an
+// array of option TYPE definitions (a "color" type + a "size" type, each with an
+// id→title[+hex] value table); each `variant.options` is an array of value ids (order
+// not fixed) resolved against that table. `variant.cost` is our production cost in USD
+// cents; `is_enabled` = the merchant offers it, `is_available` = the print provider can
+// currently fulfil it (the orderability signal).
 
 interface RawImage {
   src: string;
@@ -56,12 +58,25 @@ interface RawImage {
   is_default?: boolean;
   position?: string;
 }
+interface RawOptionValue {
+  id: number;
+  title?: string;
+  colors?: string[];
+}
+interface RawOption {
+  name?: string;
+  type?: string; // "color" | "size" | …
+  values?: RawOptionValue[];
+}
 interface RawVariant {
   id: number;
   title?: string;
-  /** USD integer cents. */
+  /** Our production cost in USD integer cents. */
+  cost?: number;
+  /** Printify's retail price in USD integer cents. */
   price?: number;
-  options?: { color?: string; size?: string; colorHex?: string };
+  /** Option-value ids (colour + size), order not fixed — resolved via product.options. */
+  options?: number[];
   is_enabled?: boolean;
   is_available?: boolean;
 }
@@ -70,8 +85,26 @@ interface RawProduct {
   title?: string;
   description?: string | null;
   visible?: boolean;
+  options?: RawOption[];
   images?: RawImage[];
   variants?: RawVariant[];
+}
+
+interface ResolvedOptionValue {
+  type: string;
+  title: string;
+  hex?: string;
+}
+
+/** Build an option-value-id → { type, title, hex } lookup from product.options. */
+function buildOptionValueMap(product: RawProduct): Map<number, ResolvedOptionValue> {
+  const map = new Map<number, ResolvedOptionValue>();
+  for (const opt of product.options ?? []) {
+    for (const val of opt.values ?? []) {
+      map.set(val.id, { type: opt.type ?? "", title: val.title ?? "", hex: val.colors?.[0] });
+    }
+  }
+  return map;
 }
 
 /**
@@ -140,23 +173,43 @@ export async function ingestPrintifyProduct(productId: string): Promise<Printify
     return { ok: false, error: "Printify returned an unreadable response." };
   }
 
-  const rawVariants = product.variants ?? [];
-  const variants: PrintifyVariantSnapshot[] = rawVariants.map((v) => {
-    const colorName = v.options?.color ?? "";
+  const optionValues = buildOptionValueMap(product);
+  // Only the variants the merchant enabled are offered (a Printify product carries the
+  // full blueprint grid; the founder curates which colour/size combos to sell).
+  const offered = (product.variants ?? []).filter((v) => v.is_enabled !== false);
+
+  const variants: PrintifyVariantSnapshot[] = offered.map((v) => {
+    let colorName = "";
+    let colorHex = "";
+    let sizeLabel = "";
+    for (const id of v.options ?? []) {
+      const ov = optionValues.get(id);
+      if (!ov) continue;
+      if (ov.type === "color") {
+        colorName = ov.title;
+        if (ov.hex) colorHex = ov.hex;
+      } else if (ov.type === "size") {
+        sizeLabel = ov.title;
+      }
+    }
+    // Printify usually supplies the colour hex on the option value; fall back to our
+    // name→hex map only when it doesn't.
+    if (!colorHex) colorHex = colorNameToHex(colorName) ?? "";
     return {
       variantRef: String(v.id),
       colorName,
-      // Printify gives colour names only in the product read; derive an approximate
-      // hex (or use an option-supplied hex if present) so swatches render.
-      colorHex: v.options?.colorHex ?? colorNameToHex(colorName) ?? "",
-      sizeLabel: v.options?.size ?? "",
+      colorHex,
+      sizeLabel,
       stockLevel: 0,
-      isOrderable: v.is_enabled !== false && v.is_available !== false,
+      // Enabled variants that the print provider can't currently fulfil are cached but
+      // not orderable (checkout revalidation is the gate) — the Teemill isOrderable pattern.
+      isOrderable: v.is_available !== false,
       mockupUrl: mockupFor(v, product),
     };
   });
 
-  const priceCents = rawVariants[0]?.price ?? 0;
+  // Base cost for margin monitoring = Printify's production cost (USD cents → dollars).
+  const costCents = offered[0]?.cost ?? 0;
 
   return {
     ok: true,
@@ -166,7 +219,7 @@ export async function ingestPrintifyProduct(productId: string): Promise<Printify
       title: product.title ?? "",
       description: product.description ?? null,
       providerBaseCurrency: "USD",
-      providerBasePrice: priceCents / 100,
+      providerBasePrice: costCents / 100,
       variants,
     },
   };

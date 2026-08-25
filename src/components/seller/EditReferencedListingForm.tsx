@@ -62,6 +62,13 @@ export default function EditReferencedListingForm({
   const [resyncChanges, setResyncChanges] = useState<string[] | null>(null);
   const [resyncError, setResyncError] = useState<string | null>(null);
 
+  // The distinct per-colour mockups the background picker operates on. Empty when the
+  // provider product has no captured mockups, in which case the whole section is hidden
+  // (so no empty bordered box renders).
+  const mockups = listing.carouselImages
+    .filter((img) => img.kind === "mockup" && img.label)
+    .map((img) => ({ colorName: img.label as string, url: img.url }));
+
   // Lifted so the top preview carousel and the picker share one source of truth —
   // the picker updates this live (incl. the colour picker), so the preview reflects
   // a change before it's persisted.
@@ -161,17 +168,18 @@ export default function EditReferencedListingForm({
       {/* Per-mockup background selection (US-MFTF-19.7) — available for every referenced
           provider (Teemill and Printify). The backdrop composites behind a mockup only
           when that mockup has a transparent background, so it's a harmless no-op for an
-          opaque mockup while still giving the seller the control when it applies. */}
-      <div className="rounded-2xl border border-stone-200 bg-white p-6">
-        <MockupBackgroundPicker
-          listingId={listing.id}
-          mockups={listing.carouselImages
-            .filter((img) => img.kind === "mockup" && img.label)
-            .map((img) => ({ colorName: img.label as string, url: img.url }))}
-          backgrounds={backgrounds}
-          onChange={setBackgrounds}
-        />
-      </div>
+          opaque mockup while still giving the seller the control when it applies. Hidden
+          entirely when the product has no captured mockups. */}
+      {mockups.length > 0 && (
+        <div className="rounded-2xl border border-stone-200 bg-white p-6">
+          <MockupBackgroundPicker
+            listingId={listing.id}
+            mockups={mockups}
+            backgrounds={backgrounds}
+            onChange={setBackgrounds}
+          />
+        </div>
+      )}
 
       {/* Editable merchandising */}
       <form action={formAction} className="rounded-2xl border border-stone-200 bg-white p-6 space-y-5">

@@ -178,7 +178,7 @@ describe("US-MFTF-17.14 — resync a referenced Printify listing", () => {
     // Printify's price changes.
     server.use(
       http.get("https://api.printify.com/v1/shops/:shop/products/:id.json", () =>
-        HttpResponse.json(buildPrintifyReferencedProduct({ price: 2500 })),
+        HttpResponse.json(buildPrintifyReferencedProduct({ cost: 2500 })),
       ),
     );
     const res = await resyncReferencedListingAction(listingId);
