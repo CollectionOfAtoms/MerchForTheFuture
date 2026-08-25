@@ -2,16 +2,16 @@
   "_meta": {
     "description": "Active tracker — Not Started, Deferred, and pending-live-confirmation stories only. This is the file coding and handoff sessions should read for current project state. Passed and Dropped stories (177 as of the 2026-07-11 split) live in project-tracker-archive.json — read that file only for historical audits, not for day-to-day implementation work. See /spec/README.md for the full protocol.",
     "archiveFile": "project-tracker-archive.json",
-    "archiveStoryCount": 186
+    "archiveStoryCount": 187
   },
   "summary": {
-    "totalActive": 45,
-    "totalArchived": 186,
+    "totalActive": 44,
+    "totalArchived": 187,
     "totalAllTime": 231,
     "byStatus": {
       "Deferred": 8,
       "Not Started": 32,
-      "Tests Passing — pending live confirmation": 5
+      "Tests Passing — pending live confirmation": 4
     }
   },
   "epicOrder": {
@@ -568,17 +568,6 @@
       "testPassedDate": null,
       "testPassedCommit": null,
       "notes": "Apparel dropdown in the primary nav: New, Men's, Women's, Whatevs, then remaining active collections (capped, with a 'See all collections' overflow link). Opens on hover AND keyboard focus — hover alone is keyboard-inaccessible — reusing the Epic 23 NavDropdown interaction contract (Escape returns focus, outside-click, aria-expanded, role=menu) rather than a second pattern; includes a close-delay/bridge for the diagonal-pointer failure mode. The trigger is itself a link to /shop. Data-driven, so deactivating a collection removes it with no code change. MobileMenu gets a tap-to-expand equivalent (no hover on touch). Depends on US-MFTF-24.1/24.2/24.4."
-    },
-    {
-      "id": "US-18.4",
-      "epic": "Epic 18: Image Upload & Processing Pipeline",
-      "title": "Seller-Specified Focal Point for the Browse-Grid Crop",
-      "status": "Tests Passing — pending live confirmation",
-      "testWrittenDate": "2026-08-20",
-      "testWrittenCommit": null,
-      "testPassedDate": null,
-      "testPassedCommit": null,
-      "notes": "Focal point (ArtworkImage.focalX/focalY Float @default(0.5)) lets sellers choose the square browse-grid crop; applied as object-position in ListingCard. Implemented 2026-08-20 (design-system adoption branch). Unit tests pass (focalToObjectPosition + ListingCard object-position, __tests__/epic-18-image-upload/US-18.4-focal-point.test.tsx). Schema synced to dev + test DBs via db push (this DB is db-push-managed; migrate history shows 0 applied). Migration file added for record: prisma/migrations/20260820120000_add_artwork_image_focal. PENDING LIVE: (1) dev server restart to load the regenerated Prisma client (running server 500s on browse/prints until reload); (2) seller click-test of the FocalPointPicker on the edit page (needs a seller login)."
     }
   ],
   "commits": [
@@ -1080,7 +1069,7 @@
       "trackerUpdated": true
     }
   ],
-  "lastUpdated": "2026-08-20T00:00:00.000Z",
+  "lastUpdated": "2026-08-24T00:00:00.000Z",
   "statusLegend": {
     "Not Started": "No test written yet.",
     "Test Written": "Failing test committed; implementation not yet passing.",

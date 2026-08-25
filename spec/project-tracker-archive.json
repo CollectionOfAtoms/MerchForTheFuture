@@ -1248,6 +1248,17 @@
       "notes": "Regenerate button (\u21ba) on each image card in listing edit page. Calls regenerateVariantsAction server action which re-runs generateVariants for the given imageId. Auth-guarded (returns {error} not redirect), seller-ownership-checked; works for SOLD listings. EditListingForm images type updated to include displayUrl so ImageUploader does not re-queue already-processed images. BUG-2 fix included: deleteImageAction guards against deleting last image; \u2715 button hidden in UI when only one image remains."
     },
     {
+      "id": "US-18.4",
+      "epic": "Epic 18: Image Upload & Processing Pipeline",
+      "title": "Seller-Specified Focal Point for the Browse-Grid Crop",
+      "status": "Passed",
+      "testWrittenDate": "2026-08-20",
+      "testWrittenCommit": "0a05fef",
+      "testPassedDate": "2026-08-20",
+      "testPassedCommit": "0a05fef",
+      "notes": "Focal point (ArtworkImage.focalX/focalY Float @default(0.5)) lets sellers choose the square browse-grid crop; applied as object-position in ListingCard, projected via lib/artworks/browse.ts. Unit tests (focalToObjectPosition + ListingCard object-position, __tests__/epic-18-image-upload/US-18.4-focal-point.test.tsx) pass (5/5, vitest). Schema synced to dev + test DBs via db push (db-push-managed DB; migrate history shows 0 applied). Record-keeping migration: prisma/migrations/20260820120000_add_artwork_image_focal. LIVE CONFIRMED 2026-08-24: (1) dev server serves /browse + /prints 200 with the regenerated Prisma client (focalX select succeeds); existing images backfilled to 0.5/0.5. (2) Off-centre focal renders the correct object-position on browse + prints tiles (verified 20% 80%, 90% 10%; centre -> 50% 50%). (3) FocalPointPicker click AND drag on /seller/listings/[id]/edit place the marker, update the live square-crop preview, and persist via setImageFocalAction ('Saved'); the saved point round-trips to the browse tile (object-position 84% 84%). Dev DB restored to all-centre after verification."
+    },
+    {
       "id": "US-19.1",
       "epic": "Epic 19: Artwork Image Lightbox & Magnifier",
       "title": "Open Image Lightbox from Artwork Detail Page",
