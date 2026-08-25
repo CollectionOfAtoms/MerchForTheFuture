@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
 import { buildPoweredByPlantsCatalog } from "./teemill-fixture";
+import { buildPrintifyReferencedProduct } from "./printify-fixture";
 
 // ─── Stripe handlers ──────────────────────────────────────────────────────────
 const stripeHandlers = [
@@ -286,6 +287,13 @@ const printifyHandlers = [
     const body = showOOS ? full : full.filter((v) => v.id !== 17402); // Black/M OOS by default
     return HttpResponse.json({ variants: body });
   }),
+  // A product built in our own shop, read back by product_id for the REFERENCED
+  // lane (US-MFTF-17.12). Variant/image shape is // UNVERIFIED (no product exists in
+  // the shop yet) — follows the fixture shape the 17.12 TDD Notes prescribe. Tests
+  // override per-case for not-found / auth / price-change / out-of-stock paths.
+  http.get(`${PRINTIFY_BASE}/shops/:shop/products/:id.json`, () =>
+    HttpResponse.json(buildPrintifyReferencedProduct()),
+  ),
   // Shipping calc (creates no order) — USD integer cents.
   http.post(`${PRINTIFY_BASE}/shops/:shop/orders/shipping.json`, () =>
     HttpResponse.json({ standard: 1959, express: 2959 }),

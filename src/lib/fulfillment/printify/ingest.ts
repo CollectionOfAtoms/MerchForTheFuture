@@ -1,0 +1,221 @@
+import { prisma } from "@/lib/db";
+import { colorNameToHex } from "@/lib/apparel/color-hex";
+import { printifyGet, resolvePrintifyShopId } from "./client";
+
+// US-MFTF-17.12 — REFERENCED Printify ingest. Caches a product built in our OWN
+// Printify shop (`GET /shops/{shop_id}/products/{id}.json`) into the existing
+// MFTF-13 referenced schema, so a referenced Printify listing renders and orders
+// through the same normalized pipeline Teemill already uses. The design lives on the
+// Printify product (not on the order), exactly the Teemill (referenced) pattern with
+// the shop being ours.
+
+// ─── Normalized snapshot shape ────────────────────────────────────────────────
+
+export interface PrintifyVariantSnapshot {
+  /** The Printify integer `variant_id`, stored as a string (US-MFTF-17.14 orders by it). */
+  variantRef: string;
+  colorName: string;
+  colorHex: string;
+  sizeLabel: string;
+  /**
+   * Printify products are print-on-demand — the product read exposes no warehouse
+   * count — so this is always 0 and `isOrderable` (enabled + available) is the real
+   * orderability signal, mirroring the Teemill POD treatment (BUG-13).
+   */
+  stockLevel: number;
+  isOrderable: boolean;
+  mockupUrl: string | null;
+}
+
+export interface PrintifyProductSnapshot {
+  providerKey: "printify";
+  /** The Printify `product_id` (stored as providerProductRef). */
+  providerProductRef: string;
+  title: string;
+  /** The product description as returned by Printify (may be HTML). */
+  description: string | null;
+  providerBaseCurrency: "USD";
+  /** Base cost in USD dollars (Printify quotes integer cents; divided by 100). */
+  providerBasePrice: number;
+  variants: PrintifyVariantSnapshot[];
+}
+
+export type PrintifyIngestResult =
+  | { ok: true; snapshot: PrintifyProductSnapshot }
+  | { ok: false; error: string };
+
+// ─── Raw product shape (only the fields we read) ──────────────────────────────
+// // UNVERIFIED against the live API — no product exists in the shop yet
+// (docs/printify-api-notes.md). Follows the shape the US-MFTF-17.12 TDD Notes and the
+// catalog-variants fixture use: variant.options is {color,size} names; images carry
+// src + variant_ids + is_default.
+
+interface RawImage {
+  src: string;
+  variant_ids?: number[];
+  is_default?: boolean;
+  position?: string;
+}
+interface RawVariant {
+  id: number;
+  title?: string;
+  /** USD integer cents. */
+  price?: number;
+  options?: { color?: string; size?: string; colorHex?: string };
+  is_enabled?: boolean;
+  is_available?: boolean;
+}
+interface RawProduct {
+  id?: string;
+  title?: string;
+  description?: string | null;
+  visible?: boolean;
+  images?: RawImage[];
+  variants?: RawVariant[];
+}
+
+/** The per-colour mockup for a variant: the product image whose variant_ids include it. */
+function mockupFor(variant: RawVariant, product: RawProduct): string | null {
+  const match = product.images?.find((img) => img.variant_ids?.includes(variant.id));
+  return match?.src ?? null;
+}
+
+/**
+ * Resolve a Printify shop `product_id` into a normalized referenced snapshot.
+ * Returns `{ ok: false, error }` for not-found / auth / network failures — these are
+ * returned to the caller, never thrown (mirrors ingestTeemillProduct).
+ *
+ * No design file is uploaded or stored: the Printify product owns the design.
+ */
+export async function ingestPrintifyProduct(productId: string): Promise<PrintifyIngestResult> {
+  let shopId: string;
+  try {
+    shopId = await resolvePrintifyShopId();
+  } catch {
+    return { ok: false, error: "Could not reach Printify. Please try again." };
+  }
+
+  let resp: Response;
+  try {
+    resp = await printifyGet(`/shops/${shopId}/products/${productId}.json`);
+  } catch {
+    return { ok: false, error: "Could not reach Printify. Please try again." };
+  }
+
+  if (resp.status === 401 || resp.status === 403) {
+    return { ok: false, error: "Printify authentication failed." };
+  }
+  if (resp.status === 404) {
+    return {
+      ok: false,
+      error:
+        "We could not find that product in your Printify shop. Double-check the product URL or id you copied.",
+    };
+  }
+  if (!resp.ok) {
+    return { ok: false, error: `Printify returned an error (${resp.status}).` };
+  }
+
+  let product: RawProduct;
+  try {
+    product = (await resp.json()) as RawProduct;
+  } catch {
+    return { ok: false, error: "Printify returned an unreadable response." };
+  }
+
+  const rawVariants = product.variants ?? [];
+  const variants: PrintifyVariantSnapshot[] = rawVariants.map((v) => {
+    const colorName = v.options?.color ?? "";
+    return {
+      variantRef: String(v.id),
+      colorName,
+      // Printify gives colour names only in the product read; derive an approximate
+      // hex (or use an option-supplied hex if present) so swatches render.
+      colorHex: v.options?.colorHex ?? colorNameToHex(colorName) ?? "",
+      sizeLabel: v.options?.size ?? "",
+      stockLevel: 0,
+      isOrderable: v.is_enabled !== false && v.is_available !== false,
+      mockupUrl: mockupFor(v, product),
+    };
+  });
+
+  const priceCents = rawVariants[0]?.price ?? 0;
+
+  return {
+    ok: true,
+    snapshot: {
+      providerKey: "printify",
+      providerProductRef: productId,
+      title: product.title ?? "",
+      description: product.description ?? null,
+      providerBaseCurrency: "USD",
+      providerBasePrice: priceCents / 100,
+      variants,
+    },
+  };
+}
+
+/**
+ * Persist a Printify snapshot onto an existing apparel listing, idempotently.
+ * Replaces the listing's `ReferencedVariant` rows and refreshes the cached provider
+ * price / currency / `snapshotFetchedAt`. Re-running does not duplicate rows.
+ *
+ * `preserveOrderableVariantRefs` keeps a row that vanished from the product but has
+ * order history — marked `isOrderable: false` instead of deleted (US-MFTF-13.4).
+ * Mirrors applyTeemillSnapshot; a referenced Printify listing has no product slug.
+ */
+export async function applyPrintifySnapshot(
+  apparelListingId: string,
+  snapshot: PrintifyProductSnapshot,
+  opts: { preserveOrderableVariantRefs?: string[] } = {},
+): Promise<void> {
+  const keepRefs = new Set(opts.preserveOrderableVariantRefs ?? []);
+  const snapshotRefs = new Set(snapshot.variants.map((v) => v.variantRef));
+
+  await prisma.$transaction(async (tx) => {
+    await tx.referencedVariant.deleteMany({
+      where: {
+        apparelListingId,
+        variantRef: { notIn: [...snapshotRefs, ...keepRefs] },
+      },
+    });
+    await tx.referencedVariant.updateMany({
+      where: {
+        apparelListingId,
+        variantRef: { in: [...keepRefs].filter((r) => !snapshotRefs.has(r)) },
+      },
+      data: { isOrderable: false },
+    });
+
+    for (const v of snapshot.variants) {
+      const existing = await tx.referencedVariant.findFirst({
+        where: { apparelListingId, variantRef: v.variantRef },
+        select: { id: true },
+      });
+      const data = {
+        colorName: v.colorName,
+        colorHex: v.colorHex,
+        sizeLabel: v.sizeLabel,
+        stockLevel: v.stockLevel,
+        isOrderable: v.isOrderable,
+        mockupUrl: v.mockupUrl,
+      };
+      if (existing) {
+        await tx.referencedVariant.update({ where: { id: existing.id }, data });
+      } else {
+        await tx.referencedVariant.create({
+          data: { apparelListingId, variantRef: v.variantRef, ...data },
+        });
+      }
+    }
+
+    await tx.apparelListing.update({
+      where: { id: apparelListingId },
+      data: {
+        providerBaseCurrency: snapshot.providerBaseCurrency,
+        providerBasePrice: snapshot.providerBasePrice,
+        snapshotFetchedAt: new Date(),
+      },
+    });
+  });
+}

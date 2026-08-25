@@ -499,11 +499,11 @@ mode._
 
 ### US-MFTF-17.12 through US-MFTF-17.14 — Printify Dual-Mode (add a REFERENCED lane alongside DESIGNED)
 
-_**Proposed 2026-08-18 (`tdd-spec-session`), PENDING both-founder ratification** — it revises the
+_**Proposed 2026-08-18 (`tdd-spec-session`); RATIFIED by both founders 2026-08-25** — it revises the
 US-MFTF-17.1 spike's DESIGNED-only recommendation, so per this project's founder-ratified-decision
-convention it is not settled until both founders sign off. The stories below are `Not Started`
-(scoped, schedulable); if the co-founder wants a different direction they are dropped or revised
-rather than reworked._
+convention it needed both founders' sign-off before implementation. Both founders confirmed
+2026-08-25 that Printify should support DESIGNED **and** REFERENCED listings to leverage both lanes;
+implementation began the same day (US-MFTF-17.12 first)._
 
 _**The realisation:** Printify's order endpoint accepts line items in **two** forms — an ad-hoc
 DESIGNED form (`{ blueprint_id, print_provider_id, variant_id, print_areas: {…}, quantity }`, where
