@@ -5,3 +5,4 @@ export type {
   PrintifyIngestResult,
 } from "./ingest";
 export { printifyProductEditUrl } from "./client";
+export { transparentizePrintifyMockups, isRawPrintifyMockup } from "./mockups";

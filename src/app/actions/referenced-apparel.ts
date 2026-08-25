@@ -10,6 +10,7 @@ import {
   ingestPrintifyProduct,
   applyPrintifySnapshot,
   parsePrintifyProductId,
+  transparentizePrintifyMockups,
 } from "@/lib/fulfillment/printify";
 import type { PrintifyProductSnapshot } from "@/lib/fulfillment/printify";
 import {
@@ -289,6 +290,9 @@ export async function createReferencedPrintifyListingAction(
   });
 
   await applyPrintifySnapshot(listing.id, snapshot);
+  // Printify mockups bake in a white background — make them transparent so the seller's
+  // background picker (US-MFTF-19.7) can composite behind them.
+  await transparentizePrintifyMockups(listing.id);
 
   revalidatePath("/seller/listings");
   redirect(`/seller/apparel/${listing.id}/edit`);
@@ -481,6 +485,8 @@ export async function resyncReferencedListingAction(listingId: string): Promise<
 
   if (isPrintify) {
     await applyPrintifySnapshot(listingId, snapshot as PrintifyProductSnapshot, { preserveOrderableVariantRefs });
+    // Re-transparentize: applyPrintifySnapshot reset mockupUrl to the raw Printify URL.
+    await transparentizePrintifyMockups(listingId);
   } else {
     await applyTeemillSnapshot(listingId, snapshot as TeemillProductSnapshot, { preserveOrderableVariantRefs });
   }
