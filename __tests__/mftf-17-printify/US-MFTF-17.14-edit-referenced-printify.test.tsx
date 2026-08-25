@@ -80,4 +80,13 @@ describe("US-MFTF-17.14 — EditReferencedListingForm names Printify (not Teemil
     expect(cost.textContent).not.toContain("£");
     expect(cost.textContent).toContain("Printify");
   });
+
+  it("offers the per-mockup background picker for a Printify listing", () => {
+    render(<EditReferencedListingForm listing={listing} costThresholds={thresholds} />);
+    // The picker renders (its heading + a per-mockup colour control for the mockup).
+    expect(screen.getByRole("heading", { name: /mockup backgrounds/i })).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/heather grey custom background color/i),
+    ).toBeInTheDocument();
+  });
 });

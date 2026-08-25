@@ -158,22 +158,20 @@ export default function EditReferencedListingForm({
         )}
       </div>
 
-      {/* Per-mockup background selection (US-MFTF-19.7) — only for Teemill, whose
-          mockups are transparent PNGs that need a backdrop composited behind them.
-          Printify's generated mockups are opaque product photos, so a background is a
-          no-op; the picker is hidden for them (US-MFTF-17.14). */}
-      {providerName === "Teemill" && (
-        <div className="rounded-2xl border border-stone-200 bg-white p-6">
-          <MockupBackgroundPicker
-            listingId={listing.id}
-            mockups={listing.carouselImages
-              .filter((img) => img.kind === "mockup" && img.label)
-              .map((img) => ({ colorName: img.label as string, url: img.url }))}
-            backgrounds={backgrounds}
-            onChange={setBackgrounds}
-          />
-        </div>
-      )}
+      {/* Per-mockup background selection (US-MFTF-19.7) — available for every referenced
+          provider (Teemill and Printify). The backdrop composites behind a mockup only
+          when that mockup has a transparent background, so it's a harmless no-op for an
+          opaque mockup while still giving the seller the control when it applies. */}
+      <div className="rounded-2xl border border-stone-200 bg-white p-6">
+        <MockupBackgroundPicker
+          listingId={listing.id}
+          mockups={listing.carouselImages
+            .filter((img) => img.kind === "mockup" && img.label)
+            .map((img) => ({ colorName: img.label as string, url: img.url }))}
+          backgrounds={backgrounds}
+          onChange={setBackgrounds}
+        />
+      </div>
 
       {/* Editable merchandising */}
       <form action={formAction} className="rounded-2xl border border-stone-200 bg-white p-6 space-y-5">
