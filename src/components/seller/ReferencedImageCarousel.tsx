@@ -23,7 +23,9 @@ export default function ReferencedImageCarousel({
   const items: CarouselImage[] = images.map((img) => ({
     url: img.url,
     backgroundColor: img.kind === "mockup" ? resolveMockupBackground(backgrounds, img.label) : null,
-    badge: img.kind === "mockup" ? `Teemill mockup${img.label ? ` · ${img.label}` : ""}` : "Lifestyle photo",
+    // Generic "Mockup" — the provider (Teemill/Printify) is named in the edit banner,
+    // so the per-image badge stays provider-neutral (US-MFTF-17.14).
+    badge: img.kind === "mockup" ? `Mockup${img.label ? ` · ${img.label}` : ""}` : "Lifestyle photo",
   }));
 
   return <Carousel images={items} title={title} emptyLabel="No images yet" />;

@@ -44,7 +44,7 @@ const listing = {
     { url: "https://images.podos.io/mock-evergreen.jpg", kind: "mockup" as const, label: "Evergreen" },
     { url: "https://images.podos.io/mock-brown.jpg", kind: "mockup" as const, label: "Brown" },
   ],
-  editOnTeemillUrl:
+  providerEditUrl:
     "https://teemill.com/create-a-product/powered-by-plants/?project=merchforthefuture-451391",
 };
 
@@ -88,7 +88,7 @@ describe("US-MFTF-13.4 — EditReferencedListingForm", () => {
     const link = screen.getByRole("link", { name: /edit on teemill/i });
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
-    expect(link).toHaveAttribute("href", listing.editOnTeemillUrl);
+    expect(link).toHaveAttribute("href", listing.providerEditUrl);
   });
 
   it("offers a 'Re-sync from Teemill' control", () => {

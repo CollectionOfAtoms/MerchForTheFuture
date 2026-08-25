@@ -4,3 +4,4 @@ export type {
   PrintifyVariantSnapshot,
   PrintifyIngestResult,
 } from "./ingest";
+export { printifyProductEditUrl } from "./client";

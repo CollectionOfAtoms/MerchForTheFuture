@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { teemillEditUrl } from "@/lib/fulfillment/teemill";
+import { printifyProductEditUrl } from "@/lib/fulfillment/printify";
 import {
   referencedListingColors,
   referencedListingSizes,
@@ -210,10 +211,11 @@ export async function getReferencedListingForEdit(listingId: string) {
       isPrimary: i.isPrimary,
       sortOrder: i.sortOrder,
     })),
-    editOnTeemillUrl: teemillEditUrl({
-      slug: listing.providerProductSlug,
-      ref: listing.providerProductRef,
-    }),
+    // Provider-aware deep link to the product ("Edit on Teemill" / "Edit on Printify").
+    providerEditUrl:
+      listing.providerKey === "printify"
+        ? printifyProductEditUrl(listing.providerProductRef)
+        : teemillEditUrl({ slug: listing.providerProductSlug, ref: listing.providerProductRef }),
   };
 }
 
